@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.main import app as core_app  # Import the app from app/main.py
+from app.app import app as core_app  # Import the app from app/main.py
 from contextlib import asynccontextmanager
 from utils.logging import setup_logging
 from utils.error_handlers import setup_error_handlers

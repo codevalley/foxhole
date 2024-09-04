@@ -46,3 +46,8 @@ async def get_file_url(
     if url:
         return {"url": url}
     return {"message": "Failed to get file URL"}
+
+@router.get("/")
+async def list_files(storage_service=Depends(get_storage_service)):
+    # This is just a placeholder. Implement actual file listing logic here.
+    return {"message": "File listing not implemented yet"}

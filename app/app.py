@@ -20,5 +20,3 @@ async def root():
         dict: A welcome message.
     """
     return {"message": "Welcome to the Foxhole Backend API"}
-
-# ... rest of your main.py code
