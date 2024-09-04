@@ -13,16 +13,16 @@
 - [x] Secure URL generation and secret code mechanism
 - [x] Basic testing framework
 - [x] Implement simplified user registration and authentication flow
+- [x] **Develop additional data models and schemas
+- [x] **Implement CRUD operations for main entities
+- [x] Enhance WebSocket functionality for real-time updates
+- [x] Implement MinIO integration for object storage
 
 ## In Progress
-- [ ] Develop additional data models and schemas
-- [ ] Implement CRUD operations for main entities
-- [ ] Enhance WebSocket functionality for real-time updates
-- [ ] Implement MinIO integration for object storage
-
-## To Do
 - [ ] Implement more comprehensive test coverage
 - [ ] Set up Kamal configuration for deployment
+
+## To Do
 - [ ] Implement rollback and monitoring strategies
 - [ ] Enhance documentation
 - [ ] Implement data isolation strategy for chambers
