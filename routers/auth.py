@@ -13,7 +13,8 @@ router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 async def authenticate_user(username: str, password: str, db: AsyncSession):
-    # Implement user authentication logic here
+    # TODO: Implement user authentication logic
+    # This should query the database, verify the password, and return the user if valid
     pass
 
 async def create_access_token(data: dict):
@@ -36,7 +37,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    # Implement logic to get the current user from the token
+    # TODO: Implement logic to get the current user from the token
+    # This should decode the JWT, validate it, and return the corresponding user
     pass
 
 @router.get("/users/me")

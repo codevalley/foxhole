@@ -4,7 +4,7 @@ from app.dependencies import get_storage_service
 
 app = FastAPI()
 
-# Dependency injection
+# Dependency injection for storage service
 app.dependency_overrides[get_storage_service] = get_storage_service
 
 # Include routers
