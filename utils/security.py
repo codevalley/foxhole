@@ -23,3 +23,12 @@ def generate_secret_code(length: int = 8) -> str:
     """
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+def generate_user_id(length: int = 16) -> str:
+    """
+    Generates a unique userID that also acts as a secret.
+    
+    :param length: The length of the userID (default is 16)
+    :return: A random string of letters and digits
+    """
+    return secrets.token_urlsafe(length)

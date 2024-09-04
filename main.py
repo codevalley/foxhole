@@ -25,7 +25,7 @@ app = FastAPI(lifespan=lifespan)
 
 # Set up routers
 app.include_router(health.router)
-app.include_router(auth.router)
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(websocket.router)
 
 # Set up error handlers

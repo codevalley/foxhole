@@ -1,12 +1,13 @@
 import aioredis
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
+from config import settings
 
 async def init_cache():
     """
     Initializes the Redis cache for the FastAPI application.
     """
-    redis = aioredis.from_url("redis://localhost", encoding="utf8", decode_responses=True)
+    redis = aioredis.from_url(settings.REDIS_URL, encoding="utf8", decode_responses=True)
     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache:")
 
 async def close_cache():

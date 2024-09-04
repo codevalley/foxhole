@@ -12,10 +12,10 @@
 - [x] Error handling middleware
 - [x] Secure URL generation and secret code mechanism
 - [x] Basic testing framework
+- [x] Implement simplified user registration and authentication flow
 
 ## In Progress
-- [ ] Implement full authentication flow
-- [ ] Develop data models and schemas
+- [ ] Develop additional data models and schemas
 - [ ] Implement CRUD operations for main entities
 - [ ] Enhance WebSocket functionality for real-time updates
 - [ ] Implement MinIO integration for object storage
