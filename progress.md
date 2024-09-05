@@ -31,7 +31,7 @@
 ## Issues and Improvements
 - [x] Complete implementation of `authenticate_user` and `get_current_user` functions in `routers/auth.py`
 - [x] Wrap Minio client in a custom class implementing the `StorageService` interface in `app/dependencies.py`
-- [ ] Replace `print` statements with proper logging in `app/services/storage_service.py`
+- [x] Replace `print` statements with proper logging in `app/services/storage_service.py`
 - [ ] Consolidate configuration files: remove `config.py` and use `app/core/config.py` throughout the application
 - [ ] Consolidate `User` model definitions in `app/models.py` and `models/user.py`
 - [x] Implement proper error handling and validation in file upload and retrieval endpoints in `app/routers/files.py`

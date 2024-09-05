@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown processes.
     """
     # Startup
-    setup_logging()
+    setup_logging()  # Set up logging
     await init_db()
     await init_cache()
     yield

@@ -2,7 +2,10 @@ from abc import ABC, abstractmethod
 from fastapi import UploadFile
 from minio import Minio
 from app.core.config import settings
+from utils.logging import get_logger
 import io
+
+logger = get_logger(__name__)
 
 class StorageService(ABC):
     @abstractmethod
@@ -43,27 +46,29 @@ class MinioStorageService(StorageService):
                 bucket_name, object_name, file_stream, file_size,
                 content_type=file.content_type
             )
+            logger.info(f"File uploaded successfully: {object_name}")
             return object_name
         except Exception as e:
-            # Log the error (implement proper logging)
-            print(f"Error uploading file: {e}")
+            logger.error(f"Error uploading file: {e}", exc_info=True)
             return None
 
     async def get_file_url(self, bucket_name: str, object_name: str):
         try:
             # Generate a presigned URL for the object
-            return self.client.presigned_get_object(bucket_name, object_name)
+            url = self.client.presigned_get_object(bucket_name, object_name)
+            logger.info(f"Generated presigned URL for {object_name}")
+            return url
         except Exception as e:
-            # Log the error (implement proper logging)
-            print(f"Error getting file URL: {e}")
+            logger.error(f"Error getting file URL: {e}", exc_info=True)
             return None
 
     async def list_files(self, bucket_name: str):
         try:
             # List objects in the bucket
             objects = self.client.list_objects(bucket_name)
-            return [obj.object_name for obj in objects]
+            file_list = [obj.object_name for obj in objects]
+            logger.info(f"Listed {len(file_list)} files in bucket {bucket_name}")
+            return file_list
         except Exception as e:
-            # Log the error (implement proper logging)
-            print(f"Error listing files: {e}")
+            logger.error(f"Error listing files: {e}", exc_info=True)
             return []
