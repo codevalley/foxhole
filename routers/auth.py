@@ -6,16 +6,22 @@ from app.core.config import settings
 from app.models import User
 from utils.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from passlib.context import CryptContext
 
 router = APIRouter()
 
 # OAuth2 scheme for token authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 async def authenticate_user(username: str, password: str, db: AsyncSession):
-    # TODO: Implement user authentication logic
-    # This should query the database, verify the password, and return the user if valid
-    pass
+    query = select(User).where(User.username == username)
+    result = await db.execute(query)
+    user = result.scalar_one_or_none()
+    if not user or not pwd_context.verify(password, user.hashed_password):
+        return False
+    return user
 
 async def create_access_token(data: dict):
     to_encode = data.copy()
@@ -37,9 +43,24 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    # TODO: Implement logic to get the current user from the token
-    # This should decode the JWT, validate it, and return the corresponding user
-    pass
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    query = select(User).where(User.username == username)
+    result = await db.execute(query)
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise credentials_exception
+    return user
 
 @router.get("/users/me")
 async def read_users_me(current_user: User = Depends(get_current_user)):

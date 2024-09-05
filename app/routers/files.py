@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Depends
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from app.services.storage_service import StorageService
 from app.dependencies import get_storage_service
 
@@ -24,7 +24,7 @@ async def upload_file(
     result = await storage_service.upload_file(file, bucket_name, object_name)
     if result:
         return {"message": "File uploaded successfully", "object_name": result}
-    return {"message": "Failed to upload file"}
+    raise HTTPException(status_code=500, detail="Failed to upload file")
 
 @router.get("/file/{object_name}")
 async def get_file_url(
@@ -45,9 +45,19 @@ async def get_file_url(
     url = await storage_service.get_file_url(bucket_name, object_name)
     if url:
         return {"url": url}
-    return {"message": "Failed to get file URL"}
+    raise HTTPException(status_code=404, detail="File not found")
 
 @router.get("/")
-async def list_files(storage_service=Depends(get_storage_service)):
-    # This is just a placeholder. Implement actual file listing logic here.
-    return {"message": "File listing not implemented yet"}
+async def list_files(storage_service: StorageService = Depends(get_storage_service)):
+    """
+    List all files in the default bucket.
+    
+    Args:
+        storage_service (StorageService): The storage service to use.
+    
+    Returns:
+        dict: A dictionary containing the list of files.
+    """
+    bucket_name = "my-bucket"
+    files = await storage_service.list_files(bucket_name)
+    return {"files": files}
