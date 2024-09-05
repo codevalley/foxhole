@@ -26,7 +26,7 @@
    - Implements Redis caching functionality
 
 7. **Models (`app/models.py`):**
-   - Defines SQLAlchemy ORM models
+   - Defines SQLAlchemy ORM models for the application
 
 8. **Services:**
    - `app/services/websocket_manager.py`: Manages WebSocket connections
