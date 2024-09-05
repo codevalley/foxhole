@@ -1,8 +1,8 @@
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel
 from typing import Optional
 import secrets
 
-class Settings(BaseSettings):
+class Settings(BaseModel):
     # Application settings
     APP_NAME: str = "Foxhole Backend API"
     DEBUG: bool = False
@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     # MinIO settings
-    MINIO_ROOT_USER: str
-    MINIO_ROOT_PASSWORD: str
+    MINIO_ROOT_USER: str = "minioadmin"
+    MINIO_ROOT_PASSWORD: str = "minioadmin"
     MINIO_HOST: str = "localhost:9000"
     MINIO_SECURE: bool = False
 
@@ -23,10 +23,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Database settings
-    DATABASE_URL: str
+    DATABASE_URL: str = "sqlite+aiosqlite:///./app.db"
 
     # Redis settings
-    REDIS_URL: str
+    REDIS_URL: str = "redis://localhost"
 
     # Logging settings
     LOG_LEVEL: str = "INFO"

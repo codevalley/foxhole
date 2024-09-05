@@ -1,5 +1,21 @@
 # Getting Started with Foxhole Backend API
 
+## Unique User Identification Concept
+
+Our platform uses a unique approach to user identification:
+
+- Users are identified by a unique, randomly generated userID.
+- This userID serves as both the identifier and the access key for authentication.
+- No traditional username/password combination is used.
+- Users can optionally set a screen name (handle) for display purposes.
+- The user model can be easily extended with additional fields as needed.
+
+## User Registration and Authentication
+
+1. Registration: Users receive a unique userID upon registration.
+2. Authentication: Users use their userID to obtain an access token.
+3. Profile: Additional user information can be added to enrich the user profile.
+
 ## Components of the Codebase
 
 1. **Main Application (`main.py`):**
@@ -14,9 +30,9 @@
    - Manages application settings using Pydantic
 
 4. **Routers:**
-   - `routers/auth.py`: Handles authentication and user-related endpoints
-   - `routers/health.py`: Provides a health check endpoint
-   - `routers/websocket.py`: Manages WebSocket connections
+   - `app/routers/auth.py`: Handles authentication and user-related endpoints
+   - `app/routers/health.py`: Provides a health check endpoint
+   - `app/routers/websocket.py`: Manages WebSocket connections
    - `app/routers/files.py`: Handles file upload and retrieval
 
 5. **Database Management (`utils/database.py`):**

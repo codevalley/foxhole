@@ -5,8 +5,7 @@ from utils.logging import setup_logging
 from utils.error_handlers import setup_error_handlers
 from utils.database import init_db, close_db
 from utils.cache import init_cache, close_cache
-from routers import health, auth, websocket
-from app.core.config import settings  # Import settings from the new location
+from app.core.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,21 +22,17 @@ async def lifespan(app: FastAPI):
     await close_db()
     await close_cache()
 
-# Apply the lifespan to the imported app
-core_app.router.lifespan = lifespan
+# Create the FastAPI app instance
+app = FastAPI(lifespan=lifespan)
 
-# Set up routers
-core_app.include_router(health.router)
-core_app.include_router(auth.router, prefix="/auth", tags=["auth"])
-core_app.include_router(websocket.router)
-
-# Set up error handlers
-setup_error_handlers(core_app)
+# Include routers and set up error handlers
+app.include_router(core_app.router)
+setup_error_handlers(app)
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        "main:core_app",  # Use string reference to the app
+        "main:app",  # Use string reference to the app
         host=settings.HOST,
         port=settings.PORT,
         log_level="debug" if settings.DEBUG else "info",

@@ -1,0 +1,1160 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.0, pluggy-1.5.0
+rootdir: /Users/nyn/develop/foxhole
+configfile: pytest.ini
+plugins: asyncio-0.21.1, anyio-3.7.1
+asyncio: mode=Mode.STRICT
+collected 5 items
+
+tests/test_main.py EEEEE                                                 [100%]
+
+==================================== ERRORS ====================================
+_____________________ ERROR at setup of test_register_user _____________________
+
+self = Connection<host=localhost,port=6379,db=0>
+
+    async def connect(self):
+        """Connects to the Redis server if not already connected"""
+        if self.is_connected:
+            return
+        try:
+>           await self.retry.call_with_retry(
+                lambda: self._connect(), lambda error: self.disconnect()
+            )
+
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:243: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.12/site-packages/redis/asyncio/retry.py:59: in call_with_retry
+    return await do()
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:650: in _connect
+    reader, writer = await asyncio.open_connection(
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/streams.py:48: in open_connection
+    transport, _ = await loop.create_connection(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=True debug=False>
+protocol_factory = <function open_connection.<locals>.<lambda> at 0x11326d3a0>
+host = 'localhost', port = 6379
+
+    async def create_connection(
+            self, protocol_factory, host=None, port=None,
+            *, ssl=None, family=0,
+            proto=0, flags=0, sock=None,
+            local_addr=None, server_hostname=None,
+            ssl_handshake_timeout=None,
+            ssl_shutdown_timeout=None,
+            happy_eyeballs_delay=None, interleave=None,
+            all_errors=False):
+        """Connect to a TCP server.
+    
+        Create a streaming transport connection to a given internet host and
+        port: socket family AF_INET or socket.AF_INET6 depending on host (or
+        family if specified), socket type SOCK_STREAM. protocol_factory must be
+        a callable returning a protocol instance.
+    
+        This method is a coroutine which will try to establish the connection
+        in the background.  When successful, the coroutine returns a
+        (transport, protocol) pair.
+        """
+        if server_hostname is not None and not ssl:
+            raise ValueError('server_hostname is only meaningful with ssl')
+    
+        if server_hostname is None and ssl:
+            # Use host as default for server_hostname.  It is an error
+            # if host is empty or not set, e.g. when an
+            # already-connected socket was passed or when only a port
+            # is given.  To avoid this error, you can pass
+            # server_hostname='' -- this will bypass the hostname
+            # check.  (This also means that if host is a numeric
+            # IP/IPv6 address, we will attempt to verify that exact
+            # address; this will probably fail, but it is possible to
+            # create a certificate for a specific IP address, so we
+            # don't judge it here.)
+            if not host:
+                raise ValueError('You must set server_hostname '
+                                 'when using ssl without a host')
+            server_hostname = host
+    
+        if ssl_handshake_timeout is not None and not ssl:
+            raise ValueError(
+                'ssl_handshake_timeout is only meaningful with ssl')
+    
+        if ssl_shutdown_timeout is not None and not ssl:
+            raise ValueError(
+                'ssl_shutdown_timeout is only meaningful with ssl')
+    
+        if sock is not None:
+            _check_ssl_socket(sock)
+    
+        if happy_eyeballs_delay is not None and interleave is None:
+            # If using happy eyeballs, default to interleave addresses by family
+            interleave = 1
+    
+        if host is not None or port is not None:
+            if sock is not None:
+                raise ValueError(
+                    'host/port and sock can not be specified at the same time')
+    
+            infos = await self._ensure_resolved(
+                (host, port), family=family,
+                type=socket.SOCK_STREAM, proto=proto, flags=flags, loop=self)
+            if not infos:
+                raise OSError('getaddrinfo() returned empty list')
+    
+            if local_addr is not None:
+                laddr_infos = await self._ensure_resolved(
+                    local_addr, family=family,
+                    type=socket.SOCK_STREAM, proto=proto,
+                    flags=flags, loop=self)
+                if not laddr_infos:
+                    raise OSError('getaddrinfo() returned empty list')
+            else:
+                laddr_infos = None
+    
+            if interleave:
+                infos = _interleave_addrinfos(infos, interleave)
+    
+            exceptions = []
+            if happy_eyeballs_delay is None:
+                # not using happy eyeballs
+                for addrinfo in infos:
+                    try:
+                        sock = await self._connect_sock(
+                            exceptions, addrinfo, laddr_infos)
+                        break
+                    except OSError:
+                        continue
+            else:  # using happy eyeballs
+                sock, _, _ = await staggered.staggered_race(
+                    (functools.partial(self._connect_sock,
+                                       exceptions, addrinfo, laddr_infos)
+                     for addrinfo in infos),
+                    happy_eyeballs_delay, loop=self)
+    
+            if sock is None:
+                exceptions = [exc for sub in exceptions for exc in sub]
+                try:
+                    if all_errors:
+                        raise ExceptionGroup("create_connection failed", exceptions)
+                    if len(exceptions) == 1:
+                        raise exceptions[0]
+                    else:
+                        # If they all have the same str(), raise one.
+                        model = str(exceptions[0])
+                        if all(str(exc) == model for exc in exceptions):
+                            raise exceptions[0]
+                        # Raise a combined exception so the user can see all
+                        # the various error messages.
+>                       raise OSError('Multiple exceptions: {}'.format(
+                            ', '.join(str(exc) for exc in exceptions)))
+E                           OSError: Multiple exceptions: [Errno 61] Connect call failed ('::1', 6379, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 6379)
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:1130: OSError
+
+During handling of the above exception, another exception occurred:
+
+test_db = <async_generator object test_db at 0x113216340>
+
+    @pytest.fixture(scope="module")
+    def client(test_db):
+>       with TestClient(app) as c:
+
+tests/test_main.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.12/site-packages/starlette/testclient.py:745: in __enter__
+    portal.call(self.wait_startup)
+venv/lib/python3.12/site-packages/anyio/from_thread.py:277: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:456: in result
+    return self.__get_result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+venv/lib/python3.12/site-packages/anyio/from_thread.py:217: in _call_func
+    retval = await retval
+venv/lib/python3.12/site-packages/starlette/testclient.py:780: in wait_startup
+    await receive()
+venv/lib/python3.12/site-packages/starlette/testclient.py:771: in receive
+    self.task.result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:449: in result
+    return self.__get_result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+venv/lib/python3.12/site-packages/anyio/from_thread.py:217: in _call_func
+    retval = await retval
+venv/lib/python3.12/site-packages/starlette/testclient.py:761: in lifespan
+    await self.app(scope, self.stream_receive.receive, self.stream_send.send)
+venv/lib/python3.12/site-packages/fastapi/applications.py:292: in __call__
+    await super().__call__(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/applications.py:122: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/errors.py:149: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:55: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:20: in __call__
+    raise e
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:17: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:707: in __call__
+    await self.lifespan(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:677: in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+main.py:19: in lifespan
+    await init_cache()
+utils/cache.py:12: in init_cache
+    await redis_client.ping()  # Test the connection
+venv/lib/python3.12/site-packages/redis/asyncio/client.py:601: in execute_command
+    conn = self.connection or await pool.get_connection(command_name, **options)
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:1040: in get_connection
+    await self.ensure_connection(connection)
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:1062: in ensure_connection
+    await connection.connect()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Connection<host=localhost,port=6379,db=0>
+
+    async def connect(self):
+        """Connects to the Redis server if not already connected"""
+        if self.is_connected:
+            return
+        try:
+            await self.retry.call_with_retry(
+                lambda: self._connect(), lambda error: self.disconnect()
+            )
+        except asyncio.CancelledError:
+            raise  # in 3.7 and earlier, this is an Exception, not BaseException
+        except (socket.timeout, asyncio.TimeoutError):
+            raise TimeoutError("Timeout connecting to server")
+        except OSError as e:
+>           raise ConnectionError(self._error_message(e))
+E           redis.exceptions.ConnectionError: Error connecting to localhost:6379. Multiple exceptions: [Errno 61] Connect call failed ('::1', 6379, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 6379).
+
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:251: ConnectionError
+---------------------------- Captured stdout setup -----------------------------
+2024-09-05 22:06:55,707 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-05 22:06:55,708 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2024-09-05 22:06:55,708 INFO sqlalchemy.engine.Engine [raw sql] ()
+2024-09-05 22:06:55,708 INFO sqlalchemy.engine.Engine COMMIT
+---------------------------- Captured stderr setup -----------------------------
+sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("users")
+sqlalchemy.engine.Engine - INFO - [raw sql] ()
+sqlalchemy.engine.Engine - INFO - COMMIT
+------------------------------ Captured log setup ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 PRAGMA main.table_info("users")
+INFO     sqlalchemy.engine.Engine:base.py:1844 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+_________________________ ERROR at setup of test_login _________________________
+
+self = Connection<host=localhost,port=6379,db=0>
+
+    async def connect(self):
+        """Connects to the Redis server if not already connected"""
+        if self.is_connected:
+            return
+        try:
+>           await self.retry.call_with_retry(
+                lambda: self._connect(), lambda error: self.disconnect()
+            )
+
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:243: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.12/site-packages/redis/asyncio/retry.py:59: in call_with_retry
+    return await do()
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:650: in _connect
+    reader, writer = await asyncio.open_connection(
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/streams.py:48: in open_connection
+    transport, _ = await loop.create_connection(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=True debug=False>
+protocol_factory = <function open_connection.<locals>.<lambda> at 0x11326d3a0>
+host = 'localhost', port = 6379
+
+    async def create_connection(
+            self, protocol_factory, host=None, port=None,
+            *, ssl=None, family=0,
+            proto=0, flags=0, sock=None,
+            local_addr=None, server_hostname=None,
+            ssl_handshake_timeout=None,
+            ssl_shutdown_timeout=None,
+            happy_eyeballs_delay=None, interleave=None,
+            all_errors=False):
+        """Connect to a TCP server.
+    
+        Create a streaming transport connection to a given internet host and
+        port: socket family AF_INET or socket.AF_INET6 depending on host (or
+        family if specified), socket type SOCK_STREAM. protocol_factory must be
+        a callable returning a protocol instance.
+    
+        This method is a coroutine which will try to establish the connection
+        in the background.  When successful, the coroutine returns a
+        (transport, protocol) pair.
+        """
+        if server_hostname is not None and not ssl:
+            raise ValueError('server_hostname is only meaningful with ssl')
+    
+        if server_hostname is None and ssl:
+            # Use host as default for server_hostname.  It is an error
+            # if host is empty or not set, e.g. when an
+            # already-connected socket was passed or when only a port
+            # is given.  To avoid this error, you can pass
+            # server_hostname='' -- this will bypass the hostname
+            # check.  (This also means that if host is a numeric
+            # IP/IPv6 address, we will attempt to verify that exact
+            # address; this will probably fail, but it is possible to
+            # create a certificate for a specific IP address, so we
+            # don't judge it here.)
+            if not host:
+                raise ValueError('You must set server_hostname '
+                                 'when using ssl without a host')
+            server_hostname = host
+    
+        if ssl_handshake_timeout is not None and not ssl:
+            raise ValueError(
+                'ssl_handshake_timeout is only meaningful with ssl')
+    
+        if ssl_shutdown_timeout is not None and not ssl:
+            raise ValueError(
+                'ssl_shutdown_timeout is only meaningful with ssl')
+    
+        if sock is not None:
+            _check_ssl_socket(sock)
+    
+        if happy_eyeballs_delay is not None and interleave is None:
+            # If using happy eyeballs, default to interleave addresses by family
+            interleave = 1
+    
+        if host is not None or port is not None:
+            if sock is not None:
+                raise ValueError(
+                    'host/port and sock can not be specified at the same time')
+    
+            infos = await self._ensure_resolved(
+                (host, port), family=family,
+                type=socket.SOCK_STREAM, proto=proto, flags=flags, loop=self)
+            if not infos:
+                raise OSError('getaddrinfo() returned empty list')
+    
+            if local_addr is not None:
+                laddr_infos = await self._ensure_resolved(
+                    local_addr, family=family,
+                    type=socket.SOCK_STREAM, proto=proto,
+                    flags=flags, loop=self)
+                if not laddr_infos:
+                    raise OSError('getaddrinfo() returned empty list')
+            else:
+                laddr_infos = None
+    
+            if interleave:
+                infos = _interleave_addrinfos(infos, interleave)
+    
+            exceptions = []
+            if happy_eyeballs_delay is None:
+                # not using happy eyeballs
+                for addrinfo in infos:
+                    try:
+                        sock = await self._connect_sock(
+                            exceptions, addrinfo, laddr_infos)
+                        break
+                    except OSError:
+                        continue
+            else:  # using happy eyeballs
+                sock, _, _ = await staggered.staggered_race(
+                    (functools.partial(self._connect_sock,
+                                       exceptions, addrinfo, laddr_infos)
+                     for addrinfo in infos),
+                    happy_eyeballs_delay, loop=self)
+    
+            if sock is None:
+                exceptions = [exc for sub in exceptions for exc in sub]
+                try:
+                    if all_errors:
+                        raise ExceptionGroup("create_connection failed", exceptions)
+                    if len(exceptions) == 1:
+                        raise exceptions[0]
+                    else:
+                        # If they all have the same str(), raise one.
+                        model = str(exceptions[0])
+                        if all(str(exc) == model for exc in exceptions):
+                            raise exceptions[0]
+                        # Raise a combined exception so the user can see all
+                        # the various error messages.
+>                       raise OSError('Multiple exceptions: {}'.format(
+                            ', '.join(str(exc) for exc in exceptions)))
+E                           OSError: Multiple exceptions: [Errno 61] Connect call failed ('::1', 6379, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 6379)
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:1130: OSError
+
+During handling of the above exception, another exception occurred:
+
+test_db = <async_generator object test_db at 0x113216340>
+
+    @pytest.fixture(scope="module")
+    def client(test_db):
+>       with TestClient(app) as c:
+
+tests/test_main.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.12/site-packages/starlette/testclient.py:745: in __enter__
+    portal.call(self.wait_startup)
+venv/lib/python3.12/site-packages/anyio/from_thread.py:277: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:456: in result
+    return self.__get_result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+venv/lib/python3.12/site-packages/anyio/from_thread.py:217: in _call_func
+    retval = await retval
+venv/lib/python3.12/site-packages/starlette/testclient.py:780: in wait_startup
+    await receive()
+venv/lib/python3.12/site-packages/starlette/testclient.py:771: in receive
+    self.task.result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:449: in result
+    return self.__get_result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+venv/lib/python3.12/site-packages/anyio/from_thread.py:217: in _call_func
+    retval = await retval
+venv/lib/python3.12/site-packages/starlette/testclient.py:761: in lifespan
+    await self.app(scope, self.stream_receive.receive, self.stream_send.send)
+venv/lib/python3.12/site-packages/fastapi/applications.py:292: in __call__
+    await super().__call__(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/applications.py:122: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/errors.py:149: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:55: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:20: in __call__
+    raise e
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:17: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:707: in __call__
+    await self.lifespan(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:677: in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+main.py:19: in lifespan
+    await init_cache()
+utils/cache.py:12: in init_cache
+    await redis_client.ping()  # Test the connection
+venv/lib/python3.12/site-packages/redis/asyncio/client.py:601: in execute_command
+    conn = self.connection or await pool.get_connection(command_name, **options)
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:1040: in get_connection
+    await self.ensure_connection(connection)
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:1062: in ensure_connection
+    await connection.connect()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Connection<host=localhost,port=6379,db=0>
+
+    async def connect(self):
+        """Connects to the Redis server if not already connected"""
+        if self.is_connected:
+            return
+        try:
+            await self.retry.call_with_retry(
+                lambda: self._connect(), lambda error: self.disconnect()
+            )
+        except asyncio.CancelledError:
+            raise  # in 3.7 and earlier, this is an Exception, not BaseException
+        except (socket.timeout, asyncio.TimeoutError):
+            raise TimeoutError("Timeout connecting to server")
+        except OSError as e:
+>           raise ConnectionError(self._error_message(e))
+E           redis.exceptions.ConnectionError: Error connecting to localhost:6379. Multiple exceptions: [Errno 61] Connect call failed ('::1', 6379, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 6379).
+
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:251: ConnectionError
+___________________ ERROR at setup of test_get_user_profile ____________________
+
+self = Connection<host=localhost,port=6379,db=0>
+
+    async def connect(self):
+        """Connects to the Redis server if not already connected"""
+        if self.is_connected:
+            return
+        try:
+>           await self.retry.call_with_retry(
+                lambda: self._connect(), lambda error: self.disconnect()
+            )
+
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:243: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.12/site-packages/redis/asyncio/retry.py:59: in call_with_retry
+    return await do()
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:650: in _connect
+    reader, writer = await asyncio.open_connection(
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/streams.py:48: in open_connection
+    transport, _ = await loop.create_connection(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=True debug=False>
+protocol_factory = <function open_connection.<locals>.<lambda> at 0x11326d3a0>
+host = 'localhost', port = 6379
+
+    async def create_connection(
+            self, protocol_factory, host=None, port=None,
+            *, ssl=None, family=0,
+            proto=0, flags=0, sock=None,
+            local_addr=None, server_hostname=None,
+            ssl_handshake_timeout=None,
+            ssl_shutdown_timeout=None,
+            happy_eyeballs_delay=None, interleave=None,
+            all_errors=False):
+        """Connect to a TCP server.
+    
+        Create a streaming transport connection to a given internet host and
+        port: socket family AF_INET or socket.AF_INET6 depending on host (or
+        family if specified), socket type SOCK_STREAM. protocol_factory must be
+        a callable returning a protocol instance.
+    
+        This method is a coroutine which will try to establish the connection
+        in the background.  When successful, the coroutine returns a
+        (transport, protocol) pair.
+        """
+        if server_hostname is not None and not ssl:
+            raise ValueError('server_hostname is only meaningful with ssl')
+    
+        if server_hostname is None and ssl:
+            # Use host as default for server_hostname.  It is an error
+            # if host is empty or not set, e.g. when an
+            # already-connected socket was passed or when only a port
+            # is given.  To avoid this error, you can pass
+            # server_hostname='' -- this will bypass the hostname
+            # check.  (This also means that if host is a numeric
+            # IP/IPv6 address, we will attempt to verify that exact
+            # address; this will probably fail, but it is possible to
+            # create a certificate for a specific IP address, so we
+            # don't judge it here.)
+            if not host:
+                raise ValueError('You must set server_hostname '
+                                 'when using ssl without a host')
+            server_hostname = host
+    
+        if ssl_handshake_timeout is not None and not ssl:
+            raise ValueError(
+                'ssl_handshake_timeout is only meaningful with ssl')
+    
+        if ssl_shutdown_timeout is not None and not ssl:
+            raise ValueError(
+                'ssl_shutdown_timeout is only meaningful with ssl')
+    
+        if sock is not None:
+            _check_ssl_socket(sock)
+    
+        if happy_eyeballs_delay is not None and interleave is None:
+            # If using happy eyeballs, default to interleave addresses by family
+            interleave = 1
+    
+        if host is not None or port is not None:
+            if sock is not None:
+                raise ValueError(
+                    'host/port and sock can not be specified at the same time')
+    
+            infos = await self._ensure_resolved(
+                (host, port), family=family,
+                type=socket.SOCK_STREAM, proto=proto, flags=flags, loop=self)
+            if not infos:
+                raise OSError('getaddrinfo() returned empty list')
+    
+            if local_addr is not None:
+                laddr_infos = await self._ensure_resolved(
+                    local_addr, family=family,
+                    type=socket.SOCK_STREAM, proto=proto,
+                    flags=flags, loop=self)
+                if not laddr_infos:
+                    raise OSError('getaddrinfo() returned empty list')
+            else:
+                laddr_infos = None
+    
+            if interleave:
+                infos = _interleave_addrinfos(infos, interleave)
+    
+            exceptions = []
+            if happy_eyeballs_delay is None:
+                # not using happy eyeballs
+                for addrinfo in infos:
+                    try:
+                        sock = await self._connect_sock(
+                            exceptions, addrinfo, laddr_infos)
+                        break
+                    except OSError:
+                        continue
+            else:  # using happy eyeballs
+                sock, _, _ = await staggered.staggered_race(
+                    (functools.partial(self._connect_sock,
+                                       exceptions, addrinfo, laddr_infos)
+                     for addrinfo in infos),
+                    happy_eyeballs_delay, loop=self)
+    
+            if sock is None:
+                exceptions = [exc for sub in exceptions for exc in sub]
+                try:
+                    if all_errors:
+                        raise ExceptionGroup("create_connection failed", exceptions)
+                    if len(exceptions) == 1:
+                        raise exceptions[0]
+                    else:
+                        # If they all have the same str(), raise one.
+                        model = str(exceptions[0])
+                        if all(str(exc) == model for exc in exceptions):
+                            raise exceptions[0]
+                        # Raise a combined exception so the user can see all
+                        # the various error messages.
+>                       raise OSError('Multiple exceptions: {}'.format(
+                            ', '.join(str(exc) for exc in exceptions)))
+E                           OSError: Multiple exceptions: [Errno 61] Connect call failed ('::1', 6379, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 6379)
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:1130: OSError
+
+During handling of the above exception, another exception occurred:
+
+test_db = <async_generator object test_db at 0x113216340>
+
+    @pytest.fixture(scope="module")
+    def client(test_db):
+>       with TestClient(app) as c:
+
+tests/test_main.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.12/site-packages/starlette/testclient.py:745: in __enter__
+    portal.call(self.wait_startup)
+venv/lib/python3.12/site-packages/anyio/from_thread.py:277: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:456: in result
+    return self.__get_result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+venv/lib/python3.12/site-packages/anyio/from_thread.py:217: in _call_func
+    retval = await retval
+venv/lib/python3.12/site-packages/starlette/testclient.py:780: in wait_startup
+    await receive()
+venv/lib/python3.12/site-packages/starlette/testclient.py:771: in receive
+    self.task.result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:449: in result
+    return self.__get_result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+venv/lib/python3.12/site-packages/anyio/from_thread.py:217: in _call_func
+    retval = await retval
+venv/lib/python3.12/site-packages/starlette/testclient.py:761: in lifespan
+    await self.app(scope, self.stream_receive.receive, self.stream_send.send)
+venv/lib/python3.12/site-packages/fastapi/applications.py:292: in __call__
+    await super().__call__(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/applications.py:122: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/errors.py:149: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:55: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:20: in __call__
+    raise e
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:17: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:707: in __call__
+    await self.lifespan(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:677: in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+main.py:19: in lifespan
+    await init_cache()
+utils/cache.py:12: in init_cache
+    await redis_client.ping()  # Test the connection
+venv/lib/python3.12/site-packages/redis/asyncio/client.py:601: in execute_command
+    conn = self.connection or await pool.get_connection(command_name, **options)
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:1040: in get_connection
+    await self.ensure_connection(connection)
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:1062: in ensure_connection
+    await connection.connect()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Connection<host=localhost,port=6379,db=0>
+
+    async def connect(self):
+        """Connects to the Redis server if not already connected"""
+        if self.is_connected:
+            return
+        try:
+            await self.retry.call_with_retry(
+                lambda: self._connect(), lambda error: self.disconnect()
+            )
+        except asyncio.CancelledError:
+            raise  # in 3.7 and earlier, this is an Exception, not BaseException
+        except (socket.timeout, asyncio.TimeoutError):
+            raise TimeoutError("Timeout connecting to server")
+        except OSError as e:
+>           raise ConnectionError(self._error_message(e))
+E           redis.exceptions.ConnectionError: Error connecting to localhost:6379. Multiple exceptions: [Errno 61] Connect call failed ('::1', 6379, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 6379).
+
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:251: ConnectionError
+__________________ ERROR at setup of test_update_user_profile __________________
+
+self = Connection<host=localhost,port=6379,db=0>
+
+    async def connect(self):
+        """Connects to the Redis server if not already connected"""
+        if self.is_connected:
+            return
+        try:
+>           await self.retry.call_with_retry(
+                lambda: self._connect(), lambda error: self.disconnect()
+            )
+
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:243: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.12/site-packages/redis/asyncio/retry.py:59: in call_with_retry
+    return await do()
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:650: in _connect
+    reader, writer = await asyncio.open_connection(
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/streams.py:48: in open_connection
+    transport, _ = await loop.create_connection(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=True debug=False>
+protocol_factory = <function open_connection.<locals>.<lambda> at 0x11326d3a0>
+host = 'localhost', port = 6379
+
+    async def create_connection(
+            self, protocol_factory, host=None, port=None,
+            *, ssl=None, family=0,
+            proto=0, flags=0, sock=None,
+            local_addr=None, server_hostname=None,
+            ssl_handshake_timeout=None,
+            ssl_shutdown_timeout=None,
+            happy_eyeballs_delay=None, interleave=None,
+            all_errors=False):
+        """Connect to a TCP server.
+    
+        Create a streaming transport connection to a given internet host and
+        port: socket family AF_INET or socket.AF_INET6 depending on host (or
+        family if specified), socket type SOCK_STREAM. protocol_factory must be
+        a callable returning a protocol instance.
+    
+        This method is a coroutine which will try to establish the connection
+        in the background.  When successful, the coroutine returns a
+        (transport, protocol) pair.
+        """
+        if server_hostname is not None and not ssl:
+            raise ValueError('server_hostname is only meaningful with ssl')
+    
+        if server_hostname is None and ssl:
+            # Use host as default for server_hostname.  It is an error
+            # if host is empty or not set, e.g. when an
+            # already-connected socket was passed or when only a port
+            # is given.  To avoid this error, you can pass
+            # server_hostname='' -- this will bypass the hostname
+            # check.  (This also means that if host is a numeric
+            # IP/IPv6 address, we will attempt to verify that exact
+            # address; this will probably fail, but it is possible to
+            # create a certificate for a specific IP address, so we
+            # don't judge it here.)
+            if not host:
+                raise ValueError('You must set server_hostname '
+                                 'when using ssl without a host')
+            server_hostname = host
+    
+        if ssl_handshake_timeout is not None and not ssl:
+            raise ValueError(
+                'ssl_handshake_timeout is only meaningful with ssl')
+    
+        if ssl_shutdown_timeout is not None and not ssl:
+            raise ValueError(
+                'ssl_shutdown_timeout is only meaningful with ssl')
+    
+        if sock is not None:
+            _check_ssl_socket(sock)
+    
+        if happy_eyeballs_delay is not None and interleave is None:
+            # If using happy eyeballs, default to interleave addresses by family
+            interleave = 1
+    
+        if host is not None or port is not None:
+            if sock is not None:
+                raise ValueError(
+                    'host/port and sock can not be specified at the same time')
+    
+            infos = await self._ensure_resolved(
+                (host, port), family=family,
+                type=socket.SOCK_STREAM, proto=proto, flags=flags, loop=self)
+            if not infos:
+                raise OSError('getaddrinfo() returned empty list')
+    
+            if local_addr is not None:
+                laddr_infos = await self._ensure_resolved(
+                    local_addr, family=family,
+                    type=socket.SOCK_STREAM, proto=proto,
+                    flags=flags, loop=self)
+                if not laddr_infos:
+                    raise OSError('getaddrinfo() returned empty list')
+            else:
+                laddr_infos = None
+    
+            if interleave:
+                infos = _interleave_addrinfos(infos, interleave)
+    
+            exceptions = []
+            if happy_eyeballs_delay is None:
+                # not using happy eyeballs
+                for addrinfo in infos:
+                    try:
+                        sock = await self._connect_sock(
+                            exceptions, addrinfo, laddr_infos)
+                        break
+                    except OSError:
+                        continue
+            else:  # using happy eyeballs
+                sock, _, _ = await staggered.staggered_race(
+                    (functools.partial(self._connect_sock,
+                                       exceptions, addrinfo, laddr_infos)
+                     for addrinfo in infos),
+                    happy_eyeballs_delay, loop=self)
+    
+            if sock is None:
+                exceptions = [exc for sub in exceptions for exc in sub]
+                try:
+                    if all_errors:
+                        raise ExceptionGroup("create_connection failed", exceptions)
+                    if len(exceptions) == 1:
+                        raise exceptions[0]
+                    else:
+                        # If they all have the same str(), raise one.
+                        model = str(exceptions[0])
+                        if all(str(exc) == model for exc in exceptions):
+                            raise exceptions[0]
+                        # Raise a combined exception so the user can see all
+                        # the various error messages.
+>                       raise OSError('Multiple exceptions: {}'.format(
+                            ', '.join(str(exc) for exc in exceptions)))
+E                           OSError: Multiple exceptions: [Errno 61] Connect call failed ('::1', 6379, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 6379)
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:1130: OSError
+
+During handling of the above exception, another exception occurred:
+
+test_db = <async_generator object test_db at 0x113216340>
+
+    @pytest.fixture(scope="module")
+    def client(test_db):
+>       with TestClient(app) as c:
+
+tests/test_main.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.12/site-packages/starlette/testclient.py:745: in __enter__
+    portal.call(self.wait_startup)
+venv/lib/python3.12/site-packages/anyio/from_thread.py:277: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:456: in result
+    return self.__get_result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+venv/lib/python3.12/site-packages/anyio/from_thread.py:217: in _call_func
+    retval = await retval
+venv/lib/python3.12/site-packages/starlette/testclient.py:780: in wait_startup
+    await receive()
+venv/lib/python3.12/site-packages/starlette/testclient.py:771: in receive
+    self.task.result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:449: in result
+    return self.__get_result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+venv/lib/python3.12/site-packages/anyio/from_thread.py:217: in _call_func
+    retval = await retval
+venv/lib/python3.12/site-packages/starlette/testclient.py:761: in lifespan
+    await self.app(scope, self.stream_receive.receive, self.stream_send.send)
+venv/lib/python3.12/site-packages/fastapi/applications.py:292: in __call__
+    await super().__call__(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/applications.py:122: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/errors.py:149: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:55: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:20: in __call__
+    raise e
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:17: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:707: in __call__
+    await self.lifespan(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:677: in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+main.py:19: in lifespan
+    await init_cache()
+utils/cache.py:12: in init_cache
+    await redis_client.ping()  # Test the connection
+venv/lib/python3.12/site-packages/redis/asyncio/client.py:601: in execute_command
+    conn = self.connection or await pool.get_connection(command_name, **options)
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:1040: in get_connection
+    await self.ensure_connection(connection)
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:1062: in ensure_connection
+    await connection.connect()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Connection<host=localhost,port=6379,db=0>
+
+    async def connect(self):
+        """Connects to the Redis server if not already connected"""
+        if self.is_connected:
+            return
+        try:
+            await self.retry.call_with_retry(
+                lambda: self._connect(), lambda error: self.disconnect()
+            )
+        except asyncio.CancelledError:
+            raise  # in 3.7 and earlier, this is an Exception, not BaseException
+        except (socket.timeout, asyncio.TimeoutError):
+            raise TimeoutError("Timeout connecting to server")
+        except OSError as e:
+>           raise ConnectionError(self._error_message(e))
+E           redis.exceptions.ConnectionError: Error connecting to localhost:6379. Multiple exceptions: [Errno 61] Connect call failed ('::1', 6379, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 6379).
+
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:251: ConnectionError
+_____________________ ERROR at setup of test_health_check ______________________
+
+self = Connection<host=localhost,port=6379,db=0>
+
+    async def connect(self):
+        """Connects to the Redis server if not already connected"""
+        if self.is_connected:
+            return
+        try:
+>           await self.retry.call_with_retry(
+                lambda: self._connect(), lambda error: self.disconnect()
+            )
+
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:243: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.12/site-packages/redis/asyncio/retry.py:59: in call_with_retry
+    return await do()
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:650: in _connect
+    reader, writer = await asyncio.open_connection(
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/streams.py:48: in open_connection
+    transport, _ = await loop.create_connection(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=True debug=False>
+protocol_factory = <function open_connection.<locals>.<lambda> at 0x11326d3a0>
+host = 'localhost', port = 6379
+
+    async def create_connection(
+            self, protocol_factory, host=None, port=None,
+            *, ssl=None, family=0,
+            proto=0, flags=0, sock=None,
+            local_addr=None, server_hostname=None,
+            ssl_handshake_timeout=None,
+            ssl_shutdown_timeout=None,
+            happy_eyeballs_delay=None, interleave=None,
+            all_errors=False):
+        """Connect to a TCP server.
+    
+        Create a streaming transport connection to a given internet host and
+        port: socket family AF_INET or socket.AF_INET6 depending on host (or
+        family if specified), socket type SOCK_STREAM. protocol_factory must be
+        a callable returning a protocol instance.
+    
+        This method is a coroutine which will try to establish the connection
+        in the background.  When successful, the coroutine returns a
+        (transport, protocol) pair.
+        """
+        if server_hostname is not None and not ssl:
+            raise ValueError('server_hostname is only meaningful with ssl')
+    
+        if server_hostname is None and ssl:
+            # Use host as default for server_hostname.  It is an error
+            # if host is empty or not set, e.g. when an
+            # already-connected socket was passed or when only a port
+            # is given.  To avoid this error, you can pass
+            # server_hostname='' -- this will bypass the hostname
+            # check.  (This also means that if host is a numeric
+            # IP/IPv6 address, we will attempt to verify that exact
+            # address; this will probably fail, but it is possible to
+            # create a certificate for a specific IP address, so we
+            # don't judge it here.)
+            if not host:
+                raise ValueError('You must set server_hostname '
+                                 'when using ssl without a host')
+            server_hostname = host
+    
+        if ssl_handshake_timeout is not None and not ssl:
+            raise ValueError(
+                'ssl_handshake_timeout is only meaningful with ssl')
+    
+        if ssl_shutdown_timeout is not None and not ssl:
+            raise ValueError(
+                'ssl_shutdown_timeout is only meaningful with ssl')
+    
+        if sock is not None:
+            _check_ssl_socket(sock)
+    
+        if happy_eyeballs_delay is not None and interleave is None:
+            # If using happy eyeballs, default to interleave addresses by family
+            interleave = 1
+    
+        if host is not None or port is not None:
+            if sock is not None:
+                raise ValueError(
+                    'host/port and sock can not be specified at the same time')
+    
+            infos = await self._ensure_resolved(
+                (host, port), family=family,
+                type=socket.SOCK_STREAM, proto=proto, flags=flags, loop=self)
+            if not infos:
+                raise OSError('getaddrinfo() returned empty list')
+    
+            if local_addr is not None:
+                laddr_infos = await self._ensure_resolved(
+                    local_addr, family=family,
+                    type=socket.SOCK_STREAM, proto=proto,
+                    flags=flags, loop=self)
+                if not laddr_infos:
+                    raise OSError('getaddrinfo() returned empty list')
+            else:
+                laddr_infos = None
+    
+            if interleave:
+                infos = _interleave_addrinfos(infos, interleave)
+    
+            exceptions = []
+            if happy_eyeballs_delay is None:
+                # not using happy eyeballs
+                for addrinfo in infos:
+                    try:
+                        sock = await self._connect_sock(
+                            exceptions, addrinfo, laddr_infos)
+                        break
+                    except OSError:
+                        continue
+            else:  # using happy eyeballs
+                sock, _, _ = await staggered.staggered_race(
+                    (functools.partial(self._connect_sock,
+                                       exceptions, addrinfo, laddr_infos)
+                     for addrinfo in infos),
+                    happy_eyeballs_delay, loop=self)
+    
+            if sock is None:
+                exceptions = [exc for sub in exceptions for exc in sub]
+                try:
+                    if all_errors:
+                        raise ExceptionGroup("create_connection failed", exceptions)
+                    if len(exceptions) == 1:
+                        raise exceptions[0]
+                    else:
+                        # If they all have the same str(), raise one.
+                        model = str(exceptions[0])
+                        if all(str(exc) == model for exc in exceptions):
+                            raise exceptions[0]
+                        # Raise a combined exception so the user can see all
+                        # the various error messages.
+>                       raise OSError('Multiple exceptions: {}'.format(
+                            ', '.join(str(exc) for exc in exceptions)))
+E                           OSError: Multiple exceptions: [Errno 61] Connect call failed ('::1', 6379, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 6379)
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:1130: OSError
+
+During handling of the above exception, another exception occurred:
+
+test_db = <async_generator object test_db at 0x113216340>
+
+    @pytest.fixture(scope="module")
+    def client(test_db):
+>       with TestClient(app) as c:
+
+tests/test_main.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.12/site-packages/starlette/testclient.py:745: in __enter__
+    portal.call(self.wait_startup)
+venv/lib/python3.12/site-packages/anyio/from_thread.py:277: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:456: in result
+    return self.__get_result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+venv/lib/python3.12/site-packages/anyio/from_thread.py:217: in _call_func
+    retval = await retval
+venv/lib/python3.12/site-packages/starlette/testclient.py:780: in wait_startup
+    await receive()
+venv/lib/python3.12/site-packages/starlette/testclient.py:771: in receive
+    self.task.result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:449: in result
+    return self.__get_result()
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+venv/lib/python3.12/site-packages/anyio/from_thread.py:217: in _call_func
+    retval = await retval
+venv/lib/python3.12/site-packages/starlette/testclient.py:761: in lifespan
+    await self.app(scope, self.stream_receive.receive, self.stream_send.send)
+venv/lib/python3.12/site-packages/fastapi/applications.py:292: in __call__
+    await super().__call__(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/applications.py:122: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/errors.py:149: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:55: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:20: in __call__
+    raise e
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:17: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:707: in __call__
+    await self.lifespan(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:677: in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+main.py:19: in lifespan
+    await init_cache()
+utils/cache.py:12: in init_cache
+    await redis_client.ping()  # Test the connection
+venv/lib/python3.12/site-packages/redis/asyncio/client.py:601: in execute_command
+    conn = self.connection or await pool.get_connection(command_name, **options)
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:1040: in get_connection
+    await self.ensure_connection(connection)
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:1062: in ensure_connection
+    await connection.connect()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Connection<host=localhost,port=6379,db=0>
+
+    async def connect(self):
+        """Connects to the Redis server if not already connected"""
+        if self.is_connected:
+            return
+        try:
+            await self.retry.call_with_retry(
+                lambda: self._connect(), lambda error: self.disconnect()
+            )
+        except asyncio.CancelledError:
+            raise  # in 3.7 and earlier, this is an Exception, not BaseException
+        except (socket.timeout, asyncio.TimeoutError):
+            raise TimeoutError("Timeout connecting to server")
+        except OSError as e:
+>           raise ConnectionError(self._error_message(e))
+E           redis.exceptions.ConnectionError: Error connecting to localhost:6379. Multiple exceptions: [Errno 61] Connect call failed ('::1', 6379, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 6379).
+
+venv/lib/python3.12/site-packages/redis/asyncio/connection.py:251: ConnectionError
+=============================== warnings summary ===============================
+venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267
+venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267
+  /Users/nyn/develop/foxhole/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.4/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:317
+  /Users/nyn/develop/foxhole/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:317: UserWarning: Valid config keys have changed in V2:
+  * 'orm_mode' has been renamed to 'from_attributes'
+    warnings.warn(message, UserWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/test_main.py::test_register_user - redis.exceptions.ConnectionErr...
+ERROR tests/test_main.py::test_login - redis.exceptions.ConnectionError: Erro...
+ERROR tests/test_main.py::test_get_user_profile - redis.exceptions.Connection...
+ERROR tests/test_main.py::test_update_user_profile - redis.exceptions.Connect...
+ERROR tests/test_main.py::test_health_check - redis.exceptions.ConnectionErro...
+======================== 3 warnings, 5 errors in 0.86s =========================
