@@ -1,11 +1,12 @@
 from fastapi import FastAPI
-from app.app import app as core_app  # Import the app from app/main.py
+from app.app import app as core_app
 from contextlib import asynccontextmanager
 from utils.logging import setup_logging
 from utils.error_handlers import setup_error_handlers
 from utils.database import init_db, close_db
 from utils.cache import init_cache, close_cache
 from routers import health, auth, websocket
+from app.core.config import settings  # Import settings from the new location
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -35,4 +36,9 @@ setup_error_handlers(core_app)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(core_app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        core_app, 
+        host=settings.HOST, 
+        port=settings.PORT, 
+        debug=settings.DEBUG
+    )
