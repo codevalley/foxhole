@@ -37,8 +37,9 @@ setup_error_handlers(core_app)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        core_app, 
-        host=settings.HOST, 
-        port=settings.PORT, 
-        debug=settings.DEBUG
+        "main:core_app",  # Use string reference to the app
+        host=settings.HOST,
+        port=settings.PORT,
+        log_level="debug" if settings.DEBUG else "info",
+        reload=settings.DEBUG  # Enable auto-reload in debug mode
     )

@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+import secrets
 
 class Settings(BaseSettings):
     # Application settings
@@ -11,21 +12,21 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     # MinIO settings
-    MINIO_ROOT_USER: str = "minioadmin"
-    MINIO_ROOT_PASSWORD: str = "minioadmin"
+    MINIO_ROOT_USER: str
+    MINIO_ROOT_PASSWORD: str
     MINIO_HOST: str = "localhost:9000"
     MINIO_SECURE: bool = False
 
     # JWT settings
-    SECRET_KEY: str = "your-secret-key"  # Change this to a secure random key in production
+    SECRET_KEY: str = secrets.token_urlsafe(32)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Database settings
-    DATABASE_URL: str = "sqlite+aiosqlite:///./test.db"
+    DATABASE_URL: str
 
     # Redis settings
-    REDIS_URL: str = "redis://localhost"
+    REDIS_URL: str
 
     # Logging settings
     LOG_LEVEL: str = "INFO"

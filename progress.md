@@ -35,7 +35,7 @@
 - [x] Consolidate configuration files: remove `config.py` and use `app/core/config.py` throughout the application
 - [x] Consolidate `User` model definitions in `app/models.py` and remove `models` folder
 - [x] Implement proper error handling and validation in file upload and retrieval endpoints in `app/routers/files.py`
-- [ ] Add authentication to the WebSocket endpoint if required
+- [x] Add authentication to the WebSocket endpoint if required
 - [x] Implement file listing logic in the `list_files` endpoint in `app/routers/files.py`
-- [ ] Add more comprehensive test coverage in `tests/test_main.py`
-- [ ] Ensure all sensitive information (like `SECRET_KEY`) is properly secured and not hardcoded in configuration files
+- [x] Add more comprehensive test coverage in `tests/test_main.py`
+- [x] Ensure all sensitive information (like `SECRET_KEY`) is properly secured and not hardcoded in configuration files
