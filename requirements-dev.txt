@@ -4,5 +4,6 @@ types-aiofiles
 mypy
 flake8
 black
-pytest
+pytest==7.4.0
 pytest-asyncio
+pytest-cov==4.1.0  # Add this line
