@@ -2,10 +2,15 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngin
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 from app.models import Base
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Callable
 
 engine: AsyncEngine = create_async_engine(settings.DATABASE_URL, echo=True)
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+AsyncSessionLocal: Callable[..., AsyncSession] = sessionmaker(  # type: ignore
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+)
 
 
 async def init_db() -> None:

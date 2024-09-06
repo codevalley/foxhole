@@ -7,31 +7,13 @@ from app.models import User
 from utils.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from pydantic import BaseModel
-from app.schemas.user_schema import UserCreate, UserResponse, Token
+from app.schemas.user_schema import UserCreate, UserResponse, Token, UserUpdate
 from typing import Dict, Any
 
 router = APIRouter()
 
 # OAuth2 scheme for token authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-
-class UserCreate(BaseModel):
-    screen_name: str = None
-
-
-class UserUpdate(BaseModel):
-    screen_name: str = None
-    # Add more fields here as needed
-
-
-class UserResponse(BaseModel):
-    id: str
-    screen_name: str
-
-    class Config:
-        orm_mode = True
 
 
 async def create_access_token(data: Dict[str, Any]) -> str:
@@ -118,10 +100,8 @@ async def update_user_profile(
 ) -> User:
     update_data = user_update.dict(exclude_unset=True)
     if update_data:
-        update_stmt = (
-            update(User).where(User.id == current_user.id).values(**update_data)
-        )
-        await db.execute(update_stmt)
+        stmt = update(User).where(User.id == current_user.id).values(**update_data)
+        await db.execute(stmt)
         await db.commit()
         await db.refresh(current_user)
     return current_user

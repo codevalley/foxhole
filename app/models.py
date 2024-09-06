@@ -1,15 +1,17 @@
-from sqlalchemy.orm import declarative_base, Mapped
-from sqlalchemy import Column, String
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import String
 import secrets
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[str] = Column(String, primary_key=True, index=True)
-    screen_name: Mapped[str] = Column(String, index=True, nullable=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    screen_name: Mapped[str] = mapped_column(String, index=True, nullable=True)
 
     @classmethod
     def generate_user_id(cls) -> str:

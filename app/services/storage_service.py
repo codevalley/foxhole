@@ -8,9 +8,12 @@ from typing import Optional, List
 
 logger = get_logger(__name__)
 
+
 class StorageService(ABC):
     @abstractmethod
-    async def upload_file(self, file: UploadFile, bucket_name: str, object_name: str) -> Optional[str]:
+    async def upload_file(
+        self, file: UploadFile, bucket_name: str, object_name: str
+    ) -> Optional[str]:
         pass
 
     @abstractmethod
@@ -20,6 +23,7 @@ class StorageService(ABC):
     @abstractmethod
     async def list_files(self, bucket_name: str) -> List[str]:
         pass
+
 
 class MinioStorageService(StorageService):
     def __init__(self) -> None:
@@ -31,7 +35,9 @@ class MinioStorageService(StorageService):
             secure=settings.MINIO_SECURE,
         )
 
-    async def upload_file(self, file: UploadFile, bucket_name: str, object_name: str) -> Optional[str]:
+    async def upload_file(
+        self, file: UploadFile, bucket_name: str, object_name: str
+    ) -> Optional[str]:
         # Ensure bucket exists
         if not self.client.bucket_exists(bucket_name):
             self.client.make_bucket(bucket_name)

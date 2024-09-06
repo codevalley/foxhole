@@ -51,7 +51,9 @@ async def get_file_url(
 
 
 @router.get("/")
-async def list_files(storage_service: StorageService = Depends(get_storage_service)) -> Dict[str, Any]:
+async def list_files(
+    storage_service: StorageService = Depends(get_storage_service),
+) -> Dict[str, Any]:
     """
     List all files in the default bucket.
 

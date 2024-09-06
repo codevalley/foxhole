@@ -8,7 +8,9 @@ def setup_error_handlers(app: FastAPI) -> None:
     """
 
     @app.exception_handler(Exception)
-    async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    async def generic_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
         """
         Generic exception handler that returns a 500 Internal Server Error
         for any unhandled exceptions.

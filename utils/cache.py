@@ -1,6 +1,5 @@
 from redis.asyncio import Redis
 from app.core.config import settings
-from fastapi import Depends
 from typing import Optional
 
 redis_client: Optional[Redis] = None

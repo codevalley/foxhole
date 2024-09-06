@@ -20,7 +20,11 @@ async def websocket_endpoint(
     try:
         while True:
             data = await websocket.receive_text()
-            await manager.broadcast(f"Message from {current_user.username}: {data}")
+            await manager.broadcast(
+                f"Message from {current_user.screen_name or 'Anonymous'}: {data}"
+            )
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-        await manager.broadcast(f"User {current_user.username} disconnected")
+        await manager.broadcast(
+            f"User {current_user.screen_name or 'Anonymous'} disconnected"
+        )

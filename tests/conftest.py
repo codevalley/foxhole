@@ -6,8 +6,8 @@ import asyncio
 from httpx import AsyncClient
 from fastapi import FastAPI
 from main import app as fastapi_app
-from app.schemas.user_schema import UserCreate, UserResponse, Token
-from typing import AsyncGenerator, Generator  # Add this import
+from app.schemas.user_schema import UserCreate, UserResponse, Token  # noqa: F401
+from typing import AsyncGenerator, Generator, Callable  # noqa: F401
 
 # Test database URL
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
@@ -36,8 +36,15 @@ async def create_tables(engine: AsyncEngine) -> AsyncGenerator[None, None]:
 
 
 @pytest.fixture(scope="function")
-async def db_session(engine: AsyncEngine, create_tables: None) -> AsyncGenerator[AsyncSession, None]:
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async def db_session(
+    engine: AsyncEngine, create_tables: None
+) -> AsyncGenerator[AsyncSession, None]:
+    async_session: Callable[..., AsyncSession] = sessionmaker(  # type: ignore
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autoflush=False,
+    )
     async with async_session() as session:
         yield session
         await session.rollback()

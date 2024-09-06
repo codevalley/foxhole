@@ -1,8 +1,6 @@
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.models import User
 
 pytestmark = pytest.mark.asyncio
 
@@ -44,7 +42,9 @@ async def test_get_user_profile(client: AsyncClient, db_session: AsyncSession) -
     assert response.json()["id"] == user_id
 
 
-async def test_update_user_profile(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_update_user_profile(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     # First, register and login
     register_response = await client.post(
         "/auth/register", json={"screen_name": "testuser"}

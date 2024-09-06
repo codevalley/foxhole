@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from app.routers import auth, health
 from utils.database import init_db, close_db
 from utils.cache import init_cache, close_cache
-from app.models import Base
 
 app = FastAPI()
 
