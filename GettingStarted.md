@@ -158,8 +158,16 @@ The project includes a robust testing framework using pytest, with fixtures for 
 
 ## Contributing
 
-[Include guidelines for contributing to the project]
+We welcome contributions to the Foxhole Backend API project! Here are some guidelines to help you get started:
+
+1. Fork the repository and create your branch from `main`.
+2. If you've added code that should be tested, add tests.
+3. Ensure the test suite passes.
+4. Make sure your code lints.
+5. Issue that pull request!
+
+Please refer to the [GitHub Flow](https://guides.github.com/introduction/flow/) for more details on the contribution process.
 
 ## License
 
-[Include license information]
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
