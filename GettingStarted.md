@@ -21,6 +21,7 @@ Foxhole Backend API is a comprehensive starter kit for building robust Python-ba
 
 ### Folder Structure
 
+```
 foxhole/
 ├── app/
 │   ├── core/
@@ -51,6 +52,25 @@ foxhole/
 ├── docker-compose.yml
 ├── requirements.txt
 └── pytest.ini
+```
+
+### Code Organization Philosophy
+
+Our code organization follows a modular and separation-of-concerns approach:
+
+- **app/**: Contains the core application logic
+  - **core/**: Central configurations and settings
+  - **routers/**: API route definitions, separated by functionality
+  - **schemas/**: Pydantic models for request/response validation
+  - **services/**: Business logic and external service integrations
+- **tests/**: Holds all test files, mirroring the structure of the `app/` directory
+- **utils/**: Utility functions and helpers used across the application
+
+This structure promotes:
+1. **Modularity**: Each component has a clear responsibility
+2. **Scalability**: Easy to add new features or modify existing ones
+3. **Maintainability**: Clear separation of concerns makes the codebase easier to understand and maintain
+4. **Testability**: Organized structure facilitates comprehensive testing
 
 ### Component Overview
 
