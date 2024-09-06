@@ -37,3 +37,6 @@ dump.rdb
 
 # Kamal
 kamal.yml
+
+# Environment variables
+.env

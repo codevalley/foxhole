@@ -1,24 +1,45 @@
 import logging
-import json
-from pythonjsonlogger import jsonlogger
-
-class CustomJsonFormatter(jsonlogger.JsonFormatter):
-    """
-    Custom JSON formatter for structured logging.
-    Adds timestamp and log level to the log record.
-    """
-    def add_fields(self, log_record, record, message_dict):
-        super(CustomJsonFormatter, self).add_fields(log_record, record, message_dict)
-        log_record['timestamp'] = record.created
-        log_record['level'] = record.levelname
+from logging.handlers import RotatingFileHandler
+import os
+from app.core.config import settings
 
 def setup_logging():
     """
-    Sets up structured logging with a custom JSON formatter.
+    Set up logging configuration for the application.
     """
+    # Create logs directory if it doesn't exist and a log file is specified
+    if settings.LOG_FILE:
+        log_dir = os.path.dirname(settings.LOG_FILE)
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+
+    # Set up root logger
     logger = logging.getLogger()
-    handler = logging.StreamHandler()
-    formatter = CustomJsonFormatter('%(timestamp)s %(level)s %(name)s %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(settings.LOG_LEVEL)
+
+    # Create handlers
+    console_handler = logging.StreamHandler()
+    handlers = [console_handler]
+
+    if settings.LOG_FILE:
+        file_handler = RotatingFileHandler(settings.LOG_FILE, maxBytes=10485760, backupCount=5)
+        handlers.append(file_handler)
+
+    # Create formatters
+    console_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    file_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    # Set formatters for handlers
+    console_handler.setFormatter(console_format)
+    if settings.LOG_FILE:
+        file_handler.setFormatter(file_format)
+
+    # Add handlers to the logger
+    for handler in handlers:
+        logger.addHandler(handler)
+
+def get_logger(name):
+    """
+    Get a logger with the specified name.
+    """
+    return logging.getLogger(name)

@@ -1,10 +1,11 @@
-from minio import Minio
-from app.core.config import settings
+from app.services.storage_service import MinioStorageService
+
+# Create a single instance of MinioStorageService
+minio_service = MinioStorageService()
 
 def get_storage_service():
-    return Minio(
-        settings.MINIO_HOST,
-        access_key=settings.MINIO_ROOT_USER,
-        secret_key=settings.MINIO_ROOT_PASSWORD,
-        secure=settings.MINIO_SECURE
-    )
+    """
+    Dependency function to get the storage service.
+    Returns the MinioStorageService instance.
+    """
+    return minio_service

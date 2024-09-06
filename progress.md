@@ -29,13 +29,13 @@
 - [ ] Design and implement offline message queueing
 
 ## Issues and Improvements
-- [ ] Complete implementation of `authenticate_user` and `get_current_user` functions in `routers/auth.py`
-- [ ] Wrap Minio client in a custom class implementing the `StorageService` interface in `app/dependencies.py`
-- [ ] Replace `print` statements with proper logging in `app/services/storage_service.py`
-- [ ] Consolidate configuration files: remove `config.py` and use `app/core/config.py` throughout the application
-- [ ] Consolidate `User` model definitions in `app/models.py` and `models/user.py`
-- [ ] Implement proper error handling and validation in file upload and retrieval endpoints in `app/routers/files.py`
-- [ ] Add authentication to the WebSocket endpoint if required
-- [ ] Implement file listing logic in the `list_files` endpoint in `app/routers/files.py`
-- [ ] Add more comprehensive test coverage in `tests/test_main.py`
-- [ ] Ensure all sensitive information (like `SECRET_KEY`) is properly secured and not hardcoded in configuration files
+- [x] Complete implementation of `authenticate_user` and `get_current_user` functions in `routers/auth.py`
+- [x] Wrap Minio client in a custom class implementing the `StorageService` interface in `app/dependencies.py`
+- [x] Replace `print` statements with proper logging in `app/services/storage_service.py`
+- [x] Consolidate configuration files: remove `config.py` and use `app/core/config.py` throughout the application
+- [x] Consolidate `User` model definitions in `app/models.py` and remove `models` folder
+- [x] Implement proper error handling and validation in file upload and retrieval endpoints in `app/routers/files.py`
+- [x] Add authentication to the WebSocket endpoint if required
+- [x] Implement file listing logic in the `list_files` endpoint in `app/routers/files.py`
+- [x] Add more comprehensive test coverage in `tests/test_main.py`
+- [x] Ensure all sensitive information (like `SECRET_KEY`) is properly secured and not hardcoded in configuration files
