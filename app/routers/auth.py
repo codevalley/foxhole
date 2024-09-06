@@ -8,19 +8,23 @@ from utils.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from pydantic import BaseModel
-from app.schemas.user import UserCreate, UserResponse, Token
+from app.schemas.user_schema import UserCreate, UserResponse, Token
+from typing import Dict, Any
 
 router = APIRouter()
 
 # OAuth2 scheme for token authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+
 class UserCreate(BaseModel):
     screen_name: str = None
+
 
 class UserUpdate(BaseModel):
     screen_name: str = None
     # Add more fields here as needed
+
 
 class UserResponse(BaseModel):
     id: str
@@ -29,31 +33,31 @@ class UserResponse(BaseModel):
     class Config:
         orm_mode = True
 
-async def create_access_token(data: dict):
+
+async def create_access_token(data: Dict[str, Any]) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
+    encoded_jwt = jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
+    return str(encoded_jwt)  # Explicitly convert to str
+
 
 @router.post("/register", response_model=UserResponse)
-async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)) -> User:
     user_id = User.generate_user_id()
     db_user = User(id=user_id, screen_name=user.screen_name or "anon_user")
-    if isinstance(db, AsyncSession):
-        db.add(db_user)
-        await db.commit()
-        await db.refresh(db_user)
-    else:
-        async for session in db:
-            session.add(db_user)
-            await session.commit()
-            await session.refresh(db_user)
-            break
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(db_user)
     return db_user
 
+
 @router.post("/token", response_model=Token)
-async def login_for_access_token(user_id: str = Form(...), db: AsyncSession = Depends(get_db)):
+async def login_for_access_token(
+    user_id: str = Form(...), db: AsyncSession = Depends(get_db)
+) -> Dict[str, str]:
     query = select(User).where(User.id == user_id)
     user = None
     if isinstance(db, AsyncSession):
@@ -75,14 +79,19 @@ async def login_for_access_token(user_id: str = Form(...), db: AsyncSession = De
     access_token = await create_access_token(data={"sub": user.id})
     return {"access_token": access_token, "token_type": "bearer"}
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
+) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
@@ -95,22 +104,22 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         raise credentials_exception
     return user
 
+
 @router.get("/users/me", response_model=UserResponse)
-async def read_users_me(current_user: User = Depends(get_current_user)):
+async def read_users_me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
 
 @router.put("/users/me", response_model=UserResponse)
 async def update_user_profile(
     user_update: UserUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
+    db: AsyncSession = Depends(get_db),
+) -> User:
     update_data = user_update.dict(exclude_unset=True)
     if update_data:
         update_stmt = (
-            update(User)
-            .where(User.id == current_user.id)
-            .values(**update_data)
+            update(User).where(User.id == current_user.id).values(**update_data)
         )
         await db.execute(update_stmt)
         await db.commit()

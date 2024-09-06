@@ -2,8 +2,10 @@ import logging
 from logging.handlers import RotatingFileHandler
 import os
 from app.core.config import settings
+from typing import List
 
-def setup_logging():
+
+def setup_logging() -> None:
     """
     Set up logging configuration for the application.
     """
@@ -19,15 +21,19 @@ def setup_logging():
 
     # Create handlers
     console_handler = logging.StreamHandler()
-    handlers = [console_handler]
+    handlers: List[logging.Handler] = [console_handler]
 
     if settings.LOG_FILE:
-        file_handler = RotatingFileHandler(settings.LOG_FILE, maxBytes=10485760, backupCount=5)
+        file_handler = RotatingFileHandler(
+            settings.LOG_FILE, maxBytes=10485760, backupCount=5
+        )
         handlers.append(file_handler)
 
     # Create formatters
-    console_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    file_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_format = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
+    file_format = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
 
     # Set formatters for handlers
     console_handler.setFormatter(console_format)
@@ -38,7 +44,8 @@ def setup_logging():
     for handler in handlers:
         logger.addHandler(handler)
 
-def get_logger(name):
+
+def get_logger(name: str) -> logging.Logger:
     """
     Get a logger with the specified name.
     """

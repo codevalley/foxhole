@@ -1,2 +1,17 @@
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+follow_imports = "silent"
+ignore_missing_imports = true
+strict_optional = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+explicit_package_bases = true
+namespace_packages = true
+
+# Use .gitignore for exclusions
+exclude = ".*/\\.*"
+
 [tool.pytest.ini_options]
 pythonpath = ["."]

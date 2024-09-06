@@ -6,8 +6,11 @@ from app.models import User
 router = APIRouter()
 manager = WebSocketManager()
 
+
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, current_user: User = Depends(get_current_user)):
+async def websocket_endpoint(
+    websocket: WebSocket, current_user: User = Depends(get_current_user)
+) -> None:
     """
     WebSocket endpoint for real-time communication.
     Handles connection, message broadcasting, and disconnection.

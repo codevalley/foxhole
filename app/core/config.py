@@ -1,8 +1,9 @@
-from pydantic import BaseModel
+from pydantic_settings import BaseSettings
 from typing import Optional
 import secrets
 
-class Settings(BaseModel):
+
+class Settings(BaseSettings):
     # Application settings
     APP_NAME: str = "Foxhole Backend API"
     DEBUG: bool = False
@@ -35,5 +36,6 @@ class Settings(BaseModel):
     class Config:
         env_file = ".env"
         case_sensitive = True
+
 
 settings = Settings()

@@ -1,11 +1,8 @@
 from fastapi import APIRouter
+from typing import Dict
 
 router = APIRouter()
 
 @router.get("/health")
-async def health_check():
-    """
-    Endpoint to check the health status of the application.
-    Returns a simple JSON response indicating the status is OK.
-    """
+async def health_check() -> Dict[str, str]:
     return {"status": "ok"}
