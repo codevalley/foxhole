@@ -1,5 +1,6 @@
 from redis.asyncio import Redis
 from app.core.config import settings
+from fastapi import Depends
 
 redis_client = None
 
@@ -18,10 +19,14 @@ async def close_cache():
     if redis_client:
         await redis_client.close()
 
-async def get_cache():
+async def get_redis():
     """
     Returns the Redis client instance.
     """
     if not redis_client:
         await init_cache()
     return redis_client
+
+# This will be overridden in tests
+async def get_cache():
+    return await get_redis()

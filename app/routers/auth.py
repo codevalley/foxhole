@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Form
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
@@ -39,16 +39,32 @@ async def create_access_token(data: dict):
 async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     user_id = User.generate_user_id()
     db_user = User(id=user_id, screen_name=user.screen_name or "anon_user")
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
+    if isinstance(db, AsyncSession):
+        db.add(db_user)
+        await db.commit()
+        await db.refresh(db_user)
+    else:
+        async for session in db:
+            session.add(db_user)
+            await session.commit()
+            await session.refresh(db_user)
+            break
     return db_user
 
 @router.post("/token")
-async def login_for_access_token(user_id: str, db: AsyncSession = Depends(get_db)):
+async def login_for_access_token(user_id: str = Form(...), db: AsyncSession = Depends(get_db)):
     query = select(User).where(User.id == user_id)
-    result = await db.execute(query)
-    user = result.scalar_one_or_none()
+    user = None
+    if isinstance(db, AsyncSession):
+        result = await db.execute(query)
+        user = result.scalar_one_or_none()
+    else:
+        async for session in db:
+            result = await session.execute(query)
+            user = result.scalar_one_or_none()
+            break
+    print(f"Login attempt for user_id: {user_id}")
+    print(f"User found: {user}")
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
