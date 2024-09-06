@@ -1,138 +1,124 @@
-============================= test session starts ==============================
-platform darwin -- Python 3.12.4, pytest-7.4.0, pluggy-1.5.0
-rootdir: /Users/nyn/develop/foxhole
+============================= test session starts =============================
+platform win32 -- Python 3.12.5, pytest-7.4.0, pluggy-1.5.0
+rootdir: C:\Users\narayan\Develop\foxhole
 configfile: pytest.ini
-plugins: asyncio-0.21.1, anyio-3.7.1
+plugins: anyio-3.7.1, asyncio-0.21.1
 asyncio: mode=Mode.STRICT
 collected 5 items
 
-tests/test_main.py .FFF.                                                 [100%]
+tests\test_main.py FFFFF                                                 [100%]
 
-=================================== FAILURES ===================================
-__________________________________ test_login __________________________________
+================================== FAILURES ===================================
+_____________________________ test_register_user ______________________________
 
-client = <starlette.testclient.TestClient object at 0x106b96a20>
-test_db = <async_generator object test_db at 0x106b4ab60>
+client = <async_generator object client at 0x00000144DABA45E0>
+db_session = <async_generator object db_session at 0x00000144DAB95740>
 
-    @pytest.mark.asyncio
-    async def test_login(client, test_db):
-        user_id = await test_register_user(client, test_db)
-        print(f"Registered user ID: {user_id}")
-    
-        # Verify user in database
-        query = select(User).where(User.id == user_id)
->       result = await test_db.execute(query)
-E       AttributeError: 'async_generator' object has no attribute 'execute'
+    async def test_register_user(client: AsyncClient, db_session: AsyncSession):
+>       response = await client.post(
+            "/auth/register",
+            json={"screen_name": "testuser"}
+        )
+E       AttributeError: 'async_generator' object has no attribute 'post'
 
-tests/test_main.py:86: AttributeError
------------------------------ Captured stdout call -----------------------------
-2024-09-06 07:29:57,142 INFO sqlalchemy.engine.Engine ROLLBACK
-2024-09-06 07:29:57,142 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2024-09-06 07:29:57,142 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
-2024-09-06 07:29:57,142 INFO sqlalchemy.engine.Engine [raw sql] ()
-2024-09-06 07:29:57,142 INFO sqlalchemy.engine.Engine 
-DROP TABLE users
-2024-09-06 07:29:57,142 INFO sqlalchemy.engine.Engine [no key 0.00005s] ()
-2024-09-06 07:29:57,143 INFO sqlalchemy.engine.Engine COMMIT
-Registered user ID: oBWeID4UTdgU8VTSqNTzUw
------------------------------ Captured stderr call -----------------------------
-sqlalchemy.engine.Engine - INFO - ROLLBACK
-sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
-sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("users")
-sqlalchemy.engine.Engine - INFO - [raw sql] ()
-sqlalchemy.engine.Engine - INFO - 
-DROP TABLE users
-sqlalchemy.engine.Engine - INFO - [no key 0.00005s] ()
-sqlalchemy.engine.Engine - INFO - COMMIT
-httpx - INFO - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
------------------------------- Captured log call -------------------------------
-INFO     sqlalchemy.engine.Engine:base.py:2688 ROLLBACK
-INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
-INFO     sqlalchemy.engine.Engine:base.py:1844 PRAGMA main.table_info("users")
-INFO     sqlalchemy.engine.Engine:base.py:1844 [raw sql] ()
-INFO     sqlalchemy.engine.Engine:base.py:1844 
-DROP TABLE users
-INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00005s] ()
-INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
-INFO     httpx:_client.py:1013 HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
-____________________________ test_get_user_profile _____________________________
+tests\test_main.py:10: AttributeError
+_________________________________ test_login __________________________________
 
-client = <starlette.testclient.TestClient object at 0x106b96a20>
-test_db = <async_generator object test_db at 0x106b4ab60>
+client = <async_generator object client at 0x00000144DABA5B70>
+db_session = <async_generator object db_session at 0x00000144DAB96B40>
 
-    @pytest.mark.asyncio
-    async def test_get_user_profile(client, test_db):
->       access_token = await test_login(client, test_db)
+    async def test_login(client: AsyncClient, db_session: AsyncSession):
+>       user_id = await test_register_user(client, db_session)
 
-tests/test_main.py:104: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests\test_main.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-client = <starlette.testclient.TestClient object at 0x106b96a20>
-test_db = <async_generator object test_db at 0x106b4ab60>
+client = <async_generator object client at 0x00000144DABA5B70>
+db_session = <async_generator object db_session at 0x00000144DAB96B40>
 
-    @pytest.mark.asyncio
-    async def test_login(client, test_db):
-        user_id = await test_register_user(client, test_db)
-        print(f"Registered user ID: {user_id}")
-    
-        # Verify user in database
-        query = select(User).where(User.id == user_id)
->       result = await test_db.execute(query)
-E       AttributeError: 'async_generator' object has no attribute 'execute'
+    async def test_register_user(client: AsyncClient, db_session: AsyncSession):
+>       response = await client.post(
+            "/auth/register",
+            json={"screen_name": "testuser"}
+        )
+E       AttributeError: 'async_generator' object has no attribute 'post'
 
-tests/test_main.py:86: AttributeError
------------------------------ Captured stdout call -----------------------------
-Registered user ID: ahyIYPDGs855glCDVabA6Q
------------------------------ Captured stderr call -----------------------------
-httpx - INFO - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
------------------------------- Captured log call -------------------------------
-INFO     httpx:_client.py:1013 HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
-___________________________ test_update_user_profile ___________________________
+tests\test_main.py:10: AttributeError
+____________________________ test_get_user_profile ____________________________
 
-client = <starlette.testclient.TestClient object at 0x106b96a20>
-test_db = <async_generator object test_db at 0x106b4ab60>
+client = <async_generator object client at 0x00000144DABA5C60>
+db_session = <async_generator object db_session at 0x00000144DAB97740>
 
-    @pytest.mark.asyncio
-    async def test_update_user_profile(client, test_db):
->       access_token = await test_login(client, test_db)
+    async def test_get_user_profile(client: AsyncClient, db_session: AsyncSession):
+>       access_token = await test_login(client, db_session)
 
-tests/test_main.py:116: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests\test_main.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_main.py:27: in test_login
+    user_id = await test_register_user(client, db_session)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-client = <starlette.testclient.TestClient object at 0x106b96a20>
-test_db = <async_generator object test_db at 0x106b4ab60>
+client = <async_generator object client at 0x00000144DABA5C60>
+db_session = <async_generator object db_session at 0x00000144DAB97740>
 
-    @pytest.mark.asyncio
-    async def test_login(client, test_db):
-        user_id = await test_register_user(client, test_db)
-        print(f"Registered user ID: {user_id}")
-    
-        # Verify user in database
-        query = select(User).where(User.id == user_id)
->       result = await test_db.execute(query)
-E       AttributeError: 'async_generator' object has no attribute 'execute'
+    async def test_register_user(client: AsyncClient, db_session: AsyncSession):
+>       response = await client.post(
+            "/auth/register",
+            json={"screen_name": "testuser"}
+        )
+E       AttributeError: 'async_generator' object has no attribute 'post'
 
-tests/test_main.py:86: AttributeError
------------------------------ Captured stdout call -----------------------------
-Registered user ID: X5gypC8bZRO6JTU0TYgGrQ
------------------------------ Captured stderr call -----------------------------
-httpx - INFO - HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
------------------------------- Captured log call -------------------------------
-INFO     httpx:_client.py:1013 HTTP Request: POST http://testserver/auth/register "HTTP/1.1 200 OK"
-=============================== warnings summary ===============================
-venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267
-venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267
-  /Users/nyn/develop/foxhole/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.4/migration/
+tests\test_main.py:10: AttributeError
+__________________________ test_update_user_profile ___________________________
+
+client = <async_generator object client at 0x00000144DABA62F0>
+db_session = <async_generator object db_session at 0x00000144DAB97E40>
+
+    async def test_update_user_profile(client: AsyncClient, db_session: AsyncSession):
+>       access_token = await test_login(client, db_session)
+
+tests\test_main.py:60: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_main.py:27: in test_login
+    user_id = await test_register_user(client, db_session)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+client = <async_generator object client at 0x00000144DABA62F0>
+db_session = <async_generator object db_session at 0x00000144DAB97E40>
+
+    async def test_register_user(client: AsyncClient, db_session: AsyncSession):
+>       response = await client.post(
+            "/auth/register",
+            json={"screen_name": "testuser"}
+        )
+E       AttributeError: 'async_generator' object has no attribute 'post'
+
+tests\test_main.py:10: AttributeError
+______________________________ test_health_check ______________________________
+
+client = <async_generator object client at 0x00000144DABA6A70>
+
+    async def test_health_check(client: AsyncClient):
+>       response = await client.get("/health")
+E       AttributeError: 'async_generator' object has no attribute 'get'
+
+tests\test_main.py:71: AttributeError
+============================== warnings summary ===============================
+.venv\Lib\site-packages\pydantic\_internal\_config.py:267
+.venv\Lib\site-packages\pydantic\_internal\_config.py:267
+  c:\Users\narayan\Develop\foxhole\.venv\Lib\site-packages\pydantic\_internal\_config.py:267: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.4/migration/
     warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
 
-venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:317
-  /Users/nyn/develop/foxhole/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:317: UserWarning: Valid config keys have changed in V2:
+.venv\Lib\site-packages\pydantic\_internal\_config.py:317
+  c:\Users\narayan\Develop\foxhole\.venv\Lib\site-packages\pydantic\_internal\_config.py:317: UserWarning: Valid config keys have changed in V2:
   * 'orm_mode' has been renamed to 'from_attributes'
     warnings.warn(message, UserWarning)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=========================== short test summary info ============================
+=========================== short test summary info ===========================
+FAILED tests/test_main.py::test_register_user - AttributeError: 'async_genera...
 FAILED tests/test_main.py::test_login - AttributeError: 'async_generator' obj...
 FAILED tests/test_main.py::test_get_user_profile - AttributeError: 'async_gen...
 FAILED tests/test_main.py::test_update_user_profile - AttributeError: 'async_...
-=================== 3 failed, 2 passed, 3 warnings in 0.38s ====================
+FAILED tests/test_main.py::test_health_check - AttributeError: 'async_generat...
+======================== 5 failed, 3 warnings in 0.31s ========================

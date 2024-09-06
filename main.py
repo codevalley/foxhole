@@ -1,43 +1,20 @@
 from fastapi import FastAPI
-from app.app import app as core_app
-from contextlib import asynccontextmanager
-from utils.logging import setup_logging
-from utils.error_handlers import setup_error_handlers
+from app.routers import auth, health
 from utils.database import init_db, close_db
-from utils.cache import init_cache, close_cache, get_cache
-from app.core.config import settings
+from utils.cache import init_cache, close_cache
+from app.models import Base
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    Lifecycle manager for the FastAPI application.
-    Handles startup and shutdown processes.
-    """
-    # Startup
-    setup_logging()  # Set up logging
-    await init_db()  # Ensure database tables are created
-    if not app.state.testing:
-        await init_cache()
-    yield
-    # Shutdown
+app = FastAPI()
+
+@app.on_event("startup")
+async def startup_event():
+    await init_db()
+    await init_cache()
+
+@app.on_event("shutdown")
+async def shutdown_event():
     await close_db()
-    if not app.state.testing:
-        await close_cache()
+    await close_cache()
 
-# Create the FastAPI app instance
-app = FastAPI(lifespan=lifespan)
-app.state.testing = False
-
-# Include routers and set up error handlers
-app.include_router(core_app.router)
-setup_error_handlers(app)
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "main:app",
-        host=settings.HOST,
-        port=settings.PORT,
-        log_level="debug" if settings.DEBUG else "info",
-        reload=settings.DEBUG
-    )
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(health.router)

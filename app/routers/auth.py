@@ -8,6 +8,7 @@ from utils.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from pydantic import BaseModel
+from app.schemas.user import UserCreate, UserResponse, Token
 
 router = APIRouter()
 
@@ -51,7 +52,7 @@ async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
             break
     return db_user
 
-@router.post("/token")
+@router.post("/token", response_model=Token)
 async def login_for_access_token(user_id: str = Form(...), db: AsyncSession = Depends(get_db)):
     query = select(User).where(User.id == user_id)
     user = None
