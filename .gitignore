@@ -8,6 +8,9 @@ env/
 venv/
 *.env
 
+# Add venv folder and contents
+.venv/
+
 # SQLite
 *.db
 *.sqlite3
