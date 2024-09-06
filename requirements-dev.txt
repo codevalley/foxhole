@@ -7,3 +7,4 @@ black
 pytest==7.4.0
 pytest-asyncio
 pytest-cov==4.1.0  # Add this line
+fakeredis==2.20.0  # Add this line
