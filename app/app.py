@@ -1,6 +1,7 @@
 """
 Main FastAPI application configuration and router setup.
 """
+
 from fastapi import FastAPI
 from app.routers import websocket, files, health, auth  # Updated import
 from app.dependencies import get_storage_service
