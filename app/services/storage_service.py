@@ -26,6 +26,10 @@ class StorageService(ABC):
 
 
 class MinioStorageService(StorageService):
+    """
+    Implementation of StorageService using MinIO as the backend.
+    """
+
     def __init__(self) -> None:
         # Initialize MinIO client with settings from config
         self.client = Minio(

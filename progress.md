@@ -27,6 +27,10 @@
 - [ ] Enhance documentation
 - [ ] Implement data isolation strategy for chambers
 - [ ] Design and implement offline message queueing
+- [ ] Add rate limiting for API endpoints to prevent abuse
+- [ ] Implement database migrations for easier schema management
+- [ ] Implement logging throughout the application for better debugging and monitoring
+- [ ] Add API versioning to make future updates easier
 
 ## Issues and Improvements
 - [x] Complete implementation of `authenticate_user` and `get_current_user` functions in `routers/auth.py`

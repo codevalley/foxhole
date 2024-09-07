@@ -4,6 +4,10 @@ import secrets
 
 
 class Settings(BaseSettings):
+    """
+    Application settings loaded from environment variables or .env file.
+    """
+
     # Application settings
     APP_NAME: str = "Foxhole Backend API"
     DEBUG: bool = False

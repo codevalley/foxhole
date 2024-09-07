@@ -17,6 +17,15 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 async def create_access_token(data: Dict[str, Any]) -> str:
+    """
+    Create a new JWT access token.
+
+    Args:
+        data (Dict[str, Any]): The data to be encoded in the token.
+
+    Returns:
+        str: The encoded JWT token.
+    """
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
@@ -65,6 +74,19 @@ async def login_for_access_token(
 async def get_current_user(
     token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
 ) -> User:
+    """
+    Validate the access token and return the current user.
+
+    Args:
+        token (str): The JWT token to validate.
+        db (AsyncSession): The database session.
+
+    Returns:
+        User: The current authenticated user.
+
+    Raises:
+        HTTPException: If the token is invalid or the user is not found.
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",

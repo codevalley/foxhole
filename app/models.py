@@ -8,6 +8,10 @@ class Base(DeclarativeBase):
 
 
 class User(Base):
+    """
+    User model representing the users table in the database.
+    """
+
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
