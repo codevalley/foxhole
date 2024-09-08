@@ -7,11 +7,11 @@ from sqlalchemy.ext.asyncio import (
 )
 from app.models import Base
 from app.app import app
-from app.dependencies import get_storage_service, get_db
+from app.dependencies import get_db, get_storage_service
 from tests.mocks.mock_storage_service import MockStorageService
 from httpx import AsyncClient
-from starlette.testclient import TestClient
-from typing import AsyncGenerator, Any
+from fastapi.testclient import TestClient
+from typing import AsyncGenerator, Callable, Any
 
 # Test database URL
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -25,17 +25,12 @@ def engine() -> AsyncEngine:
 @pytest.fixture(scope="function")
 async def db_session(engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
     async_session = async_sessionmaker(
-        engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-        autoflush=False,
+        engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
     async with async_session() as session:
         yield session
-
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
@@ -46,7 +41,9 @@ def mock_storage_service() -> MockStorageService:
 
 
 @pytest.fixture
-def override_get_db(db_session: AsyncSession) -> Any:
+def override_get_db(
+    db_session: AsyncSession,
+) -> Callable[[], AsyncGenerator[AsyncSession, None]]:
     async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
 
@@ -55,7 +52,8 @@ def override_get_db(db_session: AsyncSession) -> Any:
 
 @pytest.fixture
 def app_with_mocked_dependencies(
-    mock_storage_service: MockStorageService, override_get_db: Any
+    mock_storage_service: MockStorageService,
+    override_get_db: Callable[[], AsyncGenerator[AsyncSession, None]],
 ) -> Any:
     app.dependency_overrides[get_storage_service] = lambda: mock_storage_service
     app.dependency_overrides[get_db] = override_get_db

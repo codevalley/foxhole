@@ -1,4 +1,5 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
+from typing import Optional
 
 
 class UserBase(BaseModel):
@@ -7,27 +8,29 @@ class UserBase(BaseModel):
     screen_name: str | None = None
 
 
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
     """Schema for user creation."""
 
-    pass
+    screen_name: str
 
 
-class UserUpdate(UserBase):
+class UserUpdate(BaseModel):
     """Schema for user update."""
 
-    pass
+    screen_name: Optional[str] = None
 
 
-class UserInDB(UserBase):
+class UserSchema(BaseModel):
     """Schema for user as stored in the database."""
 
     id: str
+    screen_name: str
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
 
 
-class UserResponse(UserInDB):
+class UserResponse(UserSchema):
     """Schema for user response."""
 
     pass

@@ -7,8 +7,15 @@ from app.models import User
 from utils.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from app.schemas.user_schema import UserCreate, UserResponse, Token, UserUpdate
+from app.schemas.user_schema import (
+    UserCreate,
+    UserResponse,
+    Token,
+    UserUpdate,
+    UserSchema,
+)  # Add UserSchema here
 from typing import Dict, Any, Optional
+import uuid
 
 router = APIRouter()
 
@@ -35,10 +42,11 @@ def create_access_token(data: Dict[str, Any]) -> str:
     return str(encoded_jwt)  # Explicitly convert to str
 
 
-@router.post("/register", response_model=UserResponse)
-async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)) -> User:
-    user_id = User.generate_user_id()
-    db_user = User(id=user_id, screen_name=user.screen_name or "anon_user")
+@router.post("/register", response_model=UserSchema)
+async def register_user(
+    user: UserCreate, db: AsyncSession = Depends(get_db)
+) -> UserSchema:
+    db_user = User(id=str(uuid.uuid4()), screen_name=user.screen_name)
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)

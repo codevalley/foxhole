@@ -5,51 +5,105 @@ rootdir: /Users/nyn/develop/foxhole
 configfile: pytest.ini
 plugins: mock-3.10.0, cov-4.1.0, asyncio-0.21.1, anyio-3.7.1
 asyncio: mode=Mode.AUTO
-collecting ... collected 23 items
+collecting ... collected 25 items
 
 tests/test_auth.py::test_register_user PASSED                            [  4%]
 tests/test_auth.py::test_login PASSED                                    [  8%]
-tests/test_auth.py::test_get_current_user PASSED                         [ 13%]
-tests/test_auth.py::test_update_user_profile PASSED                      [ 17%]
-tests/test_auth.py::test_invalid_token PASSED                            [ 21%]
-tests/test_auth.py::test_missing_token PASSED                            [ 26%]
-tests/test_auth.py::test_create_access_token PASSED                      [ 30%]
-tests/test_auth.py::test_login_for_access_token_invalid_user PASSED      [ 34%]
-tests/test_auth.py::test_get_current_user_invalid_token PASSED           [ 39%]
-tests/test_auth.py::test_update_user_profile_no_changes PASSED           [ 43%]
-tests/test_files.py::test_upload_file PASSED                             [ 47%]
-tests/test_files.py::test_get_file_url PASSED                            [ 52%]
-tests/test_files.py::test_get_file_url_not_found PASSED                  [ 56%]
-tests/test_files.py::test_list_files PASSED                              [ 60%]
-tests/test_health.py::test_health_check PASSED                           [ 65%]
-tests/test_main.py::test_register_user PASSED                            [ 69%]
-tests/test_main.py::test_login PASSED                                    [ 73%]
-tests/test_main.py::test_get_user_profile PASSED                         [ 78%]
-tests/test_main.py::test_update_user_profile PASSED                      [ 82%]
-tests/test_main.py::test_health_check PASSED                             [ 86%]
-tests/test_websocket.py::test_websocket_connection FAILED                [ 91%]
-tests/test_websocket.py::test_websocket_multiple_messages FAILED         [ 95%]
-tests/test_websocket.py::test_websocket_disconnect FAILED                [100%]
+tests/test_auth.py::test_get_current_user PASSED                         [ 12%]
+tests/test_auth.py::test_update_user_profile PASSED                      [ 16%]
+tests/test_auth.py::test_invalid_token PASSED                            [ 20%]
+tests/test_auth.py::test_missing_token PASSED                            [ 24%]
+tests/test_auth.py::test_create_access_token PASSED                      [ 28%]
+tests/test_auth.py::test_login_for_access_token_invalid_user PASSED      [ 32%]
+tests/test_auth.py::test_get_current_user_invalid_token PASSED           [ 36%]
+tests/test_auth.py::test_update_user_profile_no_changes PASSED           [ 40%]
+tests/test_files.py::test_upload_file PASSED                             [ 44%]
+tests/test_files.py::test_get_file_url PASSED                            [ 48%]
+tests/test_files.py::test_get_file_url_not_found PASSED                  [ 52%]
+tests/test_files.py::test_list_files PASSED                              [ 56%]
+tests/test_health.py::test_health_check PASSED                           [ 60%]
+tests/test_main.py::test_register_user PASSED                            [ 64%]
+tests/test_main.py::test_login PASSED                                    [ 68%]
+tests/test_main.py::test_get_user_profile PASSED                         [ 72%]
+tests/test_main.py::test_update_user_profile PASSED                      [ 76%]
+tests/test_main.py::test_health_check PASSED                             [ 80%]
+tests/test_websocket.py::test_websocket_connection FAILED                [ 84%]
+tests/test_websocket.py::test_websocket_multiple_messages FAILED         [ 88%]
+tests/test_websocket.py::test_websocket_disconnect FAILED                [ 92%]
+tests/test_websocket.py::test_websocket_unauthorized PASSED              [ 96%]
+tests/test_websocket.py::test_websocket_invalid_token PASSED             [100%]
 
 =================================== FAILURES ===================================
 __________________________ test_websocket_connection ___________________________
 
-async_client = <httpx.AsyncClient object at 0x10a297770>
-token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjE3MjU3OTc5NjR9.sgk98hgSi8_VlCuwC6Q96dZaJcecFaBU1R9NCE9nI6c'
+test_client = <starlette.testclient.TestClient object at 0x1080ef200>
+token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjE3MjU4MDc3MjV9.6knc9BCfoxNhu_tzS_x2TDAerTY0deXc-3wcmlQMXLM'
 
-    @pytest.mark.asyncio
-    async def test_websocket_connection(async_client: AsyncClient, token):
->       async with async_client.websocket_connect("/ws", headers={"Authorization": f"Bearer {token}"}) as websocket:
-E       AttributeError: 'AsyncClient' object has no attribute 'websocket_connect'
+    def test_websocket_connection(test_client: TestClient, token: str) -> None:
+>       with test_client.websocket_connect(f"/ws?token={token}") as websocket:
 
-tests/test_websocket.py:22: AttributeError
+tests/test_websocket.py:24:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv/lib/python3.12/site-packages/starlette/testclient.py:91: in __enter__
+    message = self.receive()
+venv/lib/python3.12/site-packages/starlette/testclient.py:160: in receive
+    raise message
+venv/lib/python3.12/site-packages/anyio/from_thread.py:217: in _call_func
+    retval = await retval
+venv/lib/python3.12/site-packages/starlette/testclient.py:118: in _run
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/fastapi/applications.py:292: in __call__
+    await super().__call__(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/applications.py:122: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/errors.py:149: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:79: in __call__
+    raise exc
+venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:68: in __call__
+    await self.app(scope, receive, sender)
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:20: in __call__
+    raise e
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:17: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:718: in __call__
+    await route.handle(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:341: in handle
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:82: in app
+    await func(session)
+venv/lib/python3.12/site-packages/fastapi/routing.py:324: in app
+    await dependant.call(**values)
+app/routers/websocket.py:16: in websocket_endpoint
+    current_user = await get_current_user_ws(token)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjE3MjU4MDc3MjV9.6knc9BCfoxNhu_tzS_x2TDAerTY0deXc-3wcmlQMXLM'
+db = Depends(get_db)
+
+    async def get_current_user_ws(
+        token: str = Query(...),
+        db: AsyncSession = Depends(get_db)
+    ) -> User:
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            user_id: str = payload.get("sub")
+            if user_id is None:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        except JWTError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+>       result = await db.execute(select(User).filter(User.id == user_id))
+E       AttributeError: 'Depends' object has no attribute 'execute'
+
+app/dependencies.py:60: AttributeError
 ---------------------------- Captured stdout setup -----------------------------
-2024-09-08 17:19:24,063 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2024-09-08 17:19:24,063 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
-2024-09-08 17:19:24,063 INFO sqlalchemy.engine.Engine [raw sql] ()
-2024-09-08 17:19:24,063 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("users")
-2024-09-08 17:19:24,063 INFO sqlalchemy.engine.Engine [raw sql] ()
-2024-09-08 17:19:24,063 INFO sqlalchemy.engine.Engine
+2024-09-08 20:02:05,163 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-08 20:02:05,163 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2024-09-08 20:02:05,163 INFO sqlalchemy.engine.Engine [raw sql] ()
+2024-09-08 20:02:05,163 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("users")
+2024-09-08 20:02:05,163 INFO sqlalchemy.engine.Engine [raw sql] ()
+2024-09-08 20:02:05,163 INFO sqlalchemy.engine.Engine
 CREATE TABLE users (
 	id VARCHAR NOT NULL,
 	screen_name VARCHAR,
@@ -57,16 +111,16 @@ CREATE TABLE users (
 )
 
 
-2024-09-08 17:19:24,063 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
-2024-09-08 17:19:24,064 INFO sqlalchemy.engine.Engine CREATE INDEX ix_users_screen_name ON users (screen_name)
-2024-09-08 17:19:24,064 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
-2024-09-08 17:19:24,064 INFO sqlalchemy.engine.Engine CREATE INDEX ix_users_id ON users (id)
-2024-09-08 17:19:24,064 INFO sqlalchemy.engine.Engine [no key 0.00002s] ()
-2024-09-08 17:19:24,064 INFO sqlalchemy.engine.Engine COMMIT
-2024-09-08 17:19:24,064 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2024-09-08 17:19:24,065 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name) VALUES (?, ?)
-2024-09-08 17:19:24,065 INFO sqlalchemy.engine.Engine [cached since 0.09111s ago] ('test_user_id', 'testuser')
-2024-09-08 17:19:24,065 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-08 20:02:05,163 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
+2024-09-08 20:02:05,164 INFO sqlalchemy.engine.Engine CREATE INDEX ix_users_id ON users (id)
+2024-09-08 20:02:05,164 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
+2024-09-08 20:02:05,164 INFO sqlalchemy.engine.Engine CREATE INDEX ix_users_screen_name ON users (screen_name)
+2024-09-08 20:02:05,164 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
+2024-09-08 20:02:05,164 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-08 20:02:05,164 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-08 20:02:05,165 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name) VALUES (?, ?)
+2024-09-08 20:02:05,165 INFO sqlalchemy.engine.Engine [cached since 0.09343s ago] ('test_user_id', 'testuser')
+2024-09-08 20:02:05,165 INFO sqlalchemy.engine.Engine COMMIT
 ------------------------------ Captured log setup ------------------------------
 INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
 INFO     sqlalchemy.engine.Engine:base.py:1844 PRAGMA main.table_info("users")
@@ -82,49 +136,101 @@ CREATE TABLE users (
 
 
 INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
+INFO     sqlalchemy.engine.Engine:base.py:1844 CREATE INDEX ix_users_id ON users (id)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
 INFO     sqlalchemy.engine.Engine:base.py:1844 CREATE INDEX ix_users_screen_name ON users (screen_name)
 INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
-INFO     sqlalchemy.engine.Engine:base.py:1844 CREATE INDEX ix_users_id ON users (id)
-INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00002s] ()
 INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
 INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
 INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name) VALUES (?, ?)
-INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.09111s ago] ('test_user_id', 'testuser')
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.09343s ago] ('test_user_id', 'testuser')
 INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
 --------------------------- Captured stdout teardown ---------------------------
-2024-09-08 17:19:24,087 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2024-09-08 17:19:24,087 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
-2024-09-08 17:19:24,087 INFO sqlalchemy.engine.Engine [raw sql] ()
-2024-09-08 17:19:24,087 INFO sqlalchemy.engine.Engine
+2024-09-08 20:02:05,229 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-08 20:02:05,229 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2024-09-08 20:02:05,229 INFO sqlalchemy.engine.Engine [raw sql] ()
+2024-09-08 20:02:05,229 INFO sqlalchemy.engine.Engine
 DROP TABLE users
-2024-09-08 17:19:24,087 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
-2024-09-08 17:19:24,087 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-08 20:02:05,229 INFO sqlalchemy.engine.Engine [no key 0.00005s] ()
+2024-09-08 20:02:05,230 INFO sqlalchemy.engine.Engine COMMIT
 ---------------------------- Captured log teardown -----------------------------
 INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
 INFO     sqlalchemy.engine.Engine:base.py:1844 PRAGMA main.table_info("users")
 INFO     sqlalchemy.engine.Engine:base.py:1844 [raw sql] ()
 INFO     sqlalchemy.engine.Engine:base.py:1844
 DROP TABLE users
-INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
+INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00005s] ()
 INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
 _______________________ test_websocket_multiple_messages _______________________
 
-async_client = <httpx.AsyncClient object at 0x10a297050>
-token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjE3MjU3OTc5NjR9.sgk98hgSi8_VlCuwC6Q96dZaJcecFaBU1R9NCE9nI6c'
+test_client = <starlette.testclient.TestClient object at 0x10822d790>
+token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjE3MjU4MDc3MjV9.6knc9BCfoxNhu_tzS_x2TDAerTY0deXc-3wcmlQMXLM'
 
-    @pytest.mark.asyncio
-    async def test_websocket_multiple_messages(async_client: AsyncClient, token):
->       async with async_client.websocket_connect("/ws", headers={"Authorization": f"Bearer {token}"}) as websocket:
-E       AttributeError: 'AsyncClient' object has no attribute 'websocket_connect'
+    def test_websocket_multiple_messages(test_client: TestClient, token: str) -> None:
+>       with test_client.websocket_connect(f"/ws?token={token}") as websocket:
 
-tests/test_websocket.py:29: AttributeError
+tests/test_websocket.py:31:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv/lib/python3.12/site-packages/starlette/testclient.py:91: in __enter__
+    message = self.receive()
+venv/lib/python3.12/site-packages/starlette/testclient.py:160: in receive
+    raise message
+venv/lib/python3.12/site-packages/anyio/from_thread.py:217: in _call_func
+    retval = await retval
+venv/lib/python3.12/site-packages/starlette/testclient.py:118: in _run
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/fastapi/applications.py:292: in __call__
+    await super().__call__(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/applications.py:122: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/errors.py:149: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:79: in __call__
+    raise exc
+venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:68: in __call__
+    await self.app(scope, receive, sender)
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:20: in __call__
+    raise e
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:17: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:718: in __call__
+    await route.handle(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:341: in handle
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:82: in app
+    await func(session)
+venv/lib/python3.12/site-packages/fastapi/routing.py:324: in app
+    await dependant.call(**values)
+app/routers/websocket.py:16: in websocket_endpoint
+    current_user = await get_current_user_ws(token)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjE3MjU4MDc3MjV9.6knc9BCfoxNhu_tzS_x2TDAerTY0deXc-3wcmlQMXLM'
+db = Depends(get_db)
+
+    async def get_current_user_ws(
+        token: str = Query(...),
+        db: AsyncSession = Depends(get_db)
+    ) -> User:
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            user_id: str = payload.get("sub")
+            if user_id is None:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        except JWTError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+>       result = await db.execute(select(User).filter(User.id == user_id))
+E       AttributeError: 'Depends' object has no attribute 'execute'
+
+app/dependencies.py:60: AttributeError
 ---------------------------- Captured stdout setup -----------------------------
-2024-09-08 17:19:24,088 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2024-09-08 17:19:24,088 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
-2024-09-08 17:19:24,088 INFO sqlalchemy.engine.Engine [raw sql] ()
-2024-09-08 17:19:24,088 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("users")
-2024-09-08 17:19:24,088 INFO sqlalchemy.engine.Engine [raw sql] ()
-2024-09-08 17:19:24,089 INFO sqlalchemy.engine.Engine
+2024-09-08 20:02:05,230 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-08 20:02:05,230 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2024-09-08 20:02:05,230 INFO sqlalchemy.engine.Engine [raw sql] ()
+2024-09-08 20:02:05,231 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("users")
+2024-09-08 20:02:05,231 INFO sqlalchemy.engine.Engine [raw sql] ()
+2024-09-08 20:02:05,231 INFO sqlalchemy.engine.Engine
 CREATE TABLE users (
 	id VARCHAR NOT NULL,
 	screen_name VARCHAR,
@@ -132,16 +238,16 @@ CREATE TABLE users (
 )
 
 
-2024-09-08 17:19:24,089 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
-2024-09-08 17:19:24,089 INFO sqlalchemy.engine.Engine CREATE INDEX ix_users_screen_name ON users (screen_name)
-2024-09-08 17:19:24,089 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
-2024-09-08 17:19:24,089 INFO sqlalchemy.engine.Engine CREATE INDEX ix_users_id ON users (id)
-2024-09-08 17:19:24,089 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
-2024-09-08 17:19:24,089 INFO sqlalchemy.engine.Engine COMMIT
-2024-09-08 17:19:24,090 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2024-09-08 17:19:24,090 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name) VALUES (?, ?)
-2024-09-08 17:19:24,090 INFO sqlalchemy.engine.Engine [cached since 0.1162s ago] ('test_user_id', 'testuser')
-2024-09-08 17:19:24,090 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-08 20:02:05,231 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
+2024-09-08 20:02:05,231 INFO sqlalchemy.engine.Engine CREATE INDEX ix_users_id ON users (id)
+2024-09-08 20:02:05,231 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
+2024-09-08 20:02:05,231 INFO sqlalchemy.engine.Engine CREATE INDEX ix_users_screen_name ON users (screen_name)
+2024-09-08 20:02:05,231 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
+2024-09-08 20:02:05,232 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-08 20:02:05,232 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-08 20:02:05,232 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name) VALUES (?, ?)
+2024-09-08 20:02:05,232 INFO sqlalchemy.engine.Engine [cached since 0.1611s ago] ('test_user_id', 'testuser')
+2024-09-08 20:02:05,232 INFO sqlalchemy.engine.Engine COMMIT
 ------------------------------ Captured log setup ------------------------------
 INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
 INFO     sqlalchemy.engine.Engine:base.py:1844 PRAGMA main.table_info("users")
@@ -157,23 +263,23 @@ CREATE TABLE users (
 
 
 INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
-INFO     sqlalchemy.engine.Engine:base.py:1844 CREATE INDEX ix_users_screen_name ON users (screen_name)
-INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
 INFO     sqlalchemy.engine.Engine:base.py:1844 CREATE INDEX ix_users_id ON users (id)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
+INFO     sqlalchemy.engine.Engine:base.py:1844 CREATE INDEX ix_users_screen_name ON users (screen_name)
 INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
 INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
 INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
 INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name) VALUES (?, ?)
-INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.1162s ago] ('test_user_id', 'testuser')
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.1611s ago] ('test_user_id', 'testuser')
 INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
 --------------------------- Captured stdout teardown ---------------------------
-2024-09-08 17:19:24,093 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2024-09-08 17:19:24,093 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
-2024-09-08 17:19:24,093 INFO sqlalchemy.engine.Engine [raw sql] ()
-2024-09-08 17:19:24,093 INFO sqlalchemy.engine.Engine
+2024-09-08 20:02:05,273 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-08 20:02:05,273 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2024-09-08 20:02:05,273 INFO sqlalchemy.engine.Engine [raw sql] ()
+2024-09-08 20:02:05,274 INFO sqlalchemy.engine.Engine
 DROP TABLE users
-2024-09-08 17:19:24,093 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
-2024-09-08 17:19:24,093 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-08 20:02:05,274 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
+2024-09-08 20:02:05,274 INFO sqlalchemy.engine.Engine COMMIT
 ---------------------------- Captured log teardown -----------------------------
 INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
 INFO     sqlalchemy.engine.Engine:base.py:1844 PRAGMA main.table_info("users")
@@ -184,22 +290,74 @@ INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
 INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
 __________________________ test_websocket_disconnect ___________________________
 
-async_client = <httpx.AsyncClient object at 0x10a2c5d00>
-token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjE3MjU3OTc5NjR9.sgk98hgSi8_VlCuwC6Q96dZaJcecFaBU1R9NCE9nI6c'
+test_client = <starlette.testclient.TestClient object at 0x10822dc10>
+token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjE3MjU4MDc3MjV9.6knc9BCfoxNhu_tzS_x2TDAerTY0deXc-3wcmlQMXLM'
 
-    @pytest.mark.asyncio
-    async def test_websocket_disconnect(async_client: AsyncClient, token):
->       async with async_client.websocket_connect("/ws", headers={"Authorization": f"Bearer {token}"}) as websocket:
-E       AttributeError: 'AsyncClient' object has no attribute 'websocket_connect'
+    def test_websocket_disconnect(test_client: TestClient, token: str) -> None:
+>       with test_client.websocket_connect(f"/ws?token={token}") as websocket:
 
-tests/test_websocket.py:37: AttributeError
+tests/test_websocket.py:39:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv/lib/python3.12/site-packages/starlette/testclient.py:91: in __enter__
+    message = self.receive()
+venv/lib/python3.12/site-packages/starlette/testclient.py:160: in receive
+    raise message
+venv/lib/python3.12/site-packages/anyio/from_thread.py:217: in _call_func
+    retval = await retval
+venv/lib/python3.12/site-packages/starlette/testclient.py:118: in _run
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/fastapi/applications.py:292: in __call__
+    await super().__call__(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/applications.py:122: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/errors.py:149: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:79: in __call__
+    raise exc
+venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py:68: in __call__
+    await self.app(scope, receive, sender)
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:20: in __call__
+    raise e
+venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:17: in __call__
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:718: in __call__
+    await route.handle(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:341: in handle
+    await self.app(scope, receive, send)
+venv/lib/python3.12/site-packages/starlette/routing.py:82: in app
+    await func(session)
+venv/lib/python3.12/site-packages/fastapi/routing.py:324: in app
+    await dependant.call(**values)
+app/routers/websocket.py:16: in websocket_endpoint
+    current_user = await get_current_user_ws(token)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjE3MjU4MDc3MjV9.6knc9BCfoxNhu_tzS_x2TDAerTY0deXc-3wcmlQMXLM'
+db = Depends(get_db)
+
+    async def get_current_user_ws(
+        token: str = Query(...),
+        db: AsyncSession = Depends(get_db)
+    ) -> User:
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            user_id: str = payload.get("sub")
+            if user_id is None:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        except JWTError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+>       result = await db.execute(select(User).filter(User.id == user_id))
+E       AttributeError: 'Depends' object has no attribute 'execute'
+
+app/dependencies.py:60: AttributeError
 ---------------------------- Captured stdout setup -----------------------------
-2024-09-08 17:19:24,094 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2024-09-08 17:19:24,094 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
-2024-09-08 17:19:24,094 INFO sqlalchemy.engine.Engine [raw sql] ()
-2024-09-08 17:19:24,094 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("users")
-2024-09-08 17:19:24,094 INFO sqlalchemy.engine.Engine [raw sql] ()
-2024-09-08 17:19:24,094 INFO sqlalchemy.engine.Engine
+2024-09-08 20:02:05,274 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-08 20:02:05,274 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2024-09-08 20:02:05,275 INFO sqlalchemy.engine.Engine [raw sql] ()
+2024-09-08 20:02:05,275 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("users")
+2024-09-08 20:02:05,275 INFO sqlalchemy.engine.Engine [raw sql] ()
+2024-09-08 20:02:05,275 INFO sqlalchemy.engine.Engine
 CREATE TABLE users (
 	id VARCHAR NOT NULL,
 	screen_name VARCHAR,
@@ -207,16 +365,16 @@ CREATE TABLE users (
 )
 
 
-2024-09-08 17:19:24,094 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
-2024-09-08 17:19:24,094 INFO sqlalchemy.engine.Engine CREATE INDEX ix_users_screen_name ON users (screen_name)
-2024-09-08 17:19:24,094 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
-2024-09-08 17:19:24,095 INFO sqlalchemy.engine.Engine CREATE INDEX ix_users_id ON users (id)
-2024-09-08 17:19:24,095 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
-2024-09-08 17:19:24,095 INFO sqlalchemy.engine.Engine COMMIT
-2024-09-08 17:19:24,095 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2024-09-08 17:19:24,095 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name) VALUES (?, ?)
-2024-09-08 17:19:24,095 INFO sqlalchemy.engine.Engine [cached since 0.1219s ago] ('test_user_id', 'testuser')
-2024-09-08 17:19:24,095 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-08 20:02:05,275 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
+2024-09-08 20:02:05,275 INFO sqlalchemy.engine.Engine CREATE INDEX ix_users_id ON users (id)
+2024-09-08 20:02:05,275 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
+2024-09-08 20:02:05,275 INFO sqlalchemy.engine.Engine CREATE INDEX ix_users_screen_name ON users (screen_name)
+2024-09-08 20:02:05,275 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
+2024-09-08 20:02:05,276 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-08 20:02:05,276 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-08 20:02:05,276 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name) VALUES (?, ?)
+2024-09-08 20:02:05,276 INFO sqlalchemy.engine.Engine [cached since 0.205s ago] ('test_user_id', 'testuser')
+2024-09-08 20:02:05,276 INFO sqlalchemy.engine.Engine COMMIT
 ------------------------------ Captured log setup ------------------------------
 INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
 INFO     sqlalchemy.engine.Engine:base.py:1844 PRAGMA main.table_info("users")
@@ -232,23 +390,23 @@ CREATE TABLE users (
 
 
 INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
-INFO     sqlalchemy.engine.Engine:base.py:1844 CREATE INDEX ix_users_screen_name ON users (screen_name)
-INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
 INFO     sqlalchemy.engine.Engine:base.py:1844 CREATE INDEX ix_users_id ON users (id)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
+INFO     sqlalchemy.engine.Engine:base.py:1844 CREATE INDEX ix_users_screen_name ON users (screen_name)
 INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
 INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
 INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
 INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name) VALUES (?, ?)
-INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.1219s ago] ('test_user_id', 'testuser')
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.205s ago] ('test_user_id', 'testuser')
 INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
 --------------------------- Captured stdout teardown ---------------------------
-2024-09-08 17:19:24,098 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2024-09-08 17:19:24,098 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
-2024-09-08 17:19:24,098 INFO sqlalchemy.engine.Engine [raw sql] ()
-2024-09-08 17:19:24,099 INFO sqlalchemy.engine.Engine
+2024-09-08 20:02:05,317 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-08 20:02:05,317 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2024-09-08 20:02:05,317 INFO sqlalchemy.engine.Engine [raw sql] ()
+2024-09-08 20:02:05,317 INFO sqlalchemy.engine.Engine
 DROP TABLE users
-2024-09-08 17:19:24,099 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
-2024-09-08 17:19:24,099 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-08 20:02:05,318 INFO sqlalchemy.engine.Engine [no key 0.00003s] ()
+2024-09-08 20:02:05,318 INFO sqlalchemy.engine.Engine COMMIT
 ---------------------------- Captured log teardown -----------------------------
 INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
 INFO     sqlalchemy.engine.Engine:base.py:1844 PRAGMA main.table_info("users")
@@ -258,10 +416,7 @@ DROP TABLE users
 INFO     sqlalchemy.engine.Engine:base.py:1844 [no key 0.00003s] ()
 INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
 =============================== warnings summary ===============================
-app/models.py:5
-  /Users/nyn/develop/foxhole/app/models.py:5: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
-    Base = declarative_base()
-
+venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267
 venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267
   /Users/nyn/develop/foxhole/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.4/migration/
     warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
@@ -271,11 +426,14 @@ tests/test_auth.py::test_update_user_profile
 tests/test_auth.py::test_update_user_profile_no_changes
 tests/test_main.py::test_get_user_profile
 tests/test_main.py::test_update_user_profile
+tests/test_websocket.py::test_websocket_connection
+tests/test_websocket.py::test_websocket_multiple_messages
+tests/test_websocket.py::test_websocket_disconnect
   /Users/nyn/develop/foxhole/venv/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     now = timegm(datetime.utcnow().utctimetuple())
 
 tests/test_auth.py::test_create_access_token
-  tests/test_auth.py:100: PytestWarning: The test <Function test_create_access_token> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove asyncio marker. If the test is not marked explicitly, check for global markers applied via 'pytestmark'.
+  tests/test_auth.py:106: PytestWarning: The test <Function test_create_access_token> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove asyncio marker. If the test is not marked explicitly, check for global markers applied via 'pytestmark'.
     def test_create_access_token() -> None:
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
@@ -283,4 +441,4 @@ tests/test_auth.py::test_create_access_token
 FAILED tests/test_websocket.py::test_websocket_connection - AttributeError: '...
 FAILED tests/test_websocket.py::test_websocket_multiple_messages - AttributeE...
 FAILED tests/test_websocket.py::test_websocket_disconnect - AttributeError: '...
-=================== 3 failed, 20 passed, 8 warnings in 0.15s ===================
+================== 3 failed, 22 passed, 11 warnings in 0.27s ===================

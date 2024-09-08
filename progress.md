@@ -30,6 +30,12 @@
 - [x] Add more comprehensive test coverage in `tests/test_main.py`
 - [x] Ensure all sensitive information (like `SECRET_KEY`) is properly secured and not hardcoded in configuration files
 
+- [ ] Update WebSocket tests in `/tests/test_websocket.py` to use `TestClient` from `fastapi.testclient` instead of `starlette.testclient`
+- [x] Fix database initialization issues in WebSocket tests
+- [ ] Implement `WebSocketManager` from `/app/services/websocket_manager.py` in the main application (`/app/app.py`)
+- [ ] Replace stub implementation of `StorageService` in `/app/dependencies.py` with a real implementation (e.g., using MinIO)
+- [ ] Expand test coverage, especially for WebSocket and file operations
+- [ ] Add more logging statements throughout the application for better debugging and monitoring
 
 ## In Progress
 - [ ] Implement more comprehensive test coverage
@@ -44,3 +50,6 @@
 - [ ] Implement database migrations for easier schema management
 - [ ] Implement logging throughout the application for better debugging and monitoring
 - [ ] Add API versioning to make future updates easier
+
+- [ ] Review and update all file paths to use absolute paths from project root
+- [ ] Verify and update import syntax in all files to use ES module imports where appropriate

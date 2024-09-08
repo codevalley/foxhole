@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status, WebSocket
+from fastapi import Depends, HTTPException, status, WebSocket, Query
 from fastapi.security import OAuth2PasswordBearer
 from app.services.storage_service import StorageService
 from app.models import User
@@ -7,6 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from utils.database import get_db
 from typing import Optional
 from fastapi import UploadFile
+from jose import JWTError, jwt
+from app.core.config import settings
+from sqlalchemy import select
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -43,12 +46,31 @@ async def get_current_user(
 
 
 async def get_current_user_ws(
-    websocket: WebSocket, db: AsyncSession = Depends(get_db)
-) -> Optional[User]:
-    token = await get_token_from_websocket(websocket)
-    if token:
-        return await verify_token(token, db)
-    return None
+    token: str = Query(...), db: AsyncSession = Depends(get_db)
+) -> User:
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+            )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        )
+
+    stmt = select(User).filter(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+        )
+    return user
 
 
 async def get_token_from_websocket(websocket: WebSocket) -> Optional[str]:

@@ -1,8 +1,10 @@
 import pytest
-from starlette.testclient import TestClient
+from fastapi.testclient import TestClient
 from app.routers.auth import create_access_token
 from app.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.websockets import WebSocketDisconnect
+from fastapi import status
 
 
 @pytest.fixture
@@ -19,18 +21,14 @@ def token(test_user: User) -> str:
 
 
 def test_websocket_connection(test_client: TestClient, token: str) -> None:
-    with test_client.websocket_connect(
-        "/ws", headers={"Authorization": f"Bearer {token}"}
-    ) as websocket:
+    with test_client.websocket_connect(f"/ws?token={token}") as websocket:
         websocket.send_text("Hello")
         response = websocket.receive_text()
         assert response == "Message received: Hello"
 
 
 def test_websocket_multiple_messages(test_client: TestClient, token: str) -> None:
-    with test_client.websocket_connect(
-        "/ws", headers={"Authorization": f"Bearer {token}"}
-    ) as websocket:
+    with test_client.websocket_connect(f"/ws?token={token}") as websocket:
         websocket.send_text("Hello")
         assert websocket.receive_text() == "Message received: Hello"
         websocket.send_text("World")
@@ -38,9 +36,21 @@ def test_websocket_multiple_messages(test_client: TestClient, token: str) -> Non
 
 
 def test_websocket_disconnect(test_client: TestClient, token: str) -> None:
-    with test_client.websocket_connect(
-        "/ws", headers={"Authorization": f"Bearer {token}"}
-    ) as websocket:
+    with test_client.websocket_connect(f"/ws?token={token}") as websocket:
         websocket.send_text("Hello")
         assert websocket.receive_text() == "Message received: Hello"
     # WebSocket should be closed after the context manager
+
+
+def test_websocket_unauthorized(test_client: TestClient) -> None:
+    with pytest.raises(Exception):  # The exact exception type may vary
+        with test_client.websocket_connect("/ws"):
+            pass
+
+
+def test_websocket_invalid_token(test_client: TestClient) -> None:
+    with pytest.raises(WebSocketDisconnect) as excinfo:
+        with test_client.websocket_connect("/ws?token=invalid_token"):
+            pass
+    assert excinfo.value.code == status.WS_1008_POLICY_VIOLATION
+    assert excinfo.value.reason == "Invalid token"
