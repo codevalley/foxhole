@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Form
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from app.core.config import settings
 from app.models import User
 from utils.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from app.schemas.user_schema import UserCreate, UserResponse, Token, UserUpdate
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 router = APIRouter()
 
@@ -16,7 +16,7 @@ router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-async def create_access_token(data: Dict[str, Any]) -> str:
+def create_access_token(data: Dict[str, Any]) -> str:
     """
     Create a new JWT access token.
 
@@ -27,7 +27,7 @@ async def create_access_token(data: Dict[str, Any]) -> str:
         str: The encoded JWT token.
     """
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(
         to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
@@ -67,7 +67,7 @@ async def login_for_access_token(
             detail="Invalid user ID",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = await create_access_token(data={"sub": user.id})
+    access_token = create_access_token(data={"sub": user.id})  # Remove 'await'
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -120,10 +120,26 @@ async def update_user_profile(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    update_data = user_update.dict(exclude_unset=True)
+    update_data = user_update.model_dump(exclude_unset=True)
     if update_data:
         stmt = update(User).where(User.id == current_user.id).values(**update_data)
         await db.execute(stmt)
         await db.commit()
         await db.refresh(current_user)
     return current_user
+
+
+async def verify_token(token: str, db: AsyncSession) -> Optional[User]:
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+        user = await db.get(User, user_id)
+        if user is None:
+            return None
+        return user
+    except JWTError:
+        return None

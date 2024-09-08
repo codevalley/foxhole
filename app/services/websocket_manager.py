@@ -21,7 +21,7 @@ class WebSocketManager:
             user (User): The user associated with the connection.
         """
         await websocket.accept()
-        self.active_connections[user.id] = websocket
+        self.active_connections[str(user.id)] = websocket
 
     def disconnect(self, websocket: WebSocket) -> None:
         """

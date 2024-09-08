@@ -1,10 +1,9 @@
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import String
-import secrets
+from sqlalchemy import Column, String
+from sqlalchemy.orm import declarative_base
+import uuid
+from typing import Any
 
-
-class Base(DeclarativeBase):
-    pass
+Base: Any = declarative_base()
 
 
 class User(Base):
@@ -14,12 +13,12 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
-    screen_name: Mapped[str] = mapped_column(String, index=True, nullable=True)
+    id = Column(String, primary_key=True, index=True)
+    screen_name = Column(String, index=True)
 
-    @classmethod
-    def generate_user_id(cls) -> str:
-        return secrets.token_urlsafe(16)
+    @staticmethod
+    def generate_user_id() -> str:
+        return str(uuid.uuid4())
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, screen_name={self.screen_name or 'anon_user'})>"

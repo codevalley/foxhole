@@ -1,30 +1,18 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
-from app.services.websocket_manager import WebSocketManager
-from app.routers.auth import get_current_user  # Updated import
+from fastapi import APIRouter, WebSocket, Depends
+from app.dependencies import get_current_user_ws
 from app.models import User
 
 router = APIRouter()
-manager = WebSocketManager()
 
 
 @router.websocket("/ws")
 async def websocket_endpoint(
-    websocket: WebSocket, current_user: User = Depends(get_current_user)
+    websocket: WebSocket, current_user: User = Depends(get_current_user_ws)
 ) -> None:
-    """
-    WebSocket endpoint for real-time communication.
-    Handles connection, message broadcasting, and disconnection.
-    Requires authentication.
-    """
-    await manager.connect(websocket, current_user)
+    await websocket.accept()
     try:
         while True:
             data = await websocket.receive_text()
-            await manager.broadcast(
-                f"Message from {current_user.screen_name or 'Anonymous'}: {data}"
-            )
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
-        await manager.broadcast(
-            f"User {current_user.screen_name or 'Anonymous'} disconnected"
-        )
+            await websocket.send_text(f"Message received: {data}")
+    except Exception:
+        await websocket.close()
