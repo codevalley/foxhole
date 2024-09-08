@@ -29,14 +29,8 @@
 - [x] Ensure all sensitive information (like `SECRET_KEY`) is properly secured and not hardcoded in configuration files
 - [x] Update WebSocket tests in `/tests/test_websocket.py` to use `TestClient` from `fastapi.testclient`
 - [x] Fix database initialization issues in WebSocket tests
-- [x] Implement `WebSocketManager` from `/app/services/websocket_manager.py` in the main application (`/app/app.py`)
-- [x] Replace stub implementation of `StorageService` in `/app/dependencies.py` with a real implementation (e.g., using MinIO)
-- [x] Expand test coverage, especially for WebSocket and file operations
-- [x] Add more logging statements throughout the application for better debugging and monitoring
 - [x] Implement more comprehensive test coverage
 - [x] Review and update all file paths to use absolute paths from project root
-- [x] Verify and update import syntax in all files to use ES module imports where appropriate
-- [x] Fix mypy type checking errors
 
 ## In Progress
 - [ ] Set up Docker and Kamal configuration for deployment
