@@ -11,7 +11,7 @@ from typing import AsyncGenerator, Any
 from fastapi import status
 from app.routers.websocket import init_websocket_manager
 from sqlalchemy.exc import SQLAlchemyError
-from unittest.mock import MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -141,45 +141,43 @@ async def test_websocket_endpoint_sqlalchemy_error(
 ) -> None:
     mock_manager = MagicMock(spec=WebSocketManager)
     mock_manager.connect.side_effect = SQLAlchemyError("Database error")
-    init_websocket_manager(mock_manager)
+    mock_manager.active_connections = {}
+    mock_manager.disconnect = AsyncMock()
+    
+    with patch('app.routers.websocket.websocket_manager', mock_manager):
+        with pytest.raises(WebSocketDisconnect) as exc_info:
+            with client.websocket_connect(f"/ws?token={authenticated_user['token']}") as websocket:
+                # The connection should be closed immediately due to the SQLAlchemyError
+                pass
 
-    with pytest.raises(WebSocketDisconnect) as exc_info:
-        with client.websocket_connect(f"/ws?token={authenticated_user['token']}"):
-            pass
+        assert exc_info.value.code == status.WS_1011_INTERNAL_ERROR
 
-    assert exc_info.value.code == status.WS_1011_INTERNAL_ERROR
+    # Ensure disconnect was not called (as the connection should fail before it's established)
+    mock_manager.disconnect.assert_not_called()
 
 
-def test_websocket_disconnect(
+@pytest.mark.asyncio
+async def test_websocket_disconnect(
     client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
 ) -> None:
-    try:
+    real_websocket_manager = WebSocketManager()
+
+    with patch('app.routers.websocket.websocket_manager', real_websocket_manager):
         with client.websocket_connect(f"/ws?token={token}") as websocket:
             websocket.send_text("Hello")
             response1 = websocket.receive_text()
             response2 = websocket.receive_text()
-            assert (
-                response1 == f"User {test_user.id}: Hello"
-            ), f"Unexpected response: {response1}"
-            assert (
-                response2 == "Message sent: Hello"
-            ), f"Unexpected response: {response2}"
-        # WebSocket should be closed after the context manager
-        assert (
-            len(websocket_manager.active_connections) == 0
-        ), "WebSocket connection not closed properly"
-    except WebSocketDisconnect as e:
-        if e.code == status.WS_1011_INTERNAL_ERROR:
-            logger.warning(f"WebSocket disconnected with internal error: {e}")
-        elif e.code not in (status.WS_1000_NORMAL_CLOSURE, status.WS_1001_GOING_AWAY):
-            pytest.fail(f"Unexpected WebSocket closure: {e}")
-    except Exception as e:
-        pytest.fail(f"Unexpected error occurred: {e}")
+            assert response1 == f"User {test_user.id}: Hello", f"Unexpected response: {response1}"
+            assert response2 == "Message sent: Hello", f"Unexpected response: {response2}"
 
-    # Check if the connection was properly closed
-    assert (
-        len(websocket_manager.active_connections) == 0
-    ), "WebSocket connection not closed properly"
+    # Wait for the disconnect to be processed
+    await real_websocket_manager.wait_for_disconnect()
+
+    # WebSocket should be closed after the context manager
+    assert len(real_websocket_manager.active_connections) == 0, "WebSocket connection not closed properly"
+
+    # Add this line to print the active connections for debugging
+    print(f"Active connections: {real_websocket_manager.active_connections}")
 
 
 def test_websocket_unauthorized(test_client: TestClient) -> None:

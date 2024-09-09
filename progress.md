@@ -49,6 +49,13 @@
 - [x] Align CI checks with local pre-commit hooks for consistency
 - [x] Update pre-commit configuration to ensure all checks are in "check-only" mode
 - [x] Run pre-commit install to apply new pre-commit configuration
+- [x] Implement asynchronous WebSocket manager with proper connection handling and disconnection events
+- [x] Update WebSocket endpoint to use the new WebSocketManager features
+- [x] Refactor WebSocket tests to use asynchronous operations and proper connection closure checks
+- [x] Implement wait_for_disconnect method in WebSocketManager to ensure proper disconnection in tests
+- [x] Add more detailed logging in WebSocketManager for better debugging
+- [x] Update test_websocket_disconnect to use the new wait_for_disconnect method
+- [x] Ensure proper cleanup of WebSocket connections in tests, even in case of failures
 
 ## In Progress
 - [ ] Set up Docker and Kamal configuration for deployment
@@ -73,3 +80,32 @@
 - [ ] Optimize database queries for better performance, especially for file operations
 - [ ] Implement a caching strategy to reduce database load for frequently accessed data
 - [ ] Consider implementing a background task queue for handling long-running operations
+
+## Current Problem
+- The `test_websocket_disconnect` test is still failing with the error: "AssertionError: WebSocket connection not closed properly"
+- The WebSocket connection is not being removed from the `active_connections` dictionary in the `WebSocketManager` after the connection is closed
+- Possible causes:
+  1. The `disconnect` method in `WebSocketManager` is not being called when the WebSocket connection is closed
+  2. The `disconnect` method is not properly removing the connection from `active_connections`
+  3. The test is not giving enough time for the asynchronous disconnect operation to complete
+  4. The `close_all_connections` method in `WebSocketManager` might not be working as expected
+  5. The WebSocket connection might be staying open longer than expected in the test environment
+- Next steps:
+  1. Review the `WebSocketManager.disconnect` method implementation and ensure it's being called when the WebSocket closes
+  2. Add more detailed logging in the `disconnect` and `close_all_connections` methods to track their execution
+  3. Investigate if we need to use an event or a different synchronization mechanism in the test to ensure the disconnect operation completes before asserting
+  4. Review the `close_all_connections` method in `WebSocketManager` and ensure it's properly closing all connections
+  5. Consider adding a delay or retry mechanism in the test to allow for asynchronous operations to complete
+  6. Verify that the `WebSocketManager` instance used in the test is the same one used by the application
+  7. Implement a cleanup mechanism in the test to ensure all connections are closed, even if the test fails
+  8. Add more granular assertions to track the state of the WebSocket connection throughout the test
+
+New issue:
+- The test is using a synchronous `TestClient` for WebSocket connections, which may not properly handle asynchronous operations
+- This could lead to race conditions where the connection is not fully closed before the assertions are made
+- To address this:
+  1. Consider using an asynchronous WebSocket client for testing, such as `websockets` or `aiohttp`
+  2. Implement proper asynchronous context managers for WebSocket connections in the tests
+  3. Ensure that all asynchronous operations, including connection closure, are properly awaited
+
+Note: When implementing these fixes, we need to be careful not to regress on previously fixed issues, such as the SQLAlchemy error handling and the WebSocket manager initialization problems.

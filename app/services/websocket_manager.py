@@ -2,6 +2,8 @@ import logging
 from fastapi import WebSocket
 from app.models import User
 from typing import Dict, List
+from websockets.exceptions import ConnectionClosedOK
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +17,8 @@ class WebSocketManager:
         """Initialize the WebSocketManager with an empty dictionary of connections."""
         self.active_connections: Dict[WebSocket, User] = {}
         self.message_queue: List[str] = []
+        self._lock = asyncio.Lock()
+        self._disconnect_event = asyncio.Event()
 
     async def connect(self, websocket: WebSocket, user: User) -> None:
         """
@@ -25,25 +29,38 @@ class WebSocketManager:
             user (User): The user associated with the connection.
         """
         await websocket.accept()
-        self.active_connections[websocket] = user
-        print(f"WebSocket connected for user {user.id}")  # Add this line
+        async with self._lock:
+            self.active_connections[websocket] = user
         logger.info(f"WebSocket connected for user {user.id}")
 
-    def disconnect(self, websocket: WebSocket) -> None:
-        """
-        Remove a WebSocket connection from the active connections.
+    async def disconnect(self, websocket: WebSocket) -> None:
+        async with self._lock:
+            if websocket in self.active_connections:
+                user = self.active_connections[websocket]
+                del self.active_connections[websocket]
+                logger.info(f"WebSocket disconnected for user {user.id}")
+            else:
+                logger.warning("Attempted to disconnect a WebSocket that was not in active connections")
+        try:
+            await websocket.close()
+        except Exception as e:
+            logger.error(f"Error closing WebSocket: {e}")
+        finally:
+            self._disconnect_event.set()
 
-        Args:
-            websocket (WebSocket): The WebSocket connection to remove.
-        """
-        if websocket in self.active_connections:
-            user = self.active_connections[websocket]
-            del self.active_connections[websocket]
-            logger.info(f"WebSocket disconnected for user {user.id}")
-        else:
-            logger.warning(
-                "Attempted to disconnect a WebSocket that was not in active connections"
-            )
+    async def wait_for_disconnect(self, timeout: float = 1.0) -> None:
+        try:
+            await asyncio.wait_for(self._disconnect_event.wait(), timeout)
+        except asyncio.TimeoutError:
+            logger.warning("Timeout waiting for WebSocket disconnect")
+        finally:
+            self._disconnect_event.clear()
+
+    async def close_all_connections(self) -> None:
+        async with self._lock:
+            for websocket in list(self.active_connections.keys()):
+                await self.disconnect(websocket)
+        logger.info("All WebSocket connections closed")
 
     async def broadcast(self, message: str) -> None:
         """
@@ -61,6 +78,12 @@ class WebSocketManager:
             except RuntimeError:
                 logger.error(f"Failed to send message to user {user.id}")
                 disconnected.append(websocket)
+            except ConnectionClosedOK:
+                logger.info(f"Connection closed normally for user {user.id}")
+                disconnected.append(websocket)
+            except Exception as e:
+                logger.error(f"Unexpected error sending message to user {user.id}: {e}")
+                disconnected.append(websocket)
 
         for websocket in disconnected:
             self.disconnect(websocket)
@@ -73,8 +96,15 @@ class WebSocketManager:
             message (str): The message to send.
             websocket (WebSocket): The WebSocket connection to send the message to.
         """
-        await websocket.send_text(message)
-        logger.info(f"Sent personal message: {message}")
+        try:
+            await websocket.send_text(message)
+            logger.info(f"Sent personal message: {message}")
+        except ConnectionClosedOK:
+            logger.info("Connection closed normally while sending personal message")
+            self.disconnect(websocket)
+        except Exception as e:
+            logger.error(f"Error sending personal message: {e}")
+            self.disconnect(websocket)
 
     def get_last_message(self) -> str:
         """

@@ -13,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from utils.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
+from websockets.exceptions import ConnectionClosedOK
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -34,7 +35,8 @@ async def websocket_endpoint(
         user = await get_current_user_ws(websocket, token, db)
         if user is None:
             logger.error("User not found or invalid token")
-            return  # The connection has already been closed in get_current_user_ws
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
 
         if websocket_manager is None:
             logger.error("WebSocketManager is not initialized")
@@ -49,24 +51,15 @@ async def websocket_endpoint(
                 data = await websocket.receive_text()
                 logger.debug(f"Received WebSocket message from {user.id}: {data}")
                 await websocket_manager.broadcast(f"User {user.id}: {data}")
-                await websocket_manager.send_personal_message(
-                    f"Message sent: {data}", websocket
-                )
+                await websocket_manager.send_personal_message(f"Message sent: {data}", websocket)
         except WebSocketDisconnect:
             logger.info(f"WebSocket disconnected for user {user.id}")
-            websocket_manager.disconnect(websocket)
+        finally:
+            await websocket_manager.disconnect(websocket)
             await websocket_manager.broadcast(f"User {user.id} left the chat")
     except SQLAlchemyError as e:
         logger.exception(f"Database error occurred: {e}")
-        await websocket.close(
-            code=status.WS_1011_INTERNAL_ERROR, reason="Internal server error"
-        )
+        await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
     except Exception as e:
         logger.exception(f"Unexpected error occurred: {e}")
-        await websocket.close(
-            code=status.WS_1011_INTERNAL_ERROR, reason="Internal server error"
-        )
-    finally:
-        logger.info(
-            f"WebSocket connection closed for user {user.id if user else 'unknown'}"
-        )
+        await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
