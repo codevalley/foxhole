@@ -13,7 +13,7 @@ class WebSocketManager:
 
     def __init__(self) -> None:
         """Initialize the WebSocketManager with an empty dictionary of connections."""
-        self.active_connections: Dict[str, WebSocket] = {}
+        self.active_connections: Dict[WebSocket, User] = {}
         self.message_queue: List[str] = []
 
     async def connect(self, websocket: WebSocket, user: User) -> None:
@@ -25,7 +25,8 @@ class WebSocketManager:
             user (User): The user associated with the connection.
         """
         await websocket.accept()
-        self.active_connections[str(user.id)] = websocket
+        self.active_connections[websocket] = user
+        print(f"WebSocket connected for user {user.id}")  # Add this line
         logger.info(f"WebSocket connected for user {user.id}")
 
     def disconnect(self, websocket: WebSocket) -> None:
@@ -35,13 +36,14 @@ class WebSocketManager:
         Args:
             websocket (WebSocket): The WebSocket connection to remove.
         """
-        user_id = next(
-            (uid for uid, ws in self.active_connections.items() if ws == websocket),
-            None,
-        )
-        if user_id:
-            del self.active_connections[user_id]
-            logger.info(f"WebSocket disconnected for user {user_id}")
+        if websocket in self.active_connections:
+            user = self.active_connections[websocket]
+            del self.active_connections[websocket]
+            logger.info(f"WebSocket disconnected for user {user.id}")
+        else:
+            logger.warning(
+                "Attempted to disconnect a WebSocket that was not in active connections"
+            )
 
     async def broadcast(self, message: str) -> None:
         """
@@ -53,15 +55,15 @@ class WebSocketManager:
         self.message_queue.append(message)
         logger.info(f"Broadcasting message: {message}")
         disconnected = []
-        for user_id, connection in self.active_connections.items():
+        for websocket, user in self.active_connections.items():
             try:
-                await connection.send_text(message)
+                await websocket.send_text(message)
             except RuntimeError:
-                logger.error(f"Failed to send message to user {user_id}")
-                disconnected.append(user_id)
+                logger.error(f"Failed to send message to user {user.id}")
+                disconnected.append(websocket)
 
-        for user_id in disconnected:
-            del self.active_connections[user_id]
+        for websocket in disconnected:
+            self.disconnect(websocket)
 
     async def send_personal_message(self, message: str, websocket: WebSocket) -> None:
         """
@@ -82,3 +84,10 @@ class WebSocketManager:
             str: The last message sent, or an empty string if no messages have been sent.
         """
         return self.message_queue[-1] if self.message_queue else ""
+
+    async def close_all_connections(self) -> None:
+        """Close all active WebSocket connections."""
+        for websocket in list(self.active_connections.keys()):
+            await websocket.close()
+            self.disconnect(websocket)
+        logger.info("All WebSocket connections closed")

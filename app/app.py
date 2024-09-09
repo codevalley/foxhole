@@ -12,18 +12,16 @@ app = FastAPI()
 logger = logging.getLogger(__name__)
 
 # Create WebSocketManager instance
-websocket_manager = WebSocketManager()
+app.state.websocket_manager = WebSocketManager()
 
 # Include routers
-app.include_router(
-    auth.router, prefix="/auth", tags=["auth"]
-)  # Ensure this line is present
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(files.router, prefix="/files", tags=["files"])
 app.include_router(websocket.router)
 app.include_router(health.router)
 
 # Pass WebSocketManager instance to websocket router
-websocket.init_websocket_manager(websocket_manager)
+websocket.init_websocket_manager(app.state.websocket_manager)
 
 
 @app.get("/")
