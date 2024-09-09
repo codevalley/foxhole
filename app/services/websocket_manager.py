@@ -2,7 +2,6 @@ import logging
 from fastapi import WebSocket
 from app.models import User
 from typing import Dict, List
-from websockets.exceptions import ConnectionClosedOK
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -31,36 +30,66 @@ class WebSocketManager:
         await websocket.accept()
         async with self._lock:
             self.active_connections[websocket] = user
-        logger.info(f"WebSocket connected for user {user.id}")
+        logger.info(
+            f"WebSocket connected for user {user.id}. Total connections: {len(self.active_connections)}"
+        )
 
     async def disconnect(self, websocket: WebSocket) -> None:
+        """
+        Disconnect a WebSocket connection and remove it from active connections.
+
+        Args:
+            websocket (WebSocket): The WebSocket connection to disconnect.
+        """
         async with self._lock:
             if websocket in self.active_connections:
-                user = self.active_connections[websocket]
-                del self.active_connections[websocket]
-                logger.info(f"WebSocket disconnected for user {user.id}")
+                user = self.active_connections.pop(websocket)
+                logger.info(
+                    f"WebSocket disconnected for user {user.id}. Remaining connections: {len(self.active_connections)}"
+                )
             else:
-                logger.warning("Attempted to disconnect a WebSocket that was not in active connections")
+                logger.warning(
+                    "Attempted to disconnect a WebSocket that was not in active connections"
+                )
+
         try:
             await websocket.close()
         except Exception as e:
             logger.error(f"Error closing WebSocket: {e}")
-        finally:
+
+        if not self.active_connections:
             self._disconnect_event.set()
 
-    async def wait_for_disconnect(self, timeout: float = 1.0) -> None:
+    async def close_all_connections(self) -> None:
+        """Close all active WebSocket connections."""
+        logger.info(
+            f"Closing all connections. Active connections before: {len(self.active_connections)}"
+        )
+        async with self._lock:
+            for websocket in list(self.active_connections.keys()):
+                await self.disconnect(websocket)
+        logger.info(
+            f"All connections closed. Active connections after: {len(self.active_connections)}"
+        )
+
+    async def cleanup(self) -> None:
+        """Perform cleanup operations, including closing all connections."""
+        await self.close_all_connections()
+
+    async def wait_for_disconnect(self, timeout: float = 5.0) -> None:
+        """
+        Wait for the disconnect event to be set or until the timeout is reached.
+
+        Args:
+            timeout (float): The maximum time to wait for the disconnect event.
+        """
         try:
             await asyncio.wait_for(self._disconnect_event.wait(), timeout)
+            logger.info("Disconnect event received")
         except asyncio.TimeoutError:
             logger.warning("Timeout waiting for WebSocket disconnect")
         finally:
             self._disconnect_event.clear()
-
-    async def close_all_connections(self) -> None:
-        async with self._lock:
-            for websocket in list(self.active_connections.keys()):
-                await self.disconnect(websocket)
-        logger.info("All WebSocket connections closed")
 
     async def broadcast(self, message: str) -> None:
         """
@@ -71,22 +100,17 @@ class WebSocketManager:
         """
         self.message_queue.append(message)
         logger.info(f"Broadcasting message: {message}")
-        disconnected = []
-        for websocket, user in self.active_connections.items():
-            try:
-                await websocket.send_text(message)
-            except RuntimeError:
-                logger.error(f"Failed to send message to user {user.id}")
-                disconnected.append(websocket)
-            except ConnectionClosedOK:
-                logger.info(f"Connection closed normally for user {user.id}")
-                disconnected.append(websocket)
-            except Exception as e:
-                logger.error(f"Unexpected error sending message to user {user.id}: {e}")
-                disconnected.append(websocket)
+        async with self._lock:
+            disconnected = []
+            for websocket, user in self.active_connections.items():
+                try:
+                    await websocket.send_text(message)
+                except Exception as e:
+                    logger.error(f"Error sending message to user {user.id}: {e}")
+                    disconnected.append(websocket)
 
-        for websocket in disconnected:
-            self.disconnect(websocket)
+            for websocket in disconnected:
+                await self.disconnect(websocket)
 
     async def send_personal_message(self, message: str, websocket: WebSocket) -> None:
         """
@@ -99,12 +123,9 @@ class WebSocketManager:
         try:
             await websocket.send_text(message)
             logger.info(f"Sent personal message: {message}")
-        except ConnectionClosedOK:
-            logger.info("Connection closed normally while sending personal message")
-            self.disconnect(websocket)
         except Exception as e:
             logger.error(f"Error sending personal message: {e}")
-            self.disconnect(websocket)
+            await self.disconnect(websocket)
 
     def get_last_message(self) -> str:
         """
@@ -114,10 +135,3 @@ class WebSocketManager:
             str: The last message sent, or an empty string if no messages have been sent.
         """
         return self.message_queue[-1] if self.message_queue else ""
-
-    async def close_all_connections(self) -> None:
-        """Close all active WebSocket connections."""
-        for websocket in list(self.active_connections.keys()):
-            await websocket.close()
-            self.disconnect(websocket)
-        logger.info("All WebSocket connections closed")

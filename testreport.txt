@@ -1,11 +1,11 @@
-============================= test session starts =============================
-platform win32 -- Python 3.12.5, pytest-7.4.0, pluggy-1.5.0 -- c:\Users\narayan\Develop\foxhole\.venv\Scripts\python.exe
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.0, pluggy-1.5.0 -- /Users/nyn/develop/foxhole/venv/bin/python3.12
 cachedir: .pytest_cache
-rootdir: C:\Users\narayan\Develop\foxhole
+rootdir: /Users/nyn/develop/foxhole
 configfile: pytest.ini
-plugins: anyio-3.7.1, asyncio-0.21.1
+plugins: mock-3.10.0, cov-4.1.0, asyncio-0.21.1, anyio-3.7.1
 asyncio: mode=Mode.AUTO
-collecting ... collected 33 items
+collecting ... collected 32 items
 
 tests/test_auth.py::test_register_user PASSED                            [  3%]
 tests/test_auth.py::test_login PASSED                                    [  6%]
@@ -14,110 +14,47 @@ tests/test_auth.py::test_update_user_profile PASSED                      [ 12%]
 tests/test_auth.py::test_invalid_token PASSED                            [ 15%]
 tests/test_auth.py::test_missing_token PASSED                            [ 18%]
 tests/test_auth.py::test_create_access_token PASSED                      [ 21%]
-tests/test_auth.py::test_login_for_access_token_invalid_user PASSED      [ 24%]
-tests/test_auth.py::test_get_current_user_invalid_token PASSED           [ 27%]
-tests/test_auth.py::test_update_user_profile_no_changes PASSED           [ 30%]
-tests/test_dependencies.py::test_minio_storage_service_upload_file_error PASSED [ 33%]
-tests/test_dependencies.py::test_minio_storage_service_get_file_url_error PASSED [ 36%]
-tests/test_dependencies.py::test_minio_storage_service_list_files_error PASSED [ 39%]
-tests/test_dependencies.py::test_get_storage_service_mock PASSED         [ 42%]
-tests/test_dependencies.py::test_get_storage_service_minio PASSED        [ 45%]
-tests/test_files.py::test_upload_file PASSED                             [ 48%]
-tests/test_files.py::test_get_file_url PASSED                            [ 51%]
-tests/test_files.py::test_get_file_url_not_found PASSED                  [ 54%]
-tests/test_files.py::test_list_files PASSED                              [ 57%]
-tests/test_health.py::test_health_check PASSED                           [ 60%]
-tests/test_main.py::test_register_user PASSED                            [ 63%]
-tests/test_main.py::test_login PASSED                                    [ 66%]
-tests/test_main.py::test_get_user_profile PASSED                         [ 69%]
-tests/test_main.py::test_update_user_profile PASSED                      [ 72%]
-tests/test_main.py::test_health_check PASSED                             [ 75%]
-tests/test_websocket.py::test_websocket_connection PASSED                [ 78%]
-tests/test_websocket.py::test_websocket_multiple_messages PASSED         [ 81%]
-tests/test_websocket.py::test_websocket_broadcast SKIPPED (Broadcast...) [ 84%]
-tests/test_websocket.py::test_websocket_endpoint_uninitialized_manager PASSED [ 87%]
-tests/test_websocket.py::test_websocket_endpoint_sqlalchemy_error PASSED [ 90%]
-tests/test_websocket.py::test_websocket_disconnect FAILED                [ 93%]
+tests/test_auth.py::test_login_for_access_token_invalid_user PASSED      [ 25%]
+tests/test_auth.py::test_get_current_user_invalid_token PASSED           [ 28%]
+tests/test_auth.py::test_update_user_profile_no_changes PASSED           [ 31%]
+tests/test_dependencies.py::test_minio_storage_service_upload_file_error PASSED [ 34%]
+tests/test_dependencies.py::test_minio_storage_service_get_file_url_error PASSED [ 37%]
+tests/test_dependencies.py::test_minio_storage_service_list_files_error PASSED [ 40%]
+tests/test_dependencies.py::test_get_storage_service_mock PASSED         [ 43%]
+tests/test_dependencies.py::test_get_storage_service_minio PASSED        [ 46%]
+tests/test_files.py::test_upload_file PASSED                             [ 50%]
+tests/test_files.py::test_get_file_url PASSED                            [ 53%]
+tests/test_files.py::test_get_file_url_not_found PASSED                  [ 56%]
+tests/test_files.py::test_list_files PASSED                              [ 59%]
+tests/test_health.py::test_health_check PASSED                           [ 62%]
+tests/test_main.py::test_register_user PASSED                            [ 65%]
+tests/test_main.py::test_login PASSED                                    [ 68%]
+tests/test_main.py::test_get_user_profile PASSED                         [ 71%]
+tests/test_main.py::test_update_user_profile PASSED                      [ 75%]
+tests/test_main.py::test_health_check PASSED                             [ 78%]
+tests/test_websocket.py::test_websocket_connection PASSED                [ 81%]
+tests/test_websocket.py::test_websocket_multiple_messages PASSED         [ 84%]
+tests/test_websocket.py::test_websocket_disconnect PASSED                [ 87%]
+tests/test_websocket.py::test_websocket_endpoint_uninitialized_manager PASSED [ 90%]
+tests/test_websocket.py::test_websocket_endpoint_sqlalchemy_error PASSED [ 93%]
 tests/test_websocket.py::test_websocket_unauthorized PASSED              [ 96%]
 tests/test_websocket.py::test_websocket_invalid_token PASSED             [100%]
 
-================================== FAILURES ===================================
-__________________________ test_websocket_disconnect __________________________
-
-client = <starlette.testclient.TestClient object at 0x000001EDAF536BA0>
-token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwOTk4MDk0ZS0xYjExLTQ0NTktOWU1YS02NDNjNDRiMjA4OWUiLCJleHAiOjE3MjU4ODEyMzd9.i-i-13wwhgrIf0JcizDMRRelgrm_UBtG1UHcl0ho2UM'
-websocket_manager = <app.services.websocket_manager.WebSocketManager object at 0x000001EDAF535760>
-test_user = <User(id=0998094e-1b11-4459-9e5a-643c44b2089e, screen_name=testuser)>
-
-    def test_websocket_disconnect(
-        client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
-    ) -> None:
-        real_websocket_manager = WebSocketManager()
-    
-        with patch('app.routers.websocket.websocket_manager', real_websocket_manager):
-            with client.websocket_connect(f"/ws?token={token}") as websocket:
-                websocket.send_text("Hello")
-                response1 = websocket.receive_text()
-                response2 = websocket.receive_text()
-                assert response1 == f"User {test_user.id}: Hello", f"Unexpected response: {response1}"
-                assert response2 == "Message sent: Hello", f"Unexpected response: {response2}"
-    
-        # Give some time for the disconnect to be processed
-        asyncio.get_event_loop().run_until_complete(asyncio.sleep(0.5))
-    
-        # WebSocket should be closed after the context manager
->       assert len(real_websocket_manager.active_connections) == 0, "WebSocket connection not closed properly"
-E       AssertionError: WebSocket connection not closed properly
-E       assert 1 == 0
-E        +  where 1 = len({<starlette.websockets.WebSocket object at 0x000001EDAF535820>: <User(id=0998094e-1b11-4459-9e5a-643c44b2089e, screen_name=testuser)>})
-E        +    where {<starlette.websockets.WebSocket object at 0x000001EDAF535820>: <User(id=0998094e-1b11-4459-9e5a-643c44b2089e, screen_name=testuser)>} = <app.services.websocket_manager.WebSocketManager object at 0x000001EDAF5370E0>.active_connections
-
-tests\test_websocket.py:176: AssertionError
----------------------------- Captured stdout setup ----------------------------
-2024-09-09 16:27:17,582 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2024-09-09 16:27:17,583 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name) VALUES (?, ?)
-2024-09-09 16:27:17,583 INFO sqlalchemy.engine.Engine [cached since 0.2891s ago] ('0998094e-1b11-4459-9e5a-643c44b2089e', 'testuser')
-2024-09-09 16:27:17,583 INFO sqlalchemy.engine.Engine COMMIT
------------------------------ Captured log setup ------------------------------
-INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
-INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name) VALUES (?, ?)
-INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.2891s ago] ('0998094e-1b11-4459-9e5a-643c44b2089e', 'testuser')
-INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
----------------------------- Captured stdout call -----------------------------
-2024-09-09 16:27:17,586 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2024-09-09 16:27:17,586 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name 
-FROM users 
-WHERE users.id = ?
-2024-09-09 16:27:17,586 INFO sqlalchemy.engine.Engine [cached since 0.2766s ago] ('0998094e-1b11-4459-9e5a-643c44b2089e',)
-WebSocket connected for user 0998094e-1b11-4459-9e5a-643c44b2089e
------------------------------- Captured log call ------------------------------
-INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
-INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name 
-FROM users 
-WHERE users.id = ?
-INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.2766s ago] ('0998094e-1b11-4459-9e5a-643c44b2089e',)
-WARNING  app.services.websocket_manager:websocket_manager.py:39 Attempted to disconnect a WebSocket that was not in active connections
--------------------------- Captured stdout teardown ---------------------------
-2024-09-09 16:27:18,335 INFO sqlalchemy.engine.Engine ROLLBACK
----------------------------- Captured log teardown ----------------------------
-INFO     sqlalchemy.engine.Engine:base.py:2688 ROLLBACK
-============================== warnings summary ===============================
-.venv\Lib\site-packages\pydantic\_internal\_config.py:267
-.venv\Lib\site-packages\pydantic\_internal\_config.py:267
-  c:\Users\narayan\Develop\foxhole\.venv\Lib\site-packages\pydantic\_internal\_config.py:267: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.4/migration/
+=============================== warnings summary ===============================
+venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267
+venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267
+  /Users/nyn/develop/foxhole/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.4/migration/
     warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
 
 tests/test_auth.py: 3 warnings
 tests/test_main.py: 2 warnings
 tests/test_websocket.py: 5 warnings
-  c:\Users\narayan\Develop\foxhole\.venv\Lib\site-packages\jose\jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  /Users/nyn/develop/foxhole/venv/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     now = timegm(datetime.utcnow().utctimetuple())
 
 tests/test_auth.py::test_create_access_token
-  tests\test_auth.py:109: PytestWarning: The test <Function test_create_access_token> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove asyncio marker. If the test is not marked explicitly, check for global markers applied via 'pytestmark'.
+  tests/test_auth.py:109: PytestWarning: The test <Function test_create_access_token> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove asyncio marker. If the test is not marked explicitly, check for global markers applied via 'pytestmark'.
     def test_create_access_token() -> None:
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=========================== short test summary info ===========================
-FAILED tests/test_websocket.py::test_websocket_disconnect - AssertionError: W...
-============ 1 failed, 31 passed, 1 skipped, 13 warnings in 1.16s =============
+======================= 32 passed, 13 warnings in 1.11s ========================

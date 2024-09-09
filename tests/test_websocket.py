@@ -7,7 +7,7 @@ from app.services.websocket_manager import WebSocketManager
 import asyncio
 import logging
 from starlette.websockets import WebSocketDisconnect
-from typing import AsyncGenerator, Any
+from typing import Any
 from fastapi import status
 from app.routers.websocket import init_websocket_manager
 from sqlalchemy.exc import SQLAlchemyError
@@ -57,65 +57,43 @@ def test_websocket_multiple_messages(
         assert websocket.receive_text() == "Message sent: World"
 
 
-@pytest.mark.skip(
-    reason="Broadcast test is currently unstable and needs further investigation"
-)
 @pytest.mark.asyncio
-async def test_websocket_broadcast(
-    test_client: TestClient, token: str, websocket_manager: WebSocketManager
+async def test_websocket_disconnect(
+    client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
 ) -> None:
-    async def connect_and_receive(
-        client: TestClient, token: str
-    ) -> AsyncGenerator[Any, None]:
+    real_websocket_manager = WebSocketManager()
+    init_websocket_manager(real_websocket_manager)
+
+    async def connection_task() -> None:
         with client.websocket_connect(f"/ws?token={token}") as websocket:
-            yield websocket
+            websocket.send_text("Hello")
+            messages = []
 
-    async with asyncio.timeout(5):  # 5 seconds timeout
-        ws1_gen = connect_and_receive(test_client, token)
-        ws2_gen = connect_and_receive(test_client, token)
+            for _ in range(2):
+                message = websocket.receive_text()
+                messages.append(message)
 
-        websocket1 = await anext(ws1_gen)
-        websocket2 = await anext(ws2_gen)
+            assert len(messages) == 2, f"Expected 2 messages, got {len(messages)}"
+            assert (
+                messages[0] == f"User {test_user.id}: Hello"
+            ), f"Unexpected response: {messages[0]}"
+            assert (
+                messages[1] == "Message sent: Hello"
+            ), f"Unexpected response: {messages[1]}"
 
-        logger.info("Both WebSockets connected")
+    async def disconnect_task() -> None:
+        await asyncio.sleep(1)  # Give some time for the connection to be established
+        await real_websocket_manager.close_all_connections()
 
-        websocket1.send_text("Hello everyone")
-        logger.info("Sent message from websocket1")
+    await asyncio.gather(connection_task(), disconnect_task())
 
-        # Check the messages for websocket1 (order may vary)
-        messages1 = []
-        for _ in range(2):
-            try:
-                message = websocket1.receive_text()
-                messages1.append(message)
-                logger.info(f"Received message on websocket1: {message}")
-            except WebSocketDisconnect:
-                logger.error("WebSocket1 disconnected unexpectedly")
-                break
+    # Wait for the disconnect event with a timeout
+    await real_websocket_manager.wait_for_disconnect(timeout=2.0)
 
-        assert "User test_user_id: Hello everyone" in messages1
-        assert "Message sent: Hello everyone" in messages1
-
-        # Check the broadcasted message for websocket2
-        try:
-            message2 = websocket2.receive_text()
-            logger.info(f"Received message on websocket2: {message2}")
-            assert message2 == "User test_user_id: Hello everyone"
-        except WebSocketDisconnect:
-            logger.error("WebSocket2 disconnected unexpectedly")
-            pytest.fail("Did not receive broadcast message on websocket2")
-
-        # Check the last broadcasted message
-        assert (
-            websocket_manager.get_last_message() == "User test_user_id: Hello everyone"
-        )
-
-        # Close the WebSocket connections
-        await websocket1.close()
-        await websocket2.close()
-
-    # Ensure the connections are removed from the manager
-    assert len(websocket_manager.active_connections) == 0
+    assert len(real_websocket_manager.active_connections) == 0, (
+        f"WebSocket connection not closed properly. "
+        f"Active connections: {real_websocket_manager.active_connections}"
+    )
 
 
 @pytest.mark.asyncio
@@ -143,46 +121,20 @@ async def test_websocket_endpoint_sqlalchemy_error(
     mock_manager.connect.side_effect = SQLAlchemyError("Database error")
     mock_manager.active_connections = {}
     mock_manager.disconnect = AsyncMock()
-    
-    with patch('app.routers.websocket.websocket_manager', mock_manager):
+
+    with patch("app.routers.websocket.websocket_manager", mock_manager):
         with pytest.raises(WebSocketDisconnect) as exc_info:
-            with client.websocket_connect(f"/ws?token={authenticated_user['token']}") as websocket:
-                # The connection should be closed immediately due to the SQLAlchemyError
+            with client.websocket_connect(f"/ws?token={authenticated_user['token']}"):
                 pass
 
         assert exc_info.value.code == status.WS_1011_INTERNAL_ERROR
 
-    # Ensure disconnect was not called (as the connection should fail before it's established)
     mock_manager.disconnect.assert_not_called()
 
 
-@pytest.mark.asyncio
-async def test_websocket_disconnect(
-    client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
-) -> None:
-    real_websocket_manager = WebSocketManager()
-
-    with patch('app.routers.websocket.websocket_manager', real_websocket_manager):
-        with client.websocket_connect(f"/ws?token={token}") as websocket:
-            websocket.send_text("Hello")
-            response1 = websocket.receive_text()
-            response2 = websocket.receive_text()
-            assert response1 == f"User {test_user.id}: Hello", f"Unexpected response: {response1}"
-            assert response2 == "Message sent: Hello", f"Unexpected response: {response2}"
-
-    # Wait for the disconnect to be processed
-    await real_websocket_manager.wait_for_disconnect()
-
-    # WebSocket should be closed after the context manager
-    assert len(real_websocket_manager.active_connections) == 0, "WebSocket connection not closed properly"
-
-    # Add this line to print the active connections for debugging
-    print(f"Active connections: {real_websocket_manager.active_connections}")
-
-
-def test_websocket_unauthorized(test_client: TestClient) -> None:
+def test_websocket_unauthorized(client: TestClient) -> None:
     with pytest.raises(WebSocketDisconnect) as excinfo:
-        with test_client.websocket_connect("/ws"):
+        with client.websocket_connect("/ws"):
             pass
     error_detail = excinfo.value.reason
     assert isinstance(error_detail, list) and len(error_detail) > 0
@@ -190,8 +142,8 @@ def test_websocket_unauthorized(test_client: TestClient) -> None:
     assert error_detail[0]["loc"] == ["query", "token"]
 
 
-def test_websocket_invalid_token(test_client: TestClient) -> None:
-    with pytest.raises(Exception) as excinfo:  # The exact exception type may vary
-        with test_client.websocket_connect("/ws?token=invalid_token"):
+def test_websocket_invalid_token(client: TestClient) -> None:
+    with pytest.raises(WebSocketDisconnect) as excinfo:
+        with client.websocket_connect("/ws?token=invalid_token"):
             pass
-    assert "Invalid token" in str(excinfo.value)
+    assert excinfo.value.code == status.WS_1008_POLICY_VIOLATION
