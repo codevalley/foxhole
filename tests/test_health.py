@@ -1,5 +1,8 @@
 from httpx import AsyncClient
 import pytest
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio

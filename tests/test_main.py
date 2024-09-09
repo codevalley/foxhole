@@ -1,6 +1,10 @@
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 pytestmark = pytest.mark.asyncio
 

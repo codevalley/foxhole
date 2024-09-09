@@ -1,4 +1,5 @@
 import pytest
+import logging  # Add this import
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     create_async_engine,
@@ -10,8 +11,10 @@ from app.app import app
 from app.dependencies import get_db, get_storage_service
 from tests.mocks.mock_storage_service import MockStorageService
 from httpx import AsyncClient
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient as FastAPITestClient
 from typing import AsyncGenerator, Callable, Any
+from app.services.websocket_manager import WebSocketManager
+from app.routers import websocket as websocket_router  # Add this import
 
 # Test database URL
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -72,5 +75,18 @@ async def async_client(
 
 
 @pytest.fixture
-def test_client(app_with_mocked_dependencies: Any) -> TestClient:
-    return TestClient(app_with_mocked_dependencies)
+def websocket_manager() -> WebSocketManager:
+    return WebSocketManager()
+
+
+@pytest.fixture
+def test_client(
+    websocket_manager: WebSocketManager, app_with_mocked_dependencies: Any
+) -> FastAPITestClient:
+    websocket_router.init_websocket_manager(websocket_manager)
+    return FastAPITestClient(app_with_mocked_dependencies)
+
+
+@pytest.fixture(autouse=True)
+def configure_logging() -> None:
+    logging.basicConfig(level=logging.INFO)

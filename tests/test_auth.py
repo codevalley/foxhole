@@ -4,6 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import User
 from app.routers.auth import create_access_token
 from typing import Dict, Any
+import logging
+
+logger = logging.getLogger(__name__)
 
 pytestmark = pytest.mark.asyncio
 

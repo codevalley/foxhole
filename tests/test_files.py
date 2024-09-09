@@ -1,6 +1,10 @@
 import pytest
 from httpx import AsyncClient
 from app.services.storage_service import StorageService
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 pytestmark = pytest.mark.asyncio
 

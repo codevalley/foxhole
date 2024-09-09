@@ -93,30 +93,33 @@ async def get_current_user(
 
 
 async def get_current_user_ws(
-    token: str = Query(...), db: AsyncSession = Depends(get_db)
-) -> User:
+    websocket: WebSocket, token: str = Query(...), db: AsyncSession = Depends(get_db)
+) -> Optional[User]:
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         user_id: str = payload.get("sub")
         if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token"
             )
+            return None
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        await websocket.close(
+            code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token"
         )
+        return None
 
     stmt = select(User).filter(User.id == user_id)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+        await websocket.close(
+            code=status.WS_1008_POLICY_VIOLATION, reason="User not found"
         )
+        return None
     return user
 
 

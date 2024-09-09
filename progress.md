@@ -23,19 +23,34 @@
 - [x] Implement proper error handling and validation in file upload and retrieval endpoints in `app/routers/files.py`
 - [x] Add authentication to the WebSocket endpoint
 - [x] Implement file listing logic in the `list_files` endpoint in `app/routers/files.py`
-- [x] Update WebSocket tests in `/tests/test_websocket.py` to use `TestClient` from `fastapi.testclient`
-- [x] Fix database initialization issues in WebSocket tests
-- [x] Implement more comprehensive test coverage
-- [x] Review and update all file paths to use absolute paths from project root
+- [x] Update WebSocket tests to use FastAPI TestClient instead of Starlette TestClient
+- [x] Implement `WebSocketManager` from `/app/services/websocket_manager.py` in the main application (`/app/app.py`)
+- [x] Fix WebSocket connection handling for invalid tokens
+- [x] Resolve WebSocket manager initialization issues in tests and main application
+- [x] Correct import issues in test configuration for WebSocket tests
+- [x] Improve WebSocket broadcast test to handle potential disconnections
+- [x] Enhance WebSocketManager to handle failed message sends
+- [x] Fix WebSocket multiple messages test to account for both broadcast and personal messages
+- [x] Update WebSocket broadcast test to use synchronous TestClient API
+- [x] Fix WebSocket broadcast test to account for both broadcast and personal confirmation messages
+- [x] Refine WebSocket broadcast test to handle timeouts and ensure proper connection closure
+- [x] Refactor WebSocket broadcast test to use synchronous TestClient API
+- [x] Add detailed logging to WebSocketManager and WebSocket tests
+- [x] Implement timeouts in WebSocket broadcast test to prevent indefinite hanging
+- [x] Fix logging import issues in test files and conftest.py
+- [x] Fix WebSocket broadcast test to use synchronous TestClient approach
+- [x] Update WebSocket unauthorized test to handle new error message format
+- [x] Ensure use of FastAPI TestClient instead of Starlette TestClient in tests
+- [x] Fix linting and type checking issues in WebSocket-related files
+- [x] Address mypy type checking issues in WebSocket-related files
 
 ## In Progress
 - [ ] Set up Docker and Kamal configuration for deployment
-- [ ] Implement `WebSocketManager` from `/app/services/websocket_manager.py` in the main application (`/app/app.py`)
-- [x] Replace stub implementation of `StorageService` in `/app/dependencies.py` with a real implementation (e.g., using MinIO)
-- [ ] Expand test coverage, especially for WebSocket and file operations
 - [ ] Add more logging statements throughout the application for better debugging and monitoring
+- [ ] Expand test coverage, especially for WebSocket and file operations
 
 ## To Do
+- [ ] Debug and fix WebSocket broadcast test
 - [ ] Implement rollback and monitoring strategies
 - [ ] Enhance documentation
 - [ ] Implement data isolation strategy for chambers
@@ -45,6 +60,7 @@
 - [ ] Add API versioning to make future updates easier
 
 ## Issues and Improvements
+- [ ] Investigate and resolve issues with WebSocket broadcast functionality
 - [ ] Consider implementing a more robust WebSocket connection management system
 - [ ] Evaluate and improve the current authentication mechanism for scalability
 - [ ] Implement a more comprehensive error handling and reporting system
