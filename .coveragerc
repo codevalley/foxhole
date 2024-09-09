@@ -1,0 +1,6 @@
+[run]
+omit =
+    fox_cli.py
+    */__init__.py
+    */tests/*
+    */migrations/*
