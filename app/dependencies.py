@@ -10,26 +10,73 @@ from fastapi import UploadFile
 from jose import JWTError, jwt
 from app.core.config import settings
 from sqlalchemy import select
+from minio import Minio
+import logging
+from minio.error import S3Error
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
+logger = logging.getLogger(__name__)
+
+
 # Temporary stub implementation
-class StubStorageService(StorageService):
+class MinioStorageService(StorageService):
+    def __init__(self) -> None:
+        self.client = Minio(
+            settings.MINIO_ENDPOINT,
+            access_key=settings.MINIO_ACCESS_KEY,
+            secret_key=settings.MINIO_SECRET_KEY,
+            secure=settings.MINIO_SECURE,
+        )
+
+    async def upload_file(
+        self, file: UploadFile, bucket_name: str, object_name: str
+    ) -> Optional[str]:
+        try:
+            # Implement file upload logic here
+            return "Placeholder for uploaded file URL"  # TODO:Replace with actual logic
+        except Exception as e:
+            logger.error(f"Error uploading file: {e}")
+            return None
+
+    async def get_file_url(self, bucket_name: str, object_name: str) -> Optional[str]:
+        try:
+            return str(self.client.presigned_get_object(bucket_name, object_name))
+        except S3Error as e:
+            logger.error(f"Error getting file URL: {e}")
+            return None
+
+    async def list_files(self, bucket_name: str) -> list[str]:
+        try:
+            # Implement file listing logic here
+            return [
+                "placeholder_file1.txt",
+                "placeholder_file2.txt",
+            ]  # TODO:Replace with actual logic
+        except Exception as e:
+            logger.error(f"Error listing files: {e}")
+            return []
+
+
+class MockStorageService(StorageService):
     async def upload_file(
         self, file: UploadFile, bucket_name: str, object_name: str
     ) -> Optional[str]:
         return object_name
 
     async def get_file_url(self, bucket_name: str, object_name: str) -> Optional[str]:
-        return f"http://example.com/{bucket_name}/{object_name}"  # noqa: E231
+        return f"http://mock-storage/{bucket_name}/{object_name}"  # noqa: E231
 
     async def list_files(self, bucket_name: str) -> list[str]:
-        return []
+        return ["mock_file1.txt", "mock_file2.txt"]
 
 
 def get_storage_service() -> StorageService:
-    return StubStorageService()
+    if settings.USE_MOCK_STORAGE:
+        return MockStorageService()
+    else:
+        return MinioStorageService()
 
 
 async def get_current_user(

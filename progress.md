@@ -20,13 +20,9 @@
 - [x] Complete implementation of `authenticate_user` and `get_current_user` functions in `routers/auth.py`
 - [x] Wrap Minio client in a custom class implementing the `StorageService` interface in `app/dependencies.py`
 - [x] Replace `print` statements with proper logging in `app/services/storage_service.py`
-- [x] Consolidate configuration files: remove `config.py` and use `app/core/config.py` throughout the application
-- [x] Consolidate `User` model definitions in `app/models.py` and remove `models` folder
 - [x] Implement proper error handling and validation in file upload and retrieval endpoints in `app/routers/files.py`
 - [x] Add authentication to the WebSocket endpoint
 - [x] Implement file listing logic in the `list_files` endpoint in `app/routers/files.py`
-- [x] Add more comprehensive test coverage in `tests/test_main.py`
-- [x] Ensure all sensitive information (like `SECRET_KEY`) is properly secured and not hardcoded in configuration files
 - [x] Update WebSocket tests in `/tests/test_websocket.py` to use `TestClient` from `fastapi.testclient`
 - [x] Fix database initialization issues in WebSocket tests
 - [x] Implement more comprehensive test coverage
@@ -35,7 +31,7 @@
 ## In Progress
 - [ ] Set up Docker and Kamal configuration for deployment
 - [ ] Implement `WebSocketManager` from `/app/services/websocket_manager.py` in the main application (`/app/app.py`)
-- [ ] Replace stub implementation of `StorageService` in `/app/dependencies.py` with a real implementation (e.g., using MinIO)
+- [x] Replace stub implementation of `StorageService` in `/app/dependencies.py` with a real implementation (e.g., using MinIO)
 - [ ] Expand test coverage, especially for WebSocket and file operations
 - [ ] Add more logging statements throughout the application for better debugging and monitoring
 
