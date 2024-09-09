@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     MINIO_ROOT_USER: str = "minioadmin"
     MINIO_ROOT_PASSWORD: str = "minioadmin"
     MINIO_HOST: str = "localhost:9000"
+    MINIO_SECURE: bool = False  # Add this line
 
     # JWT settings
     SECRET_KEY: str = secrets.token_urlsafe(32)

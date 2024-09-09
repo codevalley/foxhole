@@ -43,6 +43,12 @@
 - [x] Ensure use of FastAPI TestClient instead of Starlette TestClient in tests
 - [x] Fix linting and type checking issues in WebSocket-related files
 - [x] Address mypy type checking issues in WebSocket-related files
+- [x] Fix MINIO_SECURE setting in app configuration
+- [x] Correct WebSocket test type annotations
+- [x] Fix string indexing issue in WebSocket unauthorized test
+- [x] Align CI checks with local pre-commit hooks for consistency
+- [x] Update pre-commit configuration to ensure all checks are in "check-only" mode
+- [x] Run pre-commit install to apply new pre-commit configuration
 
 ## In Progress
 - [ ] Set up Docker and Kamal configuration for deployment

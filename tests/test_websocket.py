@@ -7,7 +7,7 @@ from app.services.websocket_manager import WebSocketManager
 import asyncio
 import logging
 from starlette.websockets import WebSocketDisconnect
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Any
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ async def test_websocket_broadcast(
 ) -> None:
     async def connect_and_receive(
         client: FastAPITestClient, token: str
-    ) -> AsyncGenerator[FastAPITestClient.WebSocketTestSession, None]:
+    ) -> AsyncGenerator[Any, None]:
         with client.websocket_connect(f"/ws?token={token}") as websocket:
             yield websocket
 
@@ -128,7 +128,10 @@ def test_websocket_unauthorized(test_client: FastAPITestClient) -> None:
     with pytest.raises(WebSocketDisconnect) as excinfo:
         with test_client.websocket_connect("/ws"):
             pass
-    assert any("token" in error["loc"] for error in excinfo.value.reason)
+    error_detail = excinfo.value.reason
+    assert isinstance(error_detail, list) and len(error_detail) > 0
+    assert error_detail[0]["type"] == "missing"
+    assert error_detail[0]["loc"] == ["query", "token"]
 
 
 def test_websocket_invalid_token(test_client: FastAPITestClient) -> None:
