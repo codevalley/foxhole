@@ -34,8 +34,9 @@ class MinioStorageService(StorageService):
         self, file: UploadFile, bucket_name: str, object_name: str
     ) -> Optional[str]:
         try:
-            # Implement file upload logic here
-            return "Placeholder for uploaded file URL"  # TODO:Replace with actual logic
+            # Simulate file upload
+            self.client.put_object(bucket_name, object_name, file.file, file.size)
+            return f"https://{bucket_name}.s3.amazonaws.com/{object_name}"  # noqa: E231
         except Exception as e:
             logger.error(f"Error uploading file: {e}")
             return None
@@ -49,11 +50,8 @@ class MinioStorageService(StorageService):
 
     async def list_files(self, bucket_name: str) -> list[str]:
         try:
-            # Implement file listing logic here
-            return [
-                "placeholder_file1.txt",
-                "placeholder_file2.txt",
-            ]  # TODO:Replace with actual logic
+            objects = self.client.list_objects(bucket_name)
+            return [obj.object_name for obj in objects]
         except Exception as e:
             logger.error(f"Error listing files: {e}")
             return []

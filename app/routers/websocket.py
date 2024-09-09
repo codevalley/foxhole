@@ -38,20 +38,20 @@ async def websocket_endpoint(
         await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
         return
 
-    await websocket_manager.connect(websocket, user)
     try:
-        while True:
-            data = await websocket.receive_text()
-            logger.debug(f"Received WebSocket message from {user.id}: {data}")
-            await websocket_manager.broadcast(f"User {user.id}: {data}")
-            # Send a personal confirmation message
-            await websocket_manager.send_personal_message(
-                f"Message sent: {data}", websocket
-            )
-    except WebSocketDisconnect:
-        websocket_manager.disconnect(websocket)
-        logger.debug(f"WebSocket disconnected for user {user.id}")
-        await websocket_manager.broadcast(f"User {user.id} left the chat")
+        await websocket_manager.connect(websocket, user)
+        try:
+            while True:
+                data = await websocket.receive_text()
+                logger.debug(f"Received WebSocket message from {user.id}: {data}")
+                await websocket_manager.broadcast(f"User {user.id}: {data}")
+                await websocket_manager.send_personal_message(
+                    f"Message sent: {data}", websocket
+                )
+        except WebSocketDisconnect:
+            websocket_manager.disconnect(websocket)
+            logger.debug(f"WebSocket disconnected for user {user.id}")
+            await websocket_manager.broadcast(f"User {user.id} left the chat")
     except SQLAlchemyError:
         logger.exception("Database error occurred")
         await websocket.close(

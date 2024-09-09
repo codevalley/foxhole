@@ -53,17 +53,16 @@
 ## In Progress
 - [ ] Set up Docker and Kamal configuration for deployment
 - [ ] Add more logging statements throughout the application for better debugging and monitoring
-- [ ] Expand test coverage, especially for WebSocket and file operations
+- [ ] Expand test coverage, especially for dependencies.py, auth.py and websocket.py
 
 ## To Do
-- [ ] Debug and fix WebSocket broadcast test
 - [ ] Implement rollback and monitoring strategies
 - [ ] Enhance documentation
-- [ ] Implement data isolation strategy for chambers
 - [ ] Design and implement offline message queueing
 - [ ] Add rate limiting for API endpoints to prevent abuse
 - [ ] Implement database migrations for easier schema management
 - [ ] Add API versioning to make future updates easier
+- [ ] Debug and fix WebSocket broadcast test
 
 ## Issues and Improvements
 - [ ] Investigate and resolve issues with WebSocket broadcast functionality

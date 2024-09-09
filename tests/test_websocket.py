@@ -1,5 +1,5 @@
 import pytest
-from fastapi.testclient import TestClient as FastAPITestClient
+from fastapi.testclient import TestClient
 from app.routers.auth import create_access_token
 from app.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +8,10 @@ import asyncio
 import logging
 from starlette.websockets import WebSocketDisconnect
 from typing import AsyncGenerator, Any
+from fastapi import status
+from app.routers.websocket import init_websocket_manager
+from sqlalchemy.exc import SQLAlchemyError
+from unittest.mock import MagicMock
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +35,7 @@ def websocket_manager() -> WebSocketManager:
 
 
 def test_websocket_connection(
-    test_client: FastAPITestClient, token: str, websocket_manager: WebSocketManager
+    test_client: TestClient, token: str, websocket_manager: WebSocketManager
 ) -> None:
     with test_client.websocket_connect(f"/ws?token={token}") as websocket:
         websocket.send_text("Hello")
@@ -41,7 +45,7 @@ def test_websocket_connection(
 
 
 def test_websocket_multiple_messages(
-    test_client: FastAPITestClient, token: str, websocket_manager: WebSocketManager
+    test_client: TestClient, token: str, websocket_manager: WebSocketManager
 ) -> None:
     with test_client.websocket_connect(f"/ws?token={token}") as websocket:
         websocket.send_text("Hello")
@@ -57,10 +61,10 @@ def test_websocket_multiple_messages(
 )
 @pytest.mark.asyncio
 async def test_websocket_broadcast(
-    test_client: FastAPITestClient, token: str, websocket_manager: WebSocketManager
+    test_client: TestClient, token: str, websocket_manager: WebSocketManager
 ) -> None:
     async def connect_and_receive(
-        client: FastAPITestClient, token: str
+        client: TestClient, token: str
     ) -> AsyncGenerator[Any, None]:
         with client.websocket_connect(f"/ws?token={token}") as websocket:
             yield websocket
@@ -113,8 +117,40 @@ async def test_websocket_broadcast(
     assert len(websocket_manager.active_connections) == 0
 
 
+@pytest.mark.asyncio
+async def test_websocket_endpoint_uninitialized_manager(
+    client: TestClient,
+    authenticated_user: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.routers.websocket.websocket_manager", None)
+
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect(f"/ws?token={authenticated_user['token']}"):
+            pass
+
+    assert exc_info.value.code == status.WS_1011_INTERNAL_ERROR
+
+
+@pytest.mark.asyncio
+async def test_websocket_endpoint_sqlalchemy_error(
+    client: TestClient,
+    authenticated_user: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_manager = MagicMock(spec=WebSocketManager)
+    mock_manager.connect.side_effect = SQLAlchemyError("Database error")
+    init_websocket_manager(mock_manager)
+
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect(f"/ws?token={authenticated_user['token']}"):
+            pass
+
+    assert exc_info.value.code == status.WS_1011_INTERNAL_ERROR
+
+
 def test_websocket_disconnect(
-    test_client: FastAPITestClient, token: str, websocket_manager: WebSocketManager
+    test_client: TestClient, token: str, websocket_manager: WebSocketManager
 ) -> None:
     with test_client.websocket_connect(f"/ws?token={token}") as websocket:
         websocket.send_text("Hello")
@@ -124,7 +160,7 @@ def test_websocket_disconnect(
     assert len(websocket_manager.active_connections) == 0
 
 
-def test_websocket_unauthorized(test_client: FastAPITestClient) -> None:
+def test_websocket_unauthorized(test_client: TestClient) -> None:
     with pytest.raises(WebSocketDisconnect) as excinfo:
         with test_client.websocket_connect("/ws"):
             pass
@@ -134,7 +170,7 @@ def test_websocket_unauthorized(test_client: FastAPITestClient) -> None:
     assert error_detail[0]["loc"] == ["query", "token"]
 
 
-def test_websocket_invalid_token(test_client: FastAPITestClient) -> None:
+def test_websocket_invalid_token(test_client: TestClient) -> None:
     with pytest.raises(Exception) as excinfo:  # The exact exception type may vary
         with test_client.websocket_connect("/ws?token=invalid_token"):
             pass
