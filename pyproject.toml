@@ -9,9 +9,21 @@ check_untyped_defs = true
 disallow_untyped_defs = true
 explicit_package_bases = true
 namespace_packages = true
+plugins = "sqlalchemy.ext.mypy.plugin"
 
 # Use .gitignore for exclusions
 exclude = ".*/\\.*"
 
+[[tool.mypy.overrides]]
+module = "sqlalchemy.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pytest.*"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
+
+[tool.sqlalchemy]
+mypy_enable_sqlalchemy_plugin = true

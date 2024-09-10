@@ -13,8 +13,8 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id = Column(String, primary_key=True, index=True)
-    screen_name = Column(String, index=True)
+    id: str = Column(String, primary_key=True, index=True)
+    screen_name: str = Column(String, index=True)
 
     @staticmethod
     def generate_user_id() -> str:

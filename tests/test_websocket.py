@@ -19,9 +19,11 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture
 async def test_user(db_session: AsyncSession) -> User:
-    user = User(id=str(uuid.uuid4()), screen_name="testuser")
+    user_id = str(uuid.uuid4())
+    user = User(id=user_id, screen_name="testuser")
     db_session.add(user)
     await db_session.commit()
+    await db_session.refresh(user)
     return user
 
 
