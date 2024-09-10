@@ -25,15 +25,26 @@ class UserSchema(BaseModel):
 
     id: str
     screen_name: str
+    user_secret: str
 
     class Config:
         from_attributes = True
 
 
-class UserResponse(UserSchema):
-    """Schema for user response."""
+class UserResponse(BaseModel):
+    """Schema for general user response (without user_secret)."""
 
-    pass
+    id: str
+    screen_name: str
+
+    class Config:
+        from_attributes = True
+
+
+class UserRegistrationResponse(UserResponse):
+    """Schema for user registration response (includes user_secret)."""
+
+    user_secret: str
 
 
 class Token(BaseModel):

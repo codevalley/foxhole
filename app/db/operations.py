@@ -16,9 +16,20 @@ async def get_user_by_id(db: AsyncSession, user_id: str) -> Optional[User]:
         return None
 
 
+async def get_user_by_secret(db: AsyncSession, user_secret: str) -> Optional[User]:
+    try:
+        result = await db.execute(select(User).filter(User.user_secret == user_secret))
+        return result.scalar_one_or_none()
+    except Exception as e:
+        logger.error(f"Error fetching user by secret: {str(e)}")
+        return None
+
+
 async def create_user(db: AsyncSession, screen_name: str) -> Optional[User]:
     try:
-        new_user = User(id=User.generate_user_id(), screen_name=screen_name)
+        new_user = User(
+            screen_name=screen_name, user_secret=User.generate_user_secret()
+        )
         db.add(new_user)
         await db.commit()
         await db.refresh(new_user)
@@ -32,7 +43,10 @@ async def create_user(db: AsyncSession, screen_name: str) -> Optional[User]:
 async def update_user(db: AsyncSession, user: User, **kwargs: Any) -> Optional[User]:
     try:
         for key, value in kwargs.items():
-            setattr(user, key, value)
+            if (
+                key != "id" and key != "user_secret"
+            ):  # Prevent updating id and user_secret
+                setattr(user, key, value)
         await db.commit()
         await db.refresh(user)
         return user

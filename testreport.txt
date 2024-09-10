@@ -7,138 +7,615 @@ plugins: anyio-3.7.1, asyncio-0.21.1
 asyncio: mode=Mode.AUTO
 collecting ... collected 32 items
 
-tests/test_auth.py::test_register_user PASSED                            [  3%]
-tests/test_auth.py::test_login PASSED                                    [  6%]
-tests/test_auth.py::test_get_current_user PASSED                         [  9%]
-tests/test_auth.py::test_update_user_profile PASSED                      [ 12%]
-tests/test_auth.py::test_invalid_token FAILED                            [ 15%]
+tests/test_auth.py::test_register_user FAILED                            [  3%]
+tests/test_auth.py::test_login FAILED                                    [  6%]
+tests/test_auth.py::test_get_current_user FAILED                         [  9%]
+tests/test_auth.py::test_update_user_profile FAILED                      [ 12%]
+tests/test_auth.py::test_invalid_token PASSED                            [ 15%]
 tests/test_auth.py::test_missing_token PASSED                            [ 18%]
 tests/test_auth.py::test_create_access_token PASSED                      [ 21%]
-tests/test_auth.py::test_login_for_access_token_invalid_user FAILED      [ 25%]
-tests/test_auth.py::test_get_current_user_invalid_token FAILED           [ 28%]
-tests/test_auth.py::test_update_user_profile_no_changes PASSED           [ 31%]
+tests/test_auth.py::test_login_for_access_token_invalid_user PASSED      [ 25%]
+tests/test_auth.py::test_get_current_user_invalid_token PASSED           [ 28%]
+tests/test_auth.py::test_update_user_profile_no_changes FAILED           [ 31%]
 tests/test_dependencies.py::test_minio_storage_service_upload_file_error PASSED [ 34%]
 tests/test_dependencies.py::test_minio_storage_service_get_file_url_error PASSED [ 37%]
 tests/test_dependencies.py::test_minio_storage_service_list_files_error PASSED [ 40%]
 tests/test_dependencies.py::test_get_storage_service_mock PASSED         [ 43%]
 tests/test_dependencies.py::test_get_storage_service_minio PASSED        [ 46%]
-tests/test_files.py::test_upload_file PASSED                             [ 50%]
-tests/test_files.py::test_get_file_url PASSED                            [ 53%]
-tests/test_files.py::test_get_file_url_not_found PASSED                  [ 56%]
-tests/test_files.py::test_list_files PASSED                              [ 59%]
+tests/test_files.py::test_upload_file FAILED                             [ 50%]
+tests/test_files.py::test_list_files FAILED                              [ 53%]
+tests/test_files.py::test_get_file_url PASSED                            [ 56%]
+tests/test_files.py::test_get_file_url_not_found PASSED                  [ 59%]
 tests/test_health.py::test_health_check PASSED                           [ 62%]
 tests/test_main.py::test_register_user PASSED                            [ 65%]
-tests/test_main.py::test_login PASSED                                    [ 68%]
-tests/test_main.py::test_get_user_profile PASSED                         [ 71%]
-tests/test_main.py::test_update_user_profile PASSED                      [ 75%]
+tests/test_main.py::test_login FAILED                                    [ 68%]
+tests/test_main.py::test_get_user_profile FAILED                         [ 71%]
+tests/test_main.py::test_update_user_profile FAILED                      [ 75%]
 tests/test_main.py::test_health_check PASSED                             [ 78%]
 tests/test_websocket.py::test_websocket_connection PASSED                [ 81%]
 tests/test_websocket.py::test_websocket_multiple_messages PASSED         [ 84%]
 tests/test_websocket.py::test_websocket_disconnect PASSED                [ 87%]
-tests/test_websocket.py::test_websocket_endpoint_uninitialized_manager PASSED [ 90%]
-tests/test_websocket.py::test_websocket_endpoint_sqlalchemy_error PASSED [ 93%]
+tests/test_websocket.py::test_websocket_endpoint_uninitialized_manager ERROR [ 90%]
+tests/test_websocket.py::test_websocket_endpoint_sqlalchemy_error ERROR  [ 93%]
 tests/test_websocket.py::test_websocket_unauthorized PASSED              [ 96%]
 tests/test_websocket.py::test_websocket_invalid_token PASSED             [100%]
 
-================================== FAILURES ===================================
-_____________________________ test_invalid_token ______________________________
+=================================== ERRORS ====================================
+_______ ERROR at setup of test_websocket_endpoint_uninitialized_manager _______
 
-async_client = <httpx.AsyncClient object at 0x000002851B290E60>
+event_loop = <ProactorEventLoop running=False closed=False debug=False>
+request = <SubRequest 'authenticated_user' for <Function test_websocket_endpoint_uninitialized_manager>>
+kwargs = {'async_client': <httpx.AsyncClient object at 0x0000015945215B80>}
+setup = <function _wrap_async_fixture.<locals>._async_fixture_wrapper.<locals>.setup at 0x0000015945231300>
 
-    async def test_invalid_token(async_client: AsyncClient) -> None:
-        response = await async_client.get(
-            "/auth/users/me", headers={"Authorization": "Bearer invalid_token"}
+    @functools.wraps(fixture)
+    def _async_fixture_wrapper(
+        event_loop: asyncio.AbstractEventLoop, request: SubRequest, **kwargs: Any
+    ):
+        func = _perhaps_rebind_fixture_func(
+            fixture, request.instance, fixturedef.unittest
         )
-        assert response.status_code == 401
->       assert response.json()["detail"] == "Could not validate credentials"
-E       AssertionError: assert 'Invalid auth...n credentials' == 'Could not va...e credentials'
-E         - Could not validate credentials
-E         + Invalid authentication credentials
 
-tests\test_auth.py:100: AssertionError
-__________________ test_login_for_access_token_invalid_user ___________________
+        async def setup():
+            res = await func(**_add_kwargs(func, kwargs, event_loop, request))
+            return res
 
-async_client = <httpx.AsyncClient object at 0x000002851B2C3680>
+>       return event_loop.run_until_complete(setup())
 
-    async def test_login_for_access_token_invalid_user(async_client: AsyncClient) -> None:
-        response = await async_client.post(
-            "/auth/token", data={"user_id": "non_existent_user"}
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:326:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.1520.0_x64__qbz5n2kfra8p0\Lib\asyncio\base_events.py:687: in run_until_complete
+    return future.result()
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:323: in setup
+    res = await func(**_add_kwargs(func, kwargs, event_loop, request))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+async_client = <httpx.AsyncClient object at 0x0000015945215B80>
+
+    @pytest.fixture
+    async def authenticated_user(async_client: AsyncClient) -> dict[str, Any]:
+        user_data = {"screen_name": "testuser"}
+        response = await async_client.post("/auth/register", json=user_data)
+        assert response.status_code == 200, f"Registration failed: {response.text}"
+        user_info = response.json()
+
+        token_response = await async_client.post(
+>           "/auth/token", data={"user_secret": user_info["user_secret"]}
         )
-        assert response.status_code == 401
->       assert response.json()["detail"] == "Invalid user ID"
-E       AssertionError: assert 'Invalid auth...n credentials' == 'Invalid user ID'
-E         - Invalid user ID
-E         + Invalid authentication credentials
+E       KeyError: 'user_secret'
 
-tests\test_auth.py:121: AssertionError
----------------------------- Captured stdout call -----------------------------
-2024-09-10 11:49:33,650 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2024-09-10 11:49:33,650 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name
+tests\conftest.py:77: KeyError
+---------------------------- Captured stdout setup ----------------------------
+2024-09-10 16:48:27,780 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:27,780 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+2024-09-10 16:48:27,780 INFO sqlalchemy.engine.Engine [cached since 2.027s ago] ('454833b5-59c3-4145-8a33-eaf4371c4b33', 'testuser', 'af4d7f10-9204-4ab1-b440-30bab94d18c1')
+2024-09-10 16:48:27,785 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-10 16:48:27,802 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:27,803 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name, users.user_secret
 FROM users
 WHERE users.id = ?
-2024-09-10 11:49:33,650 INFO sqlalchemy.engine.Engine [cached since 0.6581s ago] ('non_existent_user',)
+2024-09-10 16:48:27,803 INFO sqlalchemy.engine.Engine [cached since 2.028s ago] ('454833b5-59c3-4145-8a33-eaf4371c4b33',)
+----------------------------- Captured log setup ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 2.027s ago] ('454833b5-59c3-4145-8a33-eaf4371c4b33', 'testuser', 'af4d7f10-9204-4ab1-b440-30bab94d18c1')
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 2.028s ago] ('454833b5-59c3-4145-8a33-eaf4371c4b33',)
+_________ ERROR at setup of test_websocket_endpoint_sqlalchemy_error __________
+
+event_loop = <ProactorEventLoop running=False closed=False debug=False>
+request = <SubRequest 'authenticated_user' for <Function test_websocket_endpoint_sqlalchemy_error>>
+kwargs = {'async_client': <httpx.AsyncClient object at 0x0000015945214BF0>}
+setup = <function _wrap_async_fixture.<locals>._async_fixture_wrapper.<locals>.setup at 0x0000015945233EC0>
+
+    @functools.wraps(fixture)
+    def _async_fixture_wrapper(
+        event_loop: asyncio.AbstractEventLoop, request: SubRequest, **kwargs: Any
+    ):
+        func = _perhaps_rebind_fixture_func(
+            fixture, request.instance, fixturedef.unittest
+        )
+
+        async def setup():
+            res = await func(**_add_kwargs(func, kwargs, event_loop, request))
+            return res
+
+>       return event_loop.run_until_complete(setup())
+
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:326:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.1520.0_x64__qbz5n2kfra8p0\Lib\asyncio\base_events.py:687: in run_until_complete
+    return future.result()
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:323: in setup
+    res = await func(**_add_kwargs(func, kwargs, event_loop, request))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+async_client = <httpx.AsyncClient object at 0x0000015945214BF0>
+
+    @pytest.fixture
+    async def authenticated_user(async_client: AsyncClient) -> dict[str, Any]:
+        user_data = {"screen_name": "testuser"}
+        response = await async_client.post("/auth/register", json=user_data)
+        assert response.status_code == 200, f"Registration failed: {response.text}"
+        user_info = response.json()
+
+        token_response = await async_client.post(
+>           "/auth/token", data={"user_secret": user_info["user_secret"]}
+        )
+E       KeyError: 'user_secret'
+
+tests\conftest.py:77: KeyError
+---------------------------- Captured stdout setup ----------------------------
+2024-09-10 16:48:27,919 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:27,919 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+2024-09-10 16:48:27,920 INFO sqlalchemy.engine.Engine [cached since 2.167s ago] ('0484474a-7156-4cb0-842b-5b14847acf99', 'testuser', 'd5fb37bb-b428-4ab4-ba5d-c0a957441c1f')
+2024-09-10 16:48:27,928 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-10 16:48:27,945 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:27,946 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+2024-09-10 16:48:27,946 INFO sqlalchemy.engine.Engine [cached since 2.17s ago] ('0484474a-7156-4cb0-842b-5b14847acf99',)
+----------------------------- Captured log setup ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 2.167s ago] ('0484474a-7156-4cb0-842b-5b14847acf99', 'testuser', 'd5fb37bb-b428-4ab4-ba5d-c0a957441c1f')
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 2.17s ago] ('0484474a-7156-4cb0-842b-5b14847acf99',)
+================================== FAILURES ===================================
+_____________________________ test_register_user ______________________________
+
+async_client = <httpx.AsyncClient object at 0x000001594513E0F0>
+db_session = <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x0000015945043500>
+
+    async def test_register_user(async_client: AsyncClient, db_session: AsyncSession) -> None:
+        response = await async_client.post(
+            "/auth/register", json={"screen_name": "testuser"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "id" in data
+>       assert "user_secret" in data
+E       AssertionError: assert 'user_secret' in {'id': '65e5f064-be91-4e12-8011-e59550568c02', 'screen_name': 'testuser'}
+
+tests\test_auth.py:21: AssertionError
+---------------------------- Captured stdout setup ----------------------------
+2024-09-10 16:48:25,730 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:25,731 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2024-09-10 16:48:25,731 INFO sqlalchemy.engine.Engine [raw sql] ()
+2024-09-10 16:48:25,734 INFO sqlalchemy.engine.Engine COMMIT
+----------------------------- Captured log setup ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 PRAGMA main.table_info("users")
+INFO     sqlalchemy.engine.Engine:base.py:1844 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+---------------------------- Captured stdout call -----------------------------
+2024-09-10 16:48:25,751 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:25,753 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+2024-09-10 16:48:25,753 INFO sqlalchemy.engine.Engine [generated in 0.00036s] ('65e5f064-be91-4e12-8011-e59550568c02', 'testuser', '6bf71b4e-9ee8-4ed9-8e3c-2f9015cf59b3')
+2024-09-10 16:48:25,757 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-10 16:48:25,774 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:25,776 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+2024-09-10 16:48:25,776 INFO sqlalchemy.engine.Engine [generated in 0.00061s] ('65e5f064-be91-4e12-8011-e59550568c02',)
 ------------------------------ Captured log call ------------------------------
 INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
-INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name
+INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [generated in 0.00036s] ('65e5f064-be91-4e12-8011-e59550568c02', 'testuser', '6bf71b4e-9ee8-4ed9-8e3c-2f9015cf59b3')
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name, users.user_secret
 FROM users
 WHERE users.id = ?
-INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.6581s ago] ('non_existent_user',)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [generated in 0.00061s] ('65e5f064-be91-4e12-8011-e59550568c02',)
 -------------------------- Captured stdout teardown ---------------------------
-2024-09-10 11:49:33,661 INFO sqlalchemy.engine.Engine ROLLBACK
+2024-09-10 16:48:26,193 INFO sqlalchemy.engine.Engine ROLLBACK
 ---------------------------- Captured log teardown ----------------------------
 INFO     sqlalchemy.engine.Engine:base.py:2688 ROLLBACK
-_____________________ test_get_current_user_invalid_token _____________________
+_________________________________ test_login __________________________________
 
-async_client = <httpx.AsyncClient object at 0x000002851B2911C0>
+async_client = <httpx.AsyncClient object at 0x000001594513E3F0>
+db_session = <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x0000015945043530>
 
-    async def test_get_current_user_invalid_token(async_client: AsyncClient) -> None:
-        response = await async_client.get(
-            "/auth/users/me", headers={"Authorization": "Bearer invalid_token"}
+    async def test_login(async_client: AsyncClient, db_session: AsyncSession) -> None:
+        # First, register a user
+        register_response = await async_client.post(
+            "/auth/register", json={"screen_name": "loginuser"}
         )
-        assert response.status_code == 401
->       assert response.json()["detail"] == "Could not validate credentials"
-E       AssertionError: assert 'Invalid auth...n credentials' == 'Could not va...e credentials'
-E         - Could not validate credentials
-E         + Invalid authentication credentials
+>       user_secret = register_response.json()["user_secret"]
+E       KeyError: 'user_secret'
 
-tests\test_auth.py:129: AssertionError
+tests\test_auth.py:30: KeyError
+---------------------------- Captured stdout call -----------------------------
+2024-09-10 16:48:26,202 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,202 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+2024-09-10 16:48:26,202 INFO sqlalchemy.engine.Engine [cached since 0.45s ago] ('d0a1a49f-8e4f-4137-9856-cf6fb40deeaf', 'loginuser', 'c92e816e-bd1d-47ef-902b-1fdc409d89c5')
+2024-09-10 16:48:26,207 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-10 16:48:26,222 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,223 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+2024-09-10 16:48:26,223 INFO sqlalchemy.engine.Engine [cached since 0.4478s ago] ('d0a1a49f-8e4f-4137-9856-cf6fb40deeaf',)
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.45s ago] ('d0a1a49f-8e4f-4137-9856-cf6fb40deeaf', 'loginuser', 'c92e816e-bd1d-47ef-902b-1fdc409d89c5')
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.4478s ago] ('d0a1a49f-8e4f-4137-9856-cf6fb40deeaf',)
+-------------------------- Captured stdout teardown ---------------------------
+2024-09-10 16:48:26,234 INFO sqlalchemy.engine.Engine ROLLBACK
+---------------------------- Captured log teardown ----------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2688 ROLLBACK
+____________________________ test_get_current_user ____________________________
+
+async_client = <httpx.AsyncClient object at 0x00000159451B27B0>
+db_session = <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x00000159451B1B20>
+
+    async def test_get_current_user(async_client: AsyncClient, db_session: AsyncSession) -> None:
+        # Register and login a user
+        register_response = await async_client.post(
+            "/auth/register", json={"screen_name": "currentuser"}
+        )
+>       user_secret = register_response.json()["user_secret"]
+E       KeyError: 'user_secret'
+
+tests\test_auth.py:47: KeyError
+---------------------------- Captured stdout call -----------------------------
+2024-09-10 16:48:26,241 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,241 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+2024-09-10 16:48:26,242 INFO sqlalchemy.engine.Engine [cached since 0.4886s ago] ('d86eb4ec-c99c-4326-b2d9-a5cd78d65ff1', 'currentuser', '4d48b1f7-a2d6-4342-b637-a004d8e4c84e')
+2024-09-10 16:48:26,245 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-10 16:48:26,259 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,259 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+2024-09-10 16:48:26,259 INFO sqlalchemy.engine.Engine [cached since 0.4844s ago] ('d86eb4ec-c99c-4326-b2d9-a5cd78d65ff1',)
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.4886s ago] ('d86eb4ec-c99c-4326-b2d9-a5cd78d65ff1', 'currentuser', '4d48b1f7-a2d6-4342-b637-a004d8e4c84e')
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.4844s ago] ('d86eb4ec-c99c-4326-b2d9-a5cd78d65ff1',)
+-------------------------- Captured stdout teardown ---------------------------
+2024-09-10 16:48:26,271 INFO sqlalchemy.engine.Engine ROLLBACK
+---------------------------- Captured log teardown ----------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2688 ROLLBACK
+__________________________ test_update_user_profile ___________________________
+
+async_client = <httpx.AsyncClient object at 0x000001594513E780>
+db_session = <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x000001594513E390>
+
+    async def test_update_user_profile(async_client: AsyncClient, db_session: AsyncSession) -> None:
+        # Register and login a user
+        register_response = await async_client.post(
+            "/auth/register", json={"screen_name": "updateuser"}
+        )
+>       user_secret = register_response.json()["user_secret"]
+E       KeyError: 'user_secret'
+
+tests\test_auth.py:69: KeyError
+---------------------------- Captured stdout call -----------------------------
+2024-09-10 16:48:26,277 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,277 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+2024-09-10 16:48:26,277 INFO sqlalchemy.engine.Engine [cached since 0.5248s ago] ('2c07ca37-2b7f-4570-9e6b-720ade0a2343', 'updateuser', '9f76e784-2946-4d45-be52-a1db75667ae7')
+2024-09-10 16:48:26,281 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-10 16:48:26,295 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,296 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+2024-09-10 16:48:26,296 INFO sqlalchemy.engine.Engine [cached since 0.5203s ago] ('2c07ca37-2b7f-4570-9e6b-720ade0a2343',)
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.5248s ago] ('2c07ca37-2b7f-4570-9e6b-720ade0a2343', 'updateuser', '9f76e784-2946-4d45-be52-a1db75667ae7')
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.5203s ago] ('2c07ca37-2b7f-4570-9e6b-720ade0a2343',)
+-------------------------- Captured stdout teardown ---------------------------
+2024-09-10 16:48:26,306 INFO sqlalchemy.engine.Engine ROLLBACK
+---------------------------- Captured log teardown ----------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2688 ROLLBACK
+_____________________ test_update_user_profile_no_changes _____________________
+
+async_client = <httpx.AsyncClient object at 0x000001594513F260>
+db_session = <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x0000015945207020>
+
+    async def test_update_user_profile_no_changes(
+        async_client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        # Register and login a user
+        register_response = await async_client.post(
+            "/auth/register", json={"screen_name": "no_change_user"}
+        )
+>       user_secret = register_response.json()["user_secret"]
+E       KeyError: 'user_secret'
+
+tests\test_auth.py:131: KeyError
+---------------------------- Captured stdout call -----------------------------
+2024-09-10 16:48:26,344 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,345 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+2024-09-10 16:48:26,345 INFO sqlalchemy.engine.Engine [cached since 0.5917s ago] ('83d00c32-e1e6-4493-8f89-b009f213f96d', 'no_change_user', '93b1afb5-4daf-4465-9cd5-fc7520577dc4')
+2024-09-10 16:48:26,349 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-10 16:48:26,363 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,363 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+2024-09-10 16:48:26,363 INFO sqlalchemy.engine.Engine [cached since 0.5876s ago] ('83d00c32-e1e6-4493-8f89-b009f213f96d',)
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.5917s ago] ('83d00c32-e1e6-4493-8f89-b009f213f96d', 'no_change_user', '93b1afb5-4daf-4465-9cd5-fc7520577dc4')
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.5876s ago] ('83d00c32-e1e6-4493-8f89-b009f213f96d',)
+-------------------------- Captured stdout teardown ---------------------------
+2024-09-10 16:48:26,373 INFO sqlalchemy.engine.Engine ROLLBACK
+---------------------------- Captured log teardown ----------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2688 ROLLBACK
+______________________________ test_upload_file _______________________________
+
+async_client = <httpx.AsyncClient object at 0x000001594524C980>
+mock_storage_service = <tests.mocks.mock_storage_service.MockStorageService object at 0x000001594524CD40>
+
+    async def test_upload_file(
+        async_client: AsyncClient, mock_storage_service: StorageService
+    ) -> None:
+>       access_token = await get_access_token(async_client)
+
+tests\test_files.py:26:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+async_client = <httpx.AsyncClient object at 0x000001594524C980>
+
+    async def get_access_token(async_client: AsyncClient) -> str:
+        register_response = await async_client.post(
+            "/auth/register", json={"screen_name": "testuser"}
+        )
+>       user_secret = register_response.json()["user_secret"]
+E       KeyError: 'user_secret'
+
+tests\test_files.py:16: KeyError
+---------------------------- Captured stdout call -----------------------------
+2024-09-10 16:48:26,392 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,393 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+2024-09-10 16:48:26,393 INFO sqlalchemy.engine.Engine [cached since 0.6406s ago] ('8f10339e-d4ae-4302-a184-b05b6c527dfa', 'testuser', '875f9bbe-ad3a-4c94-bf65-400d0ed32559')
+2024-09-10 16:48:26,397 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-10 16:48:26,411 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,411 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+2024-09-10 16:48:26,411 INFO sqlalchemy.engine.Engine [cached since 0.6364s ago] ('8f10339e-d4ae-4302-a184-b05b6c527dfa',)
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.6406s ago] ('8f10339e-d4ae-4302-a184-b05b6c527dfa', 'testuser', '875f9bbe-ad3a-4c94-bf65-400d0ed32559')
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.6364s ago] ('8f10339e-d4ae-4302-a184-b05b6c527dfa',)
+-------------------------- Captured stdout teardown ---------------------------
+2024-09-10 16:48:26,422 INFO sqlalchemy.engine.Engine ROLLBACK
+---------------------------- Captured log teardown ----------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2688 ROLLBACK
+_______________________________ test_list_files _______________________________
+
+async_client = <httpx.AsyncClient object at 0x0000015945214CE0>
+mock_storage_service = <tests.mocks.mock_storage_service.MockStorageService object at 0x00000159452154F0>
+
+    async def test_list_files(
+        async_client: AsyncClient, mock_storage_service: StorageService
+    ) -> None:
+>       access_token = await get_access_token(async_client)
+
+tests\test_files.py:39:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+async_client = <httpx.AsyncClient object at 0x0000015945214CE0>
+
+    async def get_access_token(async_client: AsyncClient) -> str:
+        register_response = await async_client.post(
+            "/auth/register", json={"screen_name": "testuser"}
+        )
+>       user_secret = register_response.json()["user_secret"]
+E       KeyError: 'user_secret'
+
+tests\test_files.py:16: KeyError
+---------------------------- Captured stdout call -----------------------------
+2024-09-10 16:48:26,428 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,430 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+2024-09-10 16:48:26,430 INFO sqlalchemy.engine.Engine [cached since 0.6764s ago] ('2f67779a-8720-4ed7-a6a2-706ef796c193', 'testuser', '08d79433-1892-466c-9b6a-da970c3e4c06')
+2024-09-10 16:48:26,432 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-10 16:48:26,445 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,445 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+2024-09-10 16:48:26,445 INFO sqlalchemy.engine.Engine [cached since 0.6703s ago] ('2f67779a-8720-4ed7-a6a2-706ef796c193',)
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.6764s ago] ('2f67779a-8720-4ed7-a6a2-706ef796c193', 'testuser', '08d79433-1892-466c-9b6a-da970c3e4c06')
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.6703s ago] ('2f67779a-8720-4ed7-a6a2-706ef796c193',)
+-------------------------- Captured stdout teardown ---------------------------
+2024-09-10 16:48:26,456 INFO sqlalchemy.engine.Engine ROLLBACK
+---------------------------- Captured log teardown ----------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2688 ROLLBACK
+_________________________________ test_login __________________________________
+
+async_client = <httpx.AsyncClient object at 0x000001594524E7E0>
+db_session = <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x000001594524D6D0>
+
+    async def test_login(async_client: AsyncClient, db_session: AsyncSession) -> None:
+        # First, register a user
+        register_response = await async_client.post(
+            "/auth/register", json={"screen_name": "testuser"}
+        )
+        assert register_response.status_code == 200
+>       user_secret = register_response.json()["user_secret"]
+E       KeyError: 'user_secret'
+
+tests\test_main.py:28: KeyError
+---------------------------- Captured stdout call -----------------------------
+2024-09-10 16:48:26,506 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,507 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+2024-09-10 16:48:26,507 INFO sqlalchemy.engine.Engine [cached since 0.7537s ago] ('ba5bdec1-3cc6-40b7-b0fb-7479b80a0401', 'testuser', '1bda95fe-7377-420f-b16d-db4be2c43791')
+2024-09-10 16:48:26,510 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-10 16:48:26,524 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,525 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+2024-09-10 16:48:26,525 INFO sqlalchemy.engine.Engine [cached since 0.7494s ago] ('ba5bdec1-3cc6-40b7-b0fb-7479b80a0401',)
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.7537s ago] ('ba5bdec1-3cc6-40b7-b0fb-7479b80a0401', 'testuser', '1bda95fe-7377-420f-b16d-db4be2c43791')
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.7494s ago] ('ba5bdec1-3cc6-40b7-b0fb-7479b80a0401',)
+-------------------------- Captured stdout teardown ---------------------------
+2024-09-10 16:48:26,534 INFO sqlalchemy.engine.Engine ROLLBACK
+---------------------------- Captured log teardown ----------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2688 ROLLBACK
+____________________________ test_get_user_profile ____________________________
+
+async_client = <httpx.AsyncClient object at 0x000001594524EA20>
+db_session = <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x0000015945207C20>
+
+    async def test_get_user_profile(
+        async_client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        # First, register and login
+        register_response = await async_client.post(
+            "/auth/register", json={"screen_name": "testuser"}
+        )
+>       user_secret = register_response.json()["user_secret"]
+E       KeyError: 'user_secret'
+
+tests\test_main.py:45: KeyError
+---------------------------- Captured stdout call -----------------------------
+2024-09-10 16:48:26,543 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,544 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+2024-09-10 16:48:26,544 INFO sqlalchemy.engine.Engine [cached since 0.7911s ago] ('8fe9a08e-b306-4a84-9149-c6dca1a73b41', 'testuser', 'ee9019b0-2e1f-4da9-8e95-afb16ead42b3')
+2024-09-10 16:48:26,548 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-10 16:48:26,563 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,564 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+2024-09-10 16:48:26,564 INFO sqlalchemy.engine.Engine [cached since 0.7893s ago] ('8fe9a08e-b306-4a84-9149-c6dca1a73b41',)
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.7911s ago] ('8fe9a08e-b306-4a84-9149-c6dca1a73b41', 'testuser', 'ee9019b0-2e1f-4da9-8e95-afb16ead42b3')
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.7893s ago] ('8fe9a08e-b306-4a84-9149-c6dca1a73b41',)
+-------------------------- Captured stdout teardown ---------------------------
+2024-09-10 16:48:26,576 INFO sqlalchemy.engine.Engine ROLLBACK
+---------------------------- Captured log teardown ----------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2688 ROLLBACK
+__________________________ test_update_user_profile ___________________________
+
+async_client = <httpx.AsyncClient object at 0x00000159452055E0>
+db_session = <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x0000015945207380>
+
+    async def test_update_user_profile(
+        async_client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        # First, register and login
+        register_response = await async_client.post(
+            "/auth/register", json={"screen_name": "testuser"}
+        )
+>       user_secret = register_response.json()["user_secret"]
+E       KeyError: 'user_secret'
+
+tests\test_main.py:63: KeyError
+---------------------------- Captured stdout call -----------------------------
+2024-09-10 16:48:26,583 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,584 INFO sqlalchemy.engine.Engine INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+2024-09-10 16:48:26,584 INFO sqlalchemy.engine.Engine [cached since 0.8314s ago] ('1beab51a-682f-4eda-b0b8-e72e84a61739', 'testuser', '2e7f6001-d6b2-411c-8059-0f4fcdc48830')
+2024-09-10 16:48:26,588 INFO sqlalchemy.engine.Engine COMMIT
+2024-09-10 16:48:26,607 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 16:48:26,607 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+2024-09-10 16:48:26,607 INFO sqlalchemy.engine.Engine [cached since 0.8321s ago] ('1beab51a-682f-4eda-b0b8-e72e84a61739',)
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 INSERT INTO users (id, screen_name, user_secret) VALUES (?, ?, ?)
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.8314s ago] ('1beab51a-682f-4eda-b0b8-e72e84a61739', 'testuser', '2e7f6001-d6b2-411c-8059-0f4fcdc48830')
+INFO     sqlalchemy.engine.Engine:base.py:2691 COMMIT
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name, users.user_secret
+FROM users
+WHERE users.id = ?
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.8321s ago] ('1beab51a-682f-4eda-b0b8-e72e84a61739',)
+-------------------------- Captured stdout teardown ---------------------------
+2024-09-10 16:48:26,620 INFO sqlalchemy.engine.Engine ROLLBACK
+---------------------------- Captured log teardown ----------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2688 ROLLBACK
 ============================== warnings summary ===============================
+.venv\Lib\site-packages\pydantic\_internal\_config.py:267
 .venv\Lib\site-packages\pydantic\_internal\_config.py:267
 .venv\Lib\site-packages\pydantic\_internal\_config.py:267
   c:\Users\narayan\Develop\foxhole\.venv\Lib\site-packages\pydantic\_internal\_config.py:267: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.4/migration/
     warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
 
-tests/test_auth.py: 5 warnings
-tests/test_main.py: 3 warnings
-tests/test_websocket.py: 5 warnings
-  C:\Users\narayan\Develop\foxhole\utils\security.py:46: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+tests/test_auth.py::test_create_access_token
+  tests\test_auth.py:102: PytestWarning: The test <Function test_create_access_token> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove asyncio marker. If the test is not marked explicitly, check for global markers applied via 'pytestmark'.
+    def test_create_access_token() -> None:
 
-tests/test_auth.py: 3 warnings
-tests/test_main.py: 2 warnings
-tests/test_websocket.py: 5 warnings
+tests/test_websocket.py::test_websocket_connection
+tests/test_websocket.py::test_websocket_multiple_messages
+tests/test_websocket.py::test_websocket_disconnect
   c:\Users\narayan\Develop\foxhole\.venv\Lib\site-packages\jose\jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     now = timegm(datetime.utcnow().utctimetuple())
 
-tests/test_auth.py::test_update_user_profile
-tests/test_auth.py::test_update_user_profile_no_changes
-tests/test_main.py::test_update_user_profile
-  C:\Users\narayan\Develop\foxhole\app\routers\auth.py:66: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.4/migration/
-    db, current_user, **user_update.dict(exclude_unset=True)
-
-tests/test_auth.py::test_update_user_profile
-tests/test_auth.py::test_update_user_profile_no_changes
-tests/test_main.py::test_update_user_profile
-  c:\Users\narayan\Develop\foxhole\.venv\Lib\site-packages\pydantic\main.py:962: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.4/migration/
-    warnings.warn('The `dict` method is deprecated; use `model_dump` instead.', DeprecationWarning)
-
-tests/test_auth.py::test_create_access_token
-  tests\test_auth.py:109: PytestWarning: The test <Function test_create_access_token> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove asyncio marker. If the test is not marked explicitly, check for global markers applied via 'pytestmark'.
-    def test_create_access_token() -> None:
-
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 =========================== short test summary info ===========================
-FAILED tests/test_auth.py::test_invalid_token - AssertionError: assert 'Inval...
-FAILED tests/test_auth.py::test_login_for_access_token_invalid_user - Asserti...
-FAILED tests/test_auth.py::test_get_current_user_invalid_token - AssertionErr...
-================== 3 failed, 29 passed, 32 warnings in 2.37s ==================
+FAILED tests/test_auth.py::test_register_user - AssertionError: assert 'user_...
+FAILED tests/test_auth.py::test_login - KeyError: 'user_secret'
+FAILED tests/test_auth.py::test_get_current_user - KeyError: 'user_secret'
+FAILED tests/test_auth.py::test_update_user_profile - KeyError: 'user_secret'
+FAILED tests/test_auth.py::test_update_user_profile_no_changes - KeyError: 'u...
+FAILED tests/test_files.py::test_upload_file - KeyError: 'user_secret'
+FAILED tests/test_files.py::test_list_files - KeyError: 'user_secret'
+FAILED tests/test_main.py::test_login - KeyError: 'user_secret'
+FAILED tests/test_main.py::test_get_user_profile - KeyError: 'user_secret'
+FAILED tests/test_main.py::test_update_user_profile - KeyError: 'user_secret'
+ERROR tests/test_websocket.py::test_websocket_endpoint_uninitialized_manager
+ERROR tests/test_websocket.py::test_websocket_endpoint_sqlalchemy_error - Key...
+============= 10 failed, 20 passed, 7 warnings, 2 errors in 2.49s =============

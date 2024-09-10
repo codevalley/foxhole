@@ -104,11 +104,14 @@ async def get_current_user_ws(
         )
         user_id: str = payload.get("sub")
         if user_id is None:
+            logger.error("Invalid token: sub claim is missing")
             await websocket.close(
                 code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token"
             )
             return None
-    except JWTError:
+        logger.info(f"Token decoded successfully. User ID: {user_id}")
+    except JWTError as e:
+        logger.error(f"Failed to decode token: {str(e)}")
         await websocket.close(
             code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token"
         )
@@ -119,10 +122,12 @@ async def get_current_user_ws(
     user = result.scalar_one_or_none()
 
     if user is None:
+        logger.error(f"User not found for ID: {user_id}")
         await websocket.close(
             code=status.WS_1008_POLICY_VIOLATION, reason="User not found"
         )
         return None
+    logger.info(f"User found: {user}")
     return user
 
 

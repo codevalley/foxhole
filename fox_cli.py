@@ -39,9 +39,11 @@ def register_user(screen_name):
         return None
 
 
-def get_access_token(user_id):
-    print_verbose(f"Requesting access token for user ID: {user_id}")
-    response = requests.post(f"{BASE_URL}/auth/token", data={"user_id": user_id})
+def get_access_token(user_secret):
+    print_verbose(f"Requesting access token for user")
+    response = requests.post(
+        f"{BASE_URL}/auth/token", data={"user_secret": user_secret}
+    )
     if response.status_code == 200:
         print_success("Access token obtained successfully")
         return response.json()["access_token"]
@@ -121,8 +123,13 @@ async def main():
     user_data = register_user(screen_name)
 
     if user_data:
-        print_success(f"User registered with ID: {user_data['id']}")
-        access_token = get_access_token(user_data["id"])
+        print_success(f"User registered with Handle: {user_data['id']}")
+        print_warning(f"Your user secret is: {user_data['user_secret']}")
+        print_warning(
+            "Please save this secret securely. It will be required for future logins."
+        )
+
+        access_token = get_access_token(user_data["user_secret"])
 
         if access_token:
             print_success(f"Access Token obtained: {access_token[:10]}...")
