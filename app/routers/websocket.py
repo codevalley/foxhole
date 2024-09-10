@@ -14,12 +14,6 @@ websocket_manager: Optional[WebSocketManager] = None
 
 
 def init_websocket_manager(manager: WebSocketManager) -> None:
-    """
-    Initialize the global WebSocket manager.
-
-    Args:
-        manager (WebSocketManager): The WebSocket manager instance to use.
-    """
     global websocket_manager
     websocket_manager = manager
 
@@ -28,14 +22,6 @@ def init_websocket_manager(manager: WebSocketManager) -> None:
 async def websocket_endpoint(
     websocket: WebSocket, token: str = Query(...), db: AsyncSession = Depends(get_db)
 ) -> None:
-    """
-    Handle WebSocket connections and messages.
-
-    Args:
-        websocket (WebSocket): The WebSocket connection.
-        token (str): The authentication token.
-        db (AsyncSession): The database session.
-    """
     try:
         logger.info(f"WebSocket connection attempt with token: {token}")
         user = await get_current_user_ws(websocket, token, db)
@@ -56,17 +42,20 @@ async def websocket_endpoint(
             while True:
                 data = await websocket.receive_text()
                 logger.debug(f"Received WebSocket message from {user.id}: {data}")
+
+                # Send acknowledgment
+                await websocket.send_text("ACK: Message received")
+
                 await websocket_manager.broadcast(f"User {user.id}: {data}")
-                await websocket_manager.send_personal_message(
-                    f"Message sent: {data}", websocket
-                )
-        except WebSocketDisconnect:
-            logger.info(f"WebSocket disconnected for user {user.id}")
+        except WebSocketDisconnect as e:
+            logger.info(f"WebSocket disconnected for user {user.id}. Code: {e.code}")
         except Exception as e:
             logger.error(
-                f"Unexpected error in WebSocket connection for user {user.id}: {e}"
+                f"Unexpected error in WebSocket connection for user {user.id}: {str(e)}",
+                exc_info=True,
             )
         finally:
+            logger.info(f"Cleaning up connection for user {user.id}")
             await websocket_manager.disconnect(websocket)
             await websocket_manager.broadcast(f"User {user.id} left the chat")
     except SQLAlchemyError as e:

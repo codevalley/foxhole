@@ -18,6 +18,10 @@ def print_success(message):
     print(f"{Fore.GREEN}[SUCCESS] {message}{Style.RESET_ALL}")
 
 
+def print_warning(message):
+    print(f"{Fore.YELLOW}[WARNING] {message}{Style.RESET_ALL}")
+
+
 def print_error(message):
     print(f"{Fore.RED}[ERROR] {message}{Style.RESET_ALL}")
 
@@ -72,21 +76,42 @@ async def connect_websocket(access_token):
             while True:
                 try:
                     message = await websocket.recv()
-                    print(f"{Fore.YELLOW}Received: {message}{Style.RESET_ALL}")
+                    if message.startswith("ACK:"):
+                        print(
+                            f"\r{Fore.GREEN}Server acknowledged: {message[4:]}{Style.RESET_ALL}"
+                        )
+                    else:
+                        print(f"\r{Fore.YELLOW}Received: {message}{Style.RESET_ALL}")
+                    print(f"{Fore.GREEN}You: {Style.RESET_ALL}", end="", flush=True)
                 except websockets.exceptions.ConnectionClosed:
-                    print_error("WebSocket connection closed")
+                    print_error("\rWebSocket connection closed")
+                    break
+                except Exception as e:
+                    print_error(f"\rError receiving message: {e}")
                     break
 
         receive_task = asyncio.create_task(receive_messages())
 
-        while True:
-            message = input(f"{Fore.GREEN}You: {Style.RESET_ALL}")
-            if message.lower() == "quit":
-                break
-            await websocket.send(message)
-            print_verbose("Message sent. Waiting for acknowledgement...")
+        try:
+            while True:
+                message = await asyncio.get_event_loop().run_in_executor(
+                    None, input, f"{Fore.GREEN}You: {Style.RESET_ALL}"
+                )
+                if message.lower() == "quit":
+                    break
+                try:
+                    await websocket.send(message)
+                    print_verbose("Message sent. Waiting for acknowledgement...")
+                except Exception as e:
+                    print_error(f"Error sending message: {e}")
+                    break
+        finally:
+            receive_task.cancel()
+            try:
+                await receive_task
+            except asyncio.CancelledError:
+                pass
 
-        receive_task.cancel()
     print_verbose("WebSocket connection closed")
 
 
@@ -102,15 +127,21 @@ async def main():
         if access_token:
             print_success(f"Access Token obtained: {access_token[:10]}...")
 
-            upload_option = input("Do you want to upload a file? (y/n): ").lower()
-            if upload_option == "y":
-                upload_file(access_token)
+            while True:
+                print(f"\n{Fore.MAGENTA}Foxhole CLI Menu:{Style.RESET_ALL}")
+                print("1. Upload a file")
+                print("2. Connect to WebSocket")
+                print("3. Exit")
+                choice = input("Enter your choice (1-3): ")
 
-            websocket_option = input(
-                "Do you want to connect to WebSocket? (y/n): "
-            ).lower()
-            if websocket_option == "y":
-                await connect_websocket(access_token)
+                if choice == "1":
+                    upload_file(access_token)
+                elif choice == "2":
+                    await connect_websocket(access_token)
+                elif choice == "3":
+                    break
+                else:
+                    print_error("Invalid choice. Please try again.")
 
     print(f"{Fore.MAGENTA}Thank you for using Foxhole CLI!{Style.RESET_ALL}")
 
