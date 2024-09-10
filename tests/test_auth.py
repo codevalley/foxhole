@@ -97,7 +97,7 @@ async def test_invalid_token(async_client: AsyncClient) -> None:
         "/auth/users/me", headers={"Authorization": "Bearer invalid_token"}
     )
     assert response.status_code == 401
-    assert response.json()["detail"] == "Could not validate credentials"
+    assert response.json()["detail"] == "Invalid authentication credentials"
 
 
 async def test_missing_token(async_client: AsyncClient) -> None:
@@ -118,7 +118,7 @@ async def test_login_for_access_token_invalid_user(async_client: AsyncClient) ->
         "/auth/token", data={"user_id": "non_existent_user"}
     )
     assert response.status_code == 401
-    assert response.json()["detail"] == "Invalid user ID"
+    assert response.json()["detail"] == "Invalid authentication credentials"
 
 
 async def test_get_current_user_invalid_token(async_client: AsyncClient) -> None:
@@ -126,7 +126,7 @@ async def test_get_current_user_invalid_token(async_client: AsyncClient) -> None
         "/auth/users/me", headers={"Authorization": "Bearer invalid_token"}
     )
     assert response.status_code == 401
-    assert response.json()["detail"] == "Could not validate credentials"
+    assert response.json()["detail"] == "Invalid authentication credentials"
 
 
 # Add this test if not already present

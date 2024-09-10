@@ -1,9 +1,9 @@
-============================= test session starts ==============================
-platform darwin -- Python 3.12.4, pytest-7.4.0, pluggy-1.5.0 -- /Users/nyn/develop/foxhole/venv/bin/python3.12
+============================= test session starts =============================
+platform win32 -- Python 3.12.5, pytest-7.4.0, pluggy-1.5.0 -- c:\Users\narayan\Develop\foxhole\.venv\Scripts\python.exe
 cachedir: .pytest_cache
-rootdir: /Users/nyn/develop/foxhole
+rootdir: C:\Users\narayan\Develop\foxhole
 configfile: pytest.ini
-plugins: mock-3.10.0, cov-4.1.0, asyncio-0.21.1, anyio-3.7.1
+plugins: anyio-3.7.1, asyncio-0.21.1
 asyncio: mode=Mode.AUTO
 collecting ... collected 32 items
 
@@ -11,11 +11,11 @@ tests/test_auth.py::test_register_user PASSED                            [  3%]
 tests/test_auth.py::test_login PASSED                                    [  6%]
 tests/test_auth.py::test_get_current_user PASSED                         [  9%]
 tests/test_auth.py::test_update_user_profile PASSED                      [ 12%]
-tests/test_auth.py::test_invalid_token PASSED                            [ 15%]
+tests/test_auth.py::test_invalid_token FAILED                            [ 15%]
 tests/test_auth.py::test_missing_token PASSED                            [ 18%]
 tests/test_auth.py::test_create_access_token PASSED                      [ 21%]
-tests/test_auth.py::test_login_for_access_token_invalid_user PASSED      [ 25%]
-tests/test_auth.py::test_get_current_user_invalid_token PASSED           [ 28%]
+tests/test_auth.py::test_login_for_access_token_invalid_user FAILED      [ 25%]
+tests/test_auth.py::test_get_current_user_invalid_token FAILED           [ 28%]
 tests/test_auth.py::test_update_user_profile_no_changes PASSED           [ 31%]
 tests/test_dependencies.py::test_minio_storage_service_upload_file_error PASSED [ 34%]
 tests/test_dependencies.py::test_minio_storage_service_get_file_url_error PASSED [ 37%]
@@ -40,21 +40,105 @@ tests/test_websocket.py::test_websocket_endpoint_sqlalchemy_error PASSED [ 93%]
 tests/test_websocket.py::test_websocket_unauthorized PASSED              [ 96%]
 tests/test_websocket.py::test_websocket_invalid_token PASSED             [100%]
 
-=============================== warnings summary ===============================
-venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267
-venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267
-  /Users/nyn/develop/foxhole/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:267: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.4/migration/
+================================== FAILURES ===================================
+_____________________________ test_invalid_token ______________________________
+
+async_client = <httpx.AsyncClient object at 0x000002851B290E60>
+
+    async def test_invalid_token(async_client: AsyncClient) -> None:
+        response = await async_client.get(
+            "/auth/users/me", headers={"Authorization": "Bearer invalid_token"}
+        )
+        assert response.status_code == 401
+>       assert response.json()["detail"] == "Could not validate credentials"
+E       AssertionError: assert 'Invalid auth...n credentials' == 'Could not va...e credentials'
+E         - Could not validate credentials
+E         + Invalid authentication credentials
+
+tests\test_auth.py:100: AssertionError
+__________________ test_login_for_access_token_invalid_user ___________________
+
+async_client = <httpx.AsyncClient object at 0x000002851B2C3680>
+
+    async def test_login_for_access_token_invalid_user(async_client: AsyncClient) -> None:
+        response = await async_client.post(
+            "/auth/token", data={"user_id": "non_existent_user"}
+        )
+        assert response.status_code == 401
+>       assert response.json()["detail"] == "Invalid user ID"
+E       AssertionError: assert 'Invalid auth...n credentials' == 'Invalid user ID'
+E         - Invalid user ID
+E         + Invalid authentication credentials
+
+tests\test_auth.py:121: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2024-09-10 11:49:33,650 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2024-09-10 11:49:33,650 INFO sqlalchemy.engine.Engine SELECT users.id, users.screen_name
+FROM users
+WHERE users.id = ?
+2024-09-10 11:49:33,650 INFO sqlalchemy.engine.Engine [cached since 0.6581s ago] ('non_existent_user',)
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2685 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1844 SELECT users.id, users.screen_name
+FROM users
+WHERE users.id = ?
+INFO     sqlalchemy.engine.Engine:base.py:1844 [cached since 0.6581s ago] ('non_existent_user',)
+-------------------------- Captured stdout teardown ---------------------------
+2024-09-10 11:49:33,661 INFO sqlalchemy.engine.Engine ROLLBACK
+---------------------------- Captured log teardown ----------------------------
+INFO     sqlalchemy.engine.Engine:base.py:2688 ROLLBACK
+_____________________ test_get_current_user_invalid_token _____________________
+
+async_client = <httpx.AsyncClient object at 0x000002851B2911C0>
+
+    async def test_get_current_user_invalid_token(async_client: AsyncClient) -> None:
+        response = await async_client.get(
+            "/auth/users/me", headers={"Authorization": "Bearer invalid_token"}
+        )
+        assert response.status_code == 401
+>       assert response.json()["detail"] == "Could not validate credentials"
+E       AssertionError: assert 'Invalid auth...n credentials' == 'Could not va...e credentials'
+E         - Could not validate credentials
+E         + Invalid authentication credentials
+
+tests\test_auth.py:129: AssertionError
+============================== warnings summary ===============================
+.venv\Lib\site-packages\pydantic\_internal\_config.py:267
+.venv\Lib\site-packages\pydantic\_internal\_config.py:267
+  c:\Users\narayan\Develop\foxhole\.venv\Lib\site-packages\pydantic\_internal\_config.py:267: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.4/migration/
     warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_auth.py: 5 warnings
+tests/test_main.py: 3 warnings
+tests/test_websocket.py: 5 warnings
+  C:\Users\narayan\Develop\foxhole\utils\security.py:46: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
 tests/test_auth.py: 3 warnings
 tests/test_main.py: 2 warnings
 tests/test_websocket.py: 5 warnings
-  /Users/nyn/develop/foxhole/venv/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  c:\Users\narayan\Develop\foxhole\.venv\Lib\site-packages\jose\jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     now = timegm(datetime.utcnow().utctimetuple())
 
+tests/test_auth.py::test_update_user_profile
+tests/test_auth.py::test_update_user_profile_no_changes
+tests/test_main.py::test_update_user_profile
+  C:\Users\narayan\Develop\foxhole\app\routers\auth.py:66: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.4/migration/
+    db, current_user, **user_update.dict(exclude_unset=True)
+
+tests/test_auth.py::test_update_user_profile
+tests/test_auth.py::test_update_user_profile_no_changes
+tests/test_main.py::test_update_user_profile
+  c:\Users\narayan\Develop\foxhole\.venv\Lib\site-packages\pydantic\main.py:962: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.4/migration/
+    warnings.warn('The `dict` method is deprecated; use `model_dump` instead.', DeprecationWarning)
+
 tests/test_auth.py::test_create_access_token
-  tests/test_auth.py:109: PytestWarning: The test <Function test_create_access_token> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove asyncio marker. If the test is not marked explicitly, check for global markers applied via 'pytestmark'.
+  tests\test_auth.py:109: PytestWarning: The test <Function test_create_access_token> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove asyncio marker. If the test is not marked explicitly, check for global markers applied via 'pytestmark'.
     def test_create_access_token() -> None:
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================= 32 passed, 13 warnings in 1.11s ========================
+=========================== short test summary info ===========================
+FAILED tests/test_auth.py::test_invalid_token - AssertionError: assert 'Inval...
+FAILED tests/test_auth.py::test_login_for_access_token_invalid_user - Asserti...
+FAILED tests/test_auth.py::test_get_current_user_invalid_token - AssertionErr...
+================== 3 failed, 29 passed, 32 warnings in 2.37s ==================
