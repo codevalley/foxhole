@@ -5,10 +5,18 @@
 
 This project is a scaffold for a FastAPI backend application with WebSocket support, SQLite database, Redis caching, and MinIO object storage. It's designed to provide a robust starting point for building scalable and maintainable API services.
 
-## Requirements
+## Key Features
 
-- Python 3.12 or higher
-- pip (Python package manager)
+- FastAPI web framework for high-performance API development
+- WebSocket support for real-time communication
+- Asynchronous SQLite database with SQLAlchemy ORM
+- Redis caching for improved performance
+- MinIO integration for object storage
+- Secure authentication using user_secret
+- Structured logging
+- Global error handling
+- Docker and docker-compose setup for easy deployment
+- Comprehensive testing framework with pytest
 
 ## Getting Started
 
@@ -18,40 +26,38 @@ This project is a scaffold for a FastAPI backend application with WebSocket supp
    cd foxhole
    ```
 
-2. Create a virtual environment (optional but recommended):
+2. Create a virtual environment and install dependencies:
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-   ```
-
-3. Install dependencies:
-   ```bash
    pip install -r requirements.txt
    ```
 
-4. Run the application:
+3. Run the application:
    ```bash
    uvicorn main:app --reload
    ```
 
-5. Open your browser and navigate to `http://localhost:8000/docs` to see the API documentation.
+4. Open your browser and navigate to `http://localhost:8000/docs` to see the API documentation.
 
-## Features
+## Authentication
 
-- FastAPI web framework for high-performance API development
-- WebSocket support for real-time communication
-- Asynchronous SQLite database with SQLAlchemy ORM
-- Redis caching for improved performance
-- MinIO integration for object storage
-- JWT-based authentication
-- Structured logging
-- Global error handling
-- Docker and docker-compose setup for easy deployment
-- Comprehensive testing framework with pytest
+This project uses a unique authentication approach:
 
-## Project Structure
+1. Users register with a screen name.
+2. The system generates a `user_secret` for each user.
+3. Users authenticate using their `user_secret` instead of a traditional username/password combination.
 
-For a detailed explanation of the project structure and components, please refer to the [GettingStarted.md](GettingStarted.md) file.
+Example:
+```python
+# Register a new user
+response = requests.post("/auth/register", json={"screen_name": "testuser"})
+user_secret = response.json()["user_secret"]
+
+# Login
+response = requests.post("/auth/token", data={"user_secret": user_secret})
+access_token = response.json()["access_token"]
+```
 
 ## Development
 
@@ -59,21 +65,16 @@ For a detailed explanation of the project structure and components, please refer
 - For deployment, utilize the provided Dockerfile and docker-compose.yml
 - Customize the deployment process using Kamal (configuration to be added)
 
-## Deployment
+## Testing
 
-[Include instructions for deploying the application using Docker and Kamal]
+Run tests using pytest:
+```bash
+pytest
+```
 
 ## Contributing
 
-We welcome contributions to the Foxhole Backend API project! Here are some guidelines to help you get started:
-
-1. Fork the repository and create your branch from `main`.
-2. If you've added code that should be tested, add tests.
-3. Ensure the test suite passes.
-4. Make sure your code lints.
-5. Issue that pull request!
-
-Please refer to the [GitHub Flow](https://guides.github.com/introduction/flow/) for more details on the contribution process.
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for more details.
 
 ## License
 

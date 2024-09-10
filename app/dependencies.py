@@ -2,7 +2,7 @@ from fastapi import Depends, HTTPException, status, WebSocket, Query
 from fastapi.security import OAuth2PasswordBearer
 from app.services.storage_service import StorageService
 from app.models import User
-from app.routers.auth import verify_token
+from utils.token import verify_token
 from sqlalchemy.ext.asyncio import AsyncSession
 from utils.database import get_db
 from typing import Optional
@@ -79,7 +79,7 @@ def get_storage_service() -> StorageService:
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
-) -> Optional[User]:
+) -> User:
     user_id = verify_token(token)
     if not user_id:
         raise HTTPException(
