@@ -9,4 +9,4 @@ pytest-asyncio
 pytest-cov==4.1.0
 fakeredis==2.20.0
 pytest-mock==3.10.0
-aioconsole=0.8.0
+aioconsole==0.8.0
