@@ -7,7 +7,7 @@ __pycache__/
 env/
 venv/
 *.env
-
+cli/foxhole_session.json
 # Add venv folder and contents
 .venv/
 
@@ -48,3 +48,4 @@ kamal.yml
 # AI
 .ai/
 repopack-output.txt
+cli/foxhole_session.json
