@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from app.routers import auth, health, websocket
 from utils.cache import init_cache, close_cache
-from utils.database import reset_database
 from app.services.websocket_manager import WebSocketManager
 from app.middleware.request_id import RequestIDMiddleware
 
@@ -14,7 +13,7 @@ app.add_middleware(RequestIDMiddleware)
 @app.on_event("startup")
 async def startup_event() -> None:
     await init_cache()
-    await reset_database()  # This will recreate the database
+    # await reset_database()  # This will recreate the database
     app.state.websocket_manager = WebSocketManager()
     websocket.init_websocket_manager(app.state.websocket_manager)
 

@@ -5,12 +5,17 @@ import json
 from colorama import init, Fore, Style
 import os
 import pickle
+import aioconsole
+
 
 # Initialize colorama for cross-platform color support
 init()
 
 BASE_URL = "http://127.0.0.1:8000"
 SESSION_FILE = "foxhole_session.pkl"
+
+websocket_connection = None
+exit_flag = False
 
 
 def print_verbose(message):
@@ -81,175 +86,149 @@ def get_user_info(access_token):
         return None
 
 
-def update_user_profile(access_token, new_screen_name):
-    print_verbose(f"Updating user profile with new screen name: {new_screen_name}")
+async def connect_websocket(access_token):
+    global websocket_connection
+    uri = f"ws://127.0.0.1:8000/ws?token={access_token}"
+    print_verbose(f"Connecting to WebSocket at {uri}")
+    try:
+        websocket_connection = await websockets.connect(uri)
+        print_success("Connected to WebSocket")
+        return websocket_connection
+    except Exception as e:
+        print_error(f"Failed to connect to WebSocket: {e}")
+        return None
+
+
+async def handle_incoming_messages():
+    global websocket_connection, exit_flag
+    while not exit_flag:
+        try:
+            if websocket_connection:
+                message = await asyncio.wait_for(
+                    websocket_connection.recv(), timeout=1.0
+                )
+                parsed_message = json.loads(message)
+                sender = parsed_message.get("sender", {})
+                content = parsed_message.get("content", "")
+                message_type = parsed_message.get("type", "")
+
+                if message_type == "broadcast":
+                    print(
+                        f"\n{Fore.YELLOW}{sender.get('screen_name', 'Unknown')}: {content}{Style.RESET_ALL}"
+                    )
+                elif message_type == "personal":
+                    print(
+                        f"\n{Fore.MAGENTA}[DM from {sender.get('screen_name', 'Unknown')}]: {content}{Style.RESET_ALL}"
+                    )
+                elif message_type == "system":
+                    print(f"\n{Fore.CYAN}[SYSTEM]: {content}{Style.RESET_ALL}")
+        except asyncio.TimeoutError:
+            # This is normal, just continue the loop
+            continue
+        except websockets.exceptions.ConnectionClosed as e:
+            if e.code == 1000:  # Normal closure
+                print_verbose("WebSocket connection closed normally.")
+            else:
+                print_error(f"\nWebSocket connection closed unexpectedly: {e}")
+            break
+        except Exception as e:
+            print_error(f"\nError receiving message: {e}")
+            break
+
+    print_verbose("Message handling stopped")
+
+
+async def send_message(message_type, content, recipient_id=None):
+    global websocket_connection
+    if websocket_connection:
+        message = {"type": message_type, "content": content}
+        if recipient_id:
+            message["recipient_id"] = recipient_id
+
+        await websocket_connection.send(json.dumps(message))
+        print_verbose("Message sent")
+    else:
+        print_error("WebSocket is not connected")
+
+
+async def update_profile(access_token):
+    new_screen_name = input("Enter new screen name: ")
     response = requests.put(
         f"{BASE_URL}/auth/users/me",
         headers={"Authorization": f"Bearer {access_token}"},
         json={"screen_name": new_screen_name},
     )
     if response.status_code == 200:
-        print_success("User profile updated successfully")
-        return response.json()
-    else:
-        print_error(f"Failed to update user profile: {response.text}")
-        return None
-
-
-def upload_file(access_token):
-    file_path = input("Enter the path of the file to upload: ")
-    print_verbose(f"Uploading file: {file_path}")
-    with open(file_path, "rb") as file:
-        files = {"file": file}
-        headers = {"Authorization": f"Bearer {access_token}"}
-        response = requests.post(
-            f"{BASE_URL}/files/upload", files=files, headers=headers
+        print_success(
+            f"Profile updated. New screen name: {response.json()['screen_name']}"
         )
-    if response.status_code == 200:
-        print_success("File uploaded successfully!")
-        print(json.dumps(response.json(), indent=2))
     else:
-        print_error(f"Failed to upload file: {response.text}")
+        print_error(f"Failed to update profile: {response.text}")
 
 
-def list_files(access_token):
-    print_verbose("Listing files")
-    headers = {"Authorization": f"Bearer {access_token}"}
-    response = requests.get(f"{BASE_URL}/files/", headers=headers)
-    if response.status_code == 200:
-        print_success("Files retrieved successfully")
-        files = response.json()["files"]
-        for file in files:
-            print(f"- {file}")
-    else:
-        print_error(f"Failed to list files: {response.text}")
-
-
-def get_file_url(access_token, object_name):
-    print_verbose(f"Getting URL for file: {object_name}")
-    response = requests.get(f"{BASE_URL}/files/file/{object_name}")
-    if response.status_code == 200:
-        print_success("File URL retrieved successfully")
-        return response.json()["url"]
-    else:
-        print_error(f"Failed to get file URL: {response.text}")
-        return None
-
-
-async def connect_websocket(access_token):
-    uri = f"ws://127.0.0.1:8000/ws?token={access_token}"
-    print_verbose(f"Connecting to WebSocket at {uri}")
-    async with websockets.connect(uri) as websocket:
-        print_success("Connected to WebSocket. Type your messages (or 'quit' to exit):")
-
-        async def receive_messages():
-            while True:
-                try:
-                    message = await websocket.recv()
-                    if message.startswith("ACK:"):
-                        print(
-                            f"\r{Fore.GREEN}Server acknowledged: {message[4:]}{Style.RESET_ALL}"
-                        )
-                    else:
-                        try:
-                            sender, content = message.split(": ", 1)
-                            parsed_content = json.loads(content)
-                            if parsed_content.get("type") == "personal":
-                                print(
-                                    f"\r{Fore.MAGENTA}{sender} [private]: {parsed_content['message']}{Style.RESET_ALL}"
-                                )
-                            else:
-                                print(
-                                    f"\r{Fore.YELLOW}{sender}: {parsed_content['message']}{Style.RESET_ALL}"
-                                )
-                        except (json.JSONDecodeError, ValueError):
-                            print(
-                                f"\r{Fore.YELLOW}Received: {message}{Style.RESET_ALL}"
-                            )
-                    print(f"{Fore.GREEN}You: {Style.RESET_ALL}", end="", flush=True)
-                except websockets.exceptions.ConnectionClosed:
-                    print_error("\rWebSocket connection closed")
-                    break
-                except Exception as e:
-                    print_error(f"\rError receiving message: {e}")
-                    break
-
-        receive_task = asyncio.create_task(receive_messages())
-
-        try:
-            while True:
-                message = await asyncio.get_event_loop().run_in_executor(
-                    None, input, f"{Fore.GREEN}You: {Style.RESET_ALL}"
-                )
-                if message.lower() == "quit":
-                    break
-                try:
-                    await websocket.send(message)
-                    print_verbose("Message sent. Waiting for acknowledgement...")
-                except Exception as e:
-                    print_error(f"Error sending message: {e}")
-                    break
-        finally:
-            receive_task.cancel()
-            try:
-                await receive_task
-            except asyncio.CancelledError:
-                pass
-
-    print_verbose("WebSocket connection closed")
-
-
-def view_profile(access_token):
-    print_verbose("Fetching user profile")
+def get_updated_user_info(access_token):
     response = requests.get(
         f"{BASE_URL}/auth/users/me", headers={"Authorization": f"Bearer {access_token}"}
     )
     if response.status_code == 200:
-        user_info = response.json()
-        print_success("User profile retrieved successfully")
-        print(f"{Fore.CYAN}Profile Information:{Style.RESET_ALL}")
-        print(f"User ID: {user_info['id']}")
-        print(f"Screen Name: {user_info['screen_name']}")
-        # Add any other profile information here
+        return response.json()
     else:
-        print_error(f"Failed to retrieve user profile: {response.text}")
+        print_error(f"Failed to get updated user information: {response.text}")
+        return None
 
 
-async def send_personal_message(access_token, recipient_id, message):
-    uri = f"ws://127.0.0.1:8000/ws?token={access_token}"
-    print_verbose(f"Connecting to WebSocket at {uri}")
-    try:
-        async with websockets.connect(uri) as websocket:
-            print_success("Connected to WebSocket for personal message")
-            try:
-                personal_message = json.dumps(
-                    {
-                        "type": "personal",
-                        "recipient_id": recipient_id,
-                        "message": message,
-                    }
+async def main_menu(user_info, access_token):
+    global exit_flag
+    while not exit_flag:
+        try:
+            print(f"\n{Fore.MAGENTA}Foxhole CLI Menu:{Style.RESET_ALL}")
+            print("1. Send broadcast message")
+            print("2. Send personal message")
+            print("3. View profile")
+            print("4. Edit profile")
+            print("5. Exit")
+
+            choice = await aioconsole.ainput(
+                f"{Fore.GREEN}Enter your choice (1-5): {Style.RESET_ALL}"
+            )
+
+            if choice == "1":
+                message = await aioconsole.ainput(
+                    f"{Fore.GREEN}Enter your broadcast message: {Style.RESET_ALL}"
                 )
-                await websocket.send(personal_message)
-                print_verbose("Personal message sent. Waiting for acknowledgement...")
-
-                ack = await websocket.recv()
-                if ack.startswith("ACK:"):
-                    print_success(f"Server acknowledged: {ack[4:]}")
+                await send_message("broadcast", message)
+            elif choice == "2":
+                recipient_id = await aioconsole.ainput(
+                    f"{Fore.GREEN}Enter recipient's user ID: {Style.RESET_ALL}"
+                )
+                message = await aioconsole.ainput(
+                    f"{Fore.GREEN}Enter your personal message: {Style.RESET_ALL}"
+                )
+                await send_message("personal", message, recipient_id)
+            elif choice == "3":
+                updated_user_info = get_updated_user_info(access_token)
+                if updated_user_info:
+                    print(f"{Fore.CYAN}Profile Information:{Style.RESET_ALL}")
+                    print(f"User ID: {updated_user_info['id']}")
+                    print(f"Screen Name: {updated_user_info['screen_name']}")
                 else:
-                    print_warning(f"Unexpected response: {ack}")
-            except websockets.exceptions.ConnectionClosed:
-                print_warning("WebSocket connection was closed by the server")
-            except Exception as e:
-                print_error(f"Error sending personal message: {e}")
-    except websockets.exceptions.WebSocketException as e:
-        print_error(f"WebSocket connection error: {e}")
-    print_verbose("WebSocket connection closed")
+                    print_error("Failed to retrieve updated user information")
+            elif choice == "4":
+                await update_profile(access_token)
+            elif choice == "5":
+                exit_flag = True
+                print("Exiting...")
+            else:
+                print_error("Invalid choice. Please try again.")
+        except Exception as e:
+            print_error(f"An error occurred in the main menu: {e}")
+            exit_flag = True
 
 
 async def main():
+    global websocket_connection, exit_flag
     print(f"{Fore.MAGENTA}Welcome to the Foxhole CLI!{Style.RESET_ALL}")
 
-    # Check for existing session
     saved_secret = load_session()
     if saved_secret:
         resume = (
@@ -305,46 +284,20 @@ async def main():
                     f"Logged in as: {user_info['screen_name']} (ID: {user_info['id']})"
                 )
 
-            while True:
-                print(f"\n{Fore.MAGENTA}Foxhole CLI Menu:{Style.RESET_ALL}")
-                print("1. Upload a file")
-                print("2. List files")
-                print("3. Get file URL")
-                print("4. View profile")
-                print("5. Update profile")
-                print("6. Connect to WebSocket")
-                print("7. Send personal message")
-                print("8. Exit")
-                choice = input("Enter your choice (1-8): ")
-
-                if choice == "1":
-                    upload_file(access_token)
-                elif choice == "2":
-                    list_files(access_token)
-                elif choice == "3":
-                    object_name = input("Enter the object name: ")
-                    file_url = get_file_url(access_token, object_name)
-                    if file_url:
-                        print_success(f"File URL: {file_url}")
-                elif choice == "4":
-                    view_profile(access_token)
-                elif choice == "5":
-                    new_screen_name = input("Enter new screen name: ")
-                    updated_profile = update_user_profile(access_token, new_screen_name)
-                    if updated_profile:
-                        print_success(
-                            f"Profile updated. New screen name: {updated_profile['screen_name']}"
-                        )
-                elif choice == "6":
-                    await connect_websocket(access_token)
-                elif choice == "7":
-                    recipient_id = input("Enter recipient's user ID: ")
-                    message = input("Enter your message: ")
-                    await send_personal_message(access_token, recipient_id, message)
-                elif choice == "8":
-                    break
-                else:
-                    print_error("Invalid choice. Please try again.")
+                websocket_connection = await connect_websocket(access_token)
+                if websocket_connection:
+                    message_handler = asyncio.create_task(handle_incoming_messages())
+                    try:
+                        await main_menu(user_info, access_token)
+                    except Exception as e:
+                        print_error(f"An error occurred in the main loop: {e}")
+                    finally:
+                        exit_flag = True
+                        if websocket_connection and not websocket_connection.closed:
+                            await websocket_connection.close(
+                                code=1000, reason="Client disconnecting"
+                            )
+                        await message_handler
 
     print(f"{Fore.MAGENTA}Thank you for using Foxhole CLI!{Style.RESET_ALL}")
 

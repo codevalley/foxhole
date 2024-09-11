@@ -5,7 +5,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 pytestmark = pytest.mark.asyncio
 
 
@@ -16,7 +15,9 @@ async def test_register_user(
         "/auth/register", json={"screen_name": "testuser"}
     )
     assert response.status_code == 200
-    # Add more assertions as needed
+    assert "id" in response.json()
+    assert "user_secret" in response.json()
+    assert response.json()["screen_name"] == "testuser"
 
 
 async def test_login(async_client: AsyncClient, db_session: AsyncSession) -> None:
@@ -54,6 +55,7 @@ async def test_get_user_profile(
     )
     assert response.status_code == 200
     assert "id" in response.json()
+    assert response.json()["screen_name"] == "testuser"
 
 
 async def test_update_user_profile(
@@ -85,4 +87,22 @@ async def test_health_check(async_client: AsyncClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
-# Add more tests for other endpoints and functionalities
+async def test_invalid_login(
+    async_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    login_response = await async_client.post(
+        "/auth/token", data={"user_secret": "invalid_secret"}
+    )
+    assert login_response.status_code == 401
+
+
+async def test_update_nonexistent_user(
+    async_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    # Try to update a user profile with an invalid token
+    update_response = await async_client.put(
+        "/auth/users/me",
+        headers={"Authorization": "Bearer invalid_token"},
+        json={"screen_name": "updated_testuser"},
+    )
+    assert update_response.status_code == 401

@@ -47,7 +47,12 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[TestClient, None]:
         yield test_client
 
     # Clean up
-    await app.state.websocket_manager.close_all_connections()
+    if hasattr(app.state, "websocket_manager"):
+        for websocket in app.state.websocket_manager.active_connections.values():
+            await websocket.close()
+        app.state.websocket_manager.active_connections.clear()
+        app.state.websocket_manager.user_info.clear()
+
     app.dependency_overrides.clear()
     app.middleware_stack = None
 

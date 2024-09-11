@@ -21,6 +21,7 @@ from app.dependencies import get_current_user
 from utils.user_utils import get_user_info
 from sqlalchemy.exc import SQLAlchemyError
 
+
 router = APIRouter()
 
 

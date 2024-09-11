@@ -24,52 +24,48 @@ async def websocket_endpoint(
     websocket: WebSocket, token: str = Query(...), db: AsyncSession = Depends(get_db)
 ) -> None:
     try:
-        logger.info(f"WebSocket connection attempt with token: {token}")
-        user = await get_current_user_ws(websocket, token, db)
+        if websocket_manager is None:
+            logger.error("WebSocketManager is not initialized")
+            await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+            return
+
+        try:
+            user = await get_current_user_ws(websocket, token, db)
+        except SQLAlchemyError as e:
+            logger.error(f"Database error occurred: {e}")
+            await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+            return
+
         if user is None:
             logger.error("User not found or invalid token")
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
 
         user_info = get_user_info(user)
-
-        if websocket_manager is None:
-            logger.error("WebSocketManager is not initialized")
-            await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
-            return
-
-        logger.info(f"User {user_info.screen_name} ({user_info.id}) connected")
+        await websocket.accept()
         await websocket_manager.connect(websocket, user_info)
 
         try:
+            await websocket_manager.broadcast_system_message(
+                f"{user_info.screen_name} has joined the chat",
+                exclude_user=user_info.id,
+            )
+
             while True:
-                data = await websocket.receive_text()
+                data = await websocket.receive_json()
                 logger.debug(
                     f"Received WebSocket message from {user_info.screen_name} ({user_info.id}): {data}"
                 )
-
-                # Send acknowledgment
-                await websocket.send_text("ACK: Message received")
-
-                await websocket_manager.broadcast(f"{user_info.screen_name}: {data}")
-        except WebSocketDisconnect as e:
+                await websocket_manager.handle_message(user_info.id, data)
+        except WebSocketDisconnect:
             logger.info(
-                f"WebSocket disconnected for user {user_info.screen_name} ({user_info.id}). Code: {e.code}"
-            )
-        except Exception as e:
-            logger.error(
-                f"Unexpected error in WebSocket connection for user {user_info.screen_name} ({user_info.id}): {str(e)}",
-                exc_info=True,
+                f"WebSocket disconnected for user {user_info.screen_name} ({user_info.id})"
             )
         finally:
-            logger.info(
-                f"Cleaning up connection for user {user_info.screen_name} ({user_info.id})"
+            await websocket_manager.disconnect(user_info.id)
+            await websocket_manager.broadcast_system_message(
+                f"{user_info.screen_name} has left the chat"
             )
-            await websocket_manager.disconnect(websocket)
-            await websocket_manager.broadcast(f"{user_info.screen_name} left the chat")
-    except SQLAlchemyError as e:
-        logger.exception(f"Database error occurred: {e}")
-        await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
     except Exception as e:
         logger.exception(f"Unexpected error occurred: {e}")
         await websocket.close(code=status.WS_1011_INTERNAL_ERROR)

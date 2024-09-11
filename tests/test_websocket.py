@@ -7,12 +7,11 @@ from app.services.websocket_manager import WebSocketManager
 import asyncio
 import logging
 from starlette.websockets import WebSocketDisconnect
-from typing import Any
 from fastapi import status
 from app.routers.websocket import init_websocket_manager
 from sqlalchemy.exc import SQLAlchemyError
-from unittest.mock import patch, MagicMock, AsyncMock
 import uuid
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -37,102 +36,115 @@ def websocket_manager() -> WebSocketManager:
     return WebSocketManager()
 
 
-def test_websocket_connection(
+@pytest.mark.asyncio
+async def test_websocket_connection(
     client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
 ) -> None:
+    init_websocket_manager(websocket_manager)
     with client.websocket_connect(f"/ws?token={token}") as websocket:
-        websocket.send_text("Hello")
-        ack = websocket.receive_text()
-        assert ack == "ACK: Message received"
-        broadcast = websocket.receive_text()
-        assert broadcast == f"{test_user.screen_name}: Hello"
-
-
-def test_websocket_multiple_messages(
-    client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
-) -> None:
-    with client.websocket_connect(f"/ws?token={token}") as websocket:
-        websocket.send_text("Hello")
-        assert websocket.receive_text() == "ACK: Message received"
-        assert websocket.receive_text() == f"{test_user.screen_name}: Hello"
-        websocket.send_text("World")
-        assert websocket.receive_text() == "ACK: Message received"
-        assert websocket.receive_text() == f"{test_user.screen_name}: World"
+        websocket.send_json({"type": "broadcast", "content": "Hello"})
+        response = websocket.receive_json()
+        assert response["type"] == "broadcast"
+        assert response["content"] == "Hello"
+        assert response["sender"]["screen_name"] == test_user.screen_name
 
 
 @pytest.mark.asyncio
 async def test_websocket_disconnect(
     client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
 ) -> None:
-    real_websocket_manager = WebSocketManager()
-    init_websocket_manager(real_websocket_manager)
+    init_websocket_manager(websocket_manager)
+    with client.websocket_connect(f"/ws?token={token}") as websocket:
+        websocket.send_json({"type": "broadcast", "content": "Hello"})
+        websocket.receive_json()
 
-    async def connection_task() -> None:
-        with client.websocket_connect(f"/ws?token={token}") as websocket:
-            websocket.send_text("Hello")
-            messages = []
+    # Give some time for the disconnect to process
+    await asyncio.sleep(0.1)
 
-            for _ in range(2):
-                message = websocket.receive_text()
-                messages.append(message)
-
-            assert len(messages) == 2, f"Expected 2 messages, got {len(messages)}"
-            assert (
-                messages[0] == "ACK: Message received"
-            ), f"Unexpected response: {messages[0]}"
-            assert (
-                messages[1] == f"{test_user.screen_name}: Hello"
-            ), f"Unexpected response: {messages[1]}"
-
-    async def disconnect_task() -> None:
-        await asyncio.sleep(1)  # Give some time for the connection to be established
-        await real_websocket_manager.close_all_connections()
-
-    await asyncio.gather(connection_task(), disconnect_task())
-
-    # Wait for the disconnect event with a timeout
-    await real_websocket_manager.wait_for_disconnect(timeout=2.0)
-
-    assert len(real_websocket_manager.active_connections) == 0, (
-        f"WebSocket connection not closed properly. "
-        f"Active connections: {real_websocket_manager.active_connections}"
-    )
+    assert test_user.id not in websocket_manager.active_connections
 
 
 @pytest.mark.asyncio
-async def test_websocket_endpoint_uninitialized_manager(
-    client: TestClient,
-    authenticated_user: dict[str, Any],
-    monkeypatch: pytest.MonkeyPatch,
+async def test_websocket_personal_message(
+    client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
+) -> None:
+    init_websocket_manager(websocket_manager)
+    with client.websocket_connect(f"/ws?token={token}") as websocket:
+        recipient_id = str(uuid.uuid4())
+        websocket.send_json(
+            {"type": "personal", "content": "Hello", "recipient_id": recipient_id}
+        )
+        response = websocket.receive_json()
+        assert response["type"] == "personal"
+        assert response["content"].startswith("User")
+        assert response["sender"]["id"] == "system"
+
+
+@pytest.mark.asyncio
+async def test_websocket_multiple_messages(
+    client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
+) -> None:
+    init_websocket_manager(websocket_manager)
+    with client.websocket_connect(f"/ws?token={token}") as websocket:
+        websocket.send_json({"type": "broadcast", "content": "Hello"})
+        response1 = websocket.receive_json()
+        assert response1["type"] == "broadcast"
+        assert response1["content"] == "Hello"
+
+        websocket.send_json({"type": "broadcast", "content": "World"})
+        response2 = websocket.receive_json()
+        assert response2["type"] == "broadcast"
+        assert response2["content"] == "World"
+
+
+@pytest.mark.asyncio
+async def test_websocket_invalid_token(client: TestClient) -> None:
+    with pytest.raises(WebSocketDisconnect) as excinfo:
+        with client.websocket_connect("/ws?token=invalid_token"):
+            pass
+    assert excinfo.value.code == status.WS_1008_POLICY_VIOLATION
+
+
+@pytest.mark.asyncio
+async def test_websocket_uninitialized_manager(
+    client: TestClient, token: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("app.routers.websocket.websocket_manager", None)
-
-    with pytest.raises(WebSocketDisconnect) as exc_info:
-        with client.websocket_connect(f"/ws?token={authenticated_user['token']}"):
+    with pytest.raises(WebSocketDisconnect) as excinfo:
+        with client.websocket_connect(f"/ws?token={token}"):
             pass
-
-    assert exc_info.value.code == status.WS_1011_INTERNAL_ERROR
+    assert excinfo.value.code == status.WS_1011_INTERNAL_ERROR
 
 
 @pytest.mark.asyncio
-async def test_websocket_endpoint_sqlalchemy_error(
-    client: TestClient,
-    authenticated_user: dict[str, Any],
-    monkeypatch: pytest.MonkeyPatch,
+async def test_websocket_sqlalchemy_error(
+    client: TestClient, token: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    mock_manager = MagicMock(spec=WebSocketManager)
-    mock_manager.connect.side_effect = SQLAlchemyError("Database error")
-    mock_manager.active_connections = {}
-    mock_manager.disconnect = AsyncMock()
+    def mock_get_current_user_ws(*args: Any, **kwargs: Any) -> None:
+        raise SQLAlchemyError("Database error")
 
-    with patch("app.routers.websocket.websocket_manager", mock_manager):
-        with pytest.raises(WebSocketDisconnect) as exc_info:
-            with client.websocket_connect(f"/ws?token={authenticated_user['token']}"):
-                pass
+    monkeypatch.setattr(
+        "app.dependencies.get_current_user_ws", mock_get_current_user_ws
+    )
 
-        assert exc_info.value.code == status.WS_1011_INTERNAL_ERROR
+    with pytest.raises(WebSocketDisconnect) as excinfo:
+        with client.websocket_connect(f"/ws?token={token}") as websocket:
+            # Force the websocket to process the connection
+            websocket.send_text("test")
+            websocket.receive_text()
 
-    mock_manager.disconnect.assert_not_called()
+    assert excinfo.value.code == status.WS_1011_INTERNAL_ERROR
+
+
+@pytest.mark.asyncio
+async def test_websocket_invalid_json(
+    client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
+) -> None:
+    init_websocket_manager(websocket_manager)
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect(f"/ws?token={token}") as websocket:
+            websocket.send_text("Invalid JSON")
+            websocket.receive_json()
 
 
 def test_websocket_unauthorized(client: TestClient) -> None:
@@ -143,10 +155,3 @@ def test_websocket_unauthorized(client: TestClient) -> None:
     assert isinstance(error_detail, list) and len(error_detail) > 0
     assert error_detail[0]["type"] == "missing"
     assert error_detail[0]["loc"] == ["query", "token"]
-
-
-def test_websocket_invalid_token(client: TestClient) -> None:
-    with pytest.raises(WebSocketDisconnect) as excinfo:
-        with client.websocket_connect("/ws?token=invalid_token"):
-            pass
-    assert excinfo.value.code == status.WS_1008_POLICY_VIOLATION
