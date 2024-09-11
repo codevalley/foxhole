@@ -1,0 +1,52 @@
+import asyncio
+import json
+import websockets
+from ui import print_message
+from config import Config
+
+
+class WebSocketClient:
+    def __init__(self, config):
+        self.config = config
+        self.ws = None
+        self.task = None
+
+    async def connect(self, token):
+        uri = f"ws://{self.config.WEBSOCKET_HOST}/ws?token={token}"
+        self.ws = await websockets.connect(uri)
+        self.task = asyncio.create_task(self.receive_messages())
+
+    async def disconnect(self):
+        if self.ws:
+            await self.ws.close()
+        if self.task:
+            self.task.cancel()
+
+    async def send_message(self, message_type, content, recipient_id=None):
+        if not self.ws:
+            print_message("Not connected to WebSocket", "error")
+            return
+        message = {"type": message_type, "content": content}
+        if recipient_id:
+            message["recipient_id"] = recipient_id
+        await self.ws.send(json.dumps(message))
+
+    async def receive_messages(self):
+        try:
+            while True:
+                message = await self.ws.recv()
+                data = json.loads(message)
+                sender = data.get("sender", {}).get("screen_name", "Unknown")
+                content = data.get("content", "")
+                message_type = data.get("type", "")
+
+                if message_type == "broadcast":
+                    print_message(f"{sender}: {content}", "info")
+                elif message_type == "personal":
+                    print_message(f"[DM from {sender}]: {content}", "info")
+                elif message_type == "system":
+                    print_message(f"[SYSTEM]: {content}", "info")
+        except websockets.exceptions.ConnectionClosed:
+            print_message("WebSocket connection closed", "error")
+        except asyncio.CancelledError:
+            pass

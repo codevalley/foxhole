@@ -10,6 +10,7 @@ async def init_cache() -> None:
     Initializes the Redis cache for the FastAPI application.
     """
     global redis_client
+    print(f"Connecting to Redis at: {settings.REDIS_URL}")  # Print the Redis URL
     redis_client = Redis.from_url(settings.REDIS_URL)
     await redis_client.ping()  # Test the connection
 

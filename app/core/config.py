@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
 import secrets
+import os
 
 
 class Settings(BaseSettings):
@@ -31,7 +32,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./app.db"
 
     # Redis settings
-    REDIS_URL: str = "redis://localhost"
+    REDIS_URL: str = "redis://localhost:6379"  # Ensure this is correct
 
     # Logging settings
     LOG_LEVEL: str = "INFO"
@@ -49,3 +50,11 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Explicitly set the REDIS_URL if it is not correctly loaded
+if settings.REDIS_URL == "redis://your_actual_redis_host:6379":
+    settings.REDIS_URL = "redis://localhost:6379"
+
+# Print the loaded environment variables for debugging
+print(f"Loaded REDIS_URL: {settings.REDIS_URL}")
+print(f"Environment REDIS_URL: {os.getenv('REDIS_URL')}")
