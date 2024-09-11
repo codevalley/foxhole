@@ -65,6 +65,21 @@ def get_user_info(access_token):
         return None
 
 
+def update_user_profile(access_token, new_screen_name):
+    print_verbose(f"Updating user profile with new screen name: {new_screen_name}")
+    response = requests.put(
+        f"{BASE_URL}/auth/users/me",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={"screen_name": new_screen_name},
+    )
+    if response.status_code == 200:
+        print_success("User profile updated successfully")
+        return response.json()
+    else:
+        print_error(f"Failed to update user profile: {response.text}")
+        return None
+
+
 def upload_file(access_token):
     file_path = input("Enter the path of the file to upload: ")
     print_verbose(f"Uploading file: {file_path}")
@@ -79,6 +94,30 @@ def upload_file(access_token):
         print(json.dumps(response.json(), indent=2))
     else:
         print_error(f"Failed to upload file: {response.text}")
+
+
+def list_files(access_token):
+    print_verbose("Listing files")
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.get(f"{BASE_URL}/files/", headers=headers)
+    if response.status_code == 200:
+        print_success("Files retrieved successfully")
+        files = response.json()["files"]
+        for file in files:
+            print(f"- {file}")
+    else:
+        print_error(f"Failed to list files: {response.text}")
+
+
+def get_file_url(access_token, object_name):
+    print_verbose(f"Getting URL for file: {object_name}")
+    response = requests.get(f"{BASE_URL}/files/file/{object_name}")
+    if response.status_code == 200:
+        print_success("File URL retrieved successfully")
+        return response.json()["url"]
+    else:
+        print_error(f"Failed to get file URL: {response.text}")
+        return None
 
 
 async def connect_websocket(access_token):
@@ -130,6 +169,29 @@ async def connect_websocket(access_token):
     print_verbose("WebSocket connection closed")
 
 
+async def send_personal_message(access_token, recipient_id, message):
+    uri = f"ws://127.0.0.1:8000/ws?token={access_token}"
+    print_verbose(f"Connecting to WebSocket at {uri}")
+    async with websockets.connect(uri) as websocket:
+        print_success("Connected to WebSocket for personal message")
+        try:
+            personal_message = json.dumps({
+                "type": "personal",
+                "recipient_id": recipient_id,
+                "message": message
+            })
+            await websocket.send(personal_message)
+            print_verbose("Personal message sent. Waiting for acknowledgement...")
+            
+            ack = await websocket.recv()
+            if ack.startswith("ACK:"):
+                print_success(f"Server acknowledged: {ack[4:]}")
+            else:
+                print_warning(f"Unexpected response: {ack}")
+        except Exception as e:
+            print_error(f"Error sending personal message: {e}")
+
+
 async def main():
     print(f"{Fore.MAGENTA}Welcome to the Foxhole CLI!{Style.RESET_ALL}")
     screen_name = input("Enter your screen name: ")
@@ -157,15 +219,35 @@ async def main():
             while True:
                 print(f"\n{Fore.MAGENTA}Foxhole CLI Menu:{Style.RESET_ALL}")
                 print("1. Upload a file")
-                print("2. Connect to WebSocket")
-                print("3. Exit")
-                choice = input("Enter your choice (1-3): ")
+                print("2. List files")
+                print("3. Get file URL")
+                print("4. Update profile")
+                print("5. Connect to WebSocket")
+                print("6. Send personal message")
+                print("7. Exit")
+                choice = input("Enter your choice (1-7): ")
 
                 if choice == "1":
                     upload_file(access_token)
                 elif choice == "2":
-                    await connect_websocket(access_token)
+                    list_files(access_token)
                 elif choice == "3":
+                    object_name = input("Enter the object name: ")
+                    file_url = get_file_url(access_token, object_name)
+                    if file_url:
+                        print_success(f"File URL: {file_url}")
+                elif choice == "4":
+                    new_screen_name = input("Enter new screen name: ")
+                    updated_profile = update_user_profile(access_token, new_screen_name)
+                    if updated_profile:
+                        print_success(f"Profile updated. New screen name: {updated_profile['screen_name']}")
+                elif choice == "5":
+                    await connect_websocket(access_token)
+                elif choice == "6":
+                    recipient_id = input("Enter recipient's user ID: ")
+                    message = input("Enter your message: ")
+                    await send_personal_message(access_token, recipient_id, message)
+                elif choice == "7":
                     break
                 else:
                     print_error("Invalid choice. Please try again.")
