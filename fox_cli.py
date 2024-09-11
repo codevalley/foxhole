@@ -30,14 +30,14 @@ def print_error(message):
 
 
 def save_session(user_secret):
-    with open(SESSION_FILE, 'wb') as f:
+    with open(SESSION_FILE, "wb") as f:
         pickle.dump(user_secret, f)
     print_success("Session saved successfully.")
 
 
 def load_session():
     if os.path.exists(SESSION_FILE):
-        with open(SESSION_FILE, 'rb') as f:
+        with open(SESSION_FILE, "rb") as f:
             return pickle.load(f)
     return None
 
@@ -155,11 +155,17 @@ async def connect_websocket(access_token):
                             sender, content = message.split(": ", 1)
                             parsed_content = json.loads(content)
                             if parsed_content.get("type") == "personal":
-                                print(f"\r{Fore.MAGENTA}{sender} [private]: {parsed_content['message']}{Style.RESET_ALL}")
+                                print(
+                                    f"\r{Fore.MAGENTA}{sender} [private]: {parsed_content['message']}{Style.RESET_ALL}"
+                                )
                             else:
-                                print(f"\r{Fore.YELLOW}{sender}: {parsed_content['message']}{Style.RESET_ALL}")
+                                print(
+                                    f"\r{Fore.YELLOW}{sender}: {parsed_content['message']}{Style.RESET_ALL}"
+                                )
                         except (json.JSONDecodeError, ValueError):
-                            print(f"\r{Fore.YELLOW}Received: {message}{Style.RESET_ALL}")
+                            print(
+                                f"\r{Fore.YELLOW}Received: {message}{Style.RESET_ALL}"
+                            )
                     print(f"{Fore.GREEN}You: {Style.RESET_ALL}", end="", flush=True)
                 except websockets.exceptions.ConnectionClosed:
                     print_error("\rWebSocket connection closed")
@@ -192,6 +198,7 @@ async def connect_websocket(access_token):
 
     print_verbose("WebSocket connection closed")
 
+
 def view_profile(access_token):
     print_verbose("Fetching user profile")
     response = requests.get(
@@ -211,33 +218,43 @@ def view_profile(access_token):
 async def send_personal_message(access_token, recipient_id, message):
     uri = f"ws://127.0.0.1:8000/ws?token={access_token}"
     print_verbose(f"Connecting to WebSocket at {uri}")
-    async with websockets.connect(uri) as websocket:
-        print_success("Connected to WebSocket for personal message")
-        try:
-            personal_message = json.dumps({
-                "type": "personal",
-                "recipient_id": recipient_id,
-                "message": message
-            })
-            await websocket.send(personal_message)
-            print_verbose("Personal message sent. Waiting for acknowledgement...")
-            
-            ack = await websocket.recv()
-            if ack.startswith("ACK:"):
-                print_success(f"Server acknowledged: {ack[4:]}")
-            else:
-                print_warning(f"Unexpected response: {ack}")
-        except Exception as e:
-            print_error(f"Error sending personal message: {e}")
+    try:
+        async with websockets.connect(uri) as websocket:
+            print_success("Connected to WebSocket for personal message")
+            try:
+                personal_message = json.dumps(
+                    {
+                        "type": "personal",
+                        "recipient_id": recipient_id,
+                        "message": message,
+                    }
+                )
+                await websocket.send(personal_message)
+                print_verbose("Personal message sent. Waiting for acknowledgement...")
+
+                ack = await websocket.recv()
+                if ack.startswith("ACK:"):
+                    print_success(f"Server acknowledged: {ack[4:]}")
+                else:
+                    print_warning(f"Unexpected response: {ack}")
+            except websockets.exceptions.ConnectionClosed:
+                print_warning("WebSocket connection was closed by the server")
+            except Exception as e:
+                print_error(f"Error sending personal message: {e}")
+    except websockets.exceptions.WebSocketException as e:
+        print_error(f"WebSocket connection error: {e}")
+    print_verbose("WebSocket connection closed")
 
 
 async def main():
     print(f"{Fore.MAGENTA}Welcome to the Foxhole CLI!{Style.RESET_ALL}")
-    
+
     # Check for existing session
     saved_secret = load_session()
     if saved_secret:
-        resume = input("Do you want to resume your last session? (y/n): ").lower() == 'y'
+        resume = (
+            input("Do you want to resume your last session? (y/n): ").lower() == "y"
+        )
         if resume:
             user_secret = saved_secret
         else:
@@ -247,23 +264,30 @@ async def main():
 
     if not user_secret:
         while True:
-            choice = input("Choose an option:\n1. Sign up\n2. Login\n3. Exit\nYour choice: ")
-            if choice == '1':
+            choice = input(
+                "Choose an option:\n1. Sign up\n2. Login\n3. Exit\nYour choice: "
+            )
+            if choice == "1":
                 screen_name = input("Enter your screen name: ")
                 user_data = register_user(screen_name)
                 if user_data:
-                    user_secret = user_data['user_secret']
+                    user_secret = user_data["user_secret"]
                     print_success(f"User registered with ID: {user_data['id']}")
                     print_success(f"Screen name: {user_data['screen_name']}")
                     print_warning(f"Your user secret is: {user_secret}")
-                    save = input("Do you want to save this session for future logins? (y/n): ").lower() == 'y'
+                    save = (
+                        input(
+                            "Do you want to save this session for future logins? (y/n): "
+                        ).lower()
+                        == "y"
+                    )
                     if save:
                         save_session(user_secret)
                 break
-            elif choice == '2':
+            elif choice == "2":
                 user_secret = input("Enter your user secret: ")
                 break
-            elif choice == '3':
+            elif choice == "3":
                 print("Goodbye!")
                 return
             else:
@@ -308,7 +332,9 @@ async def main():
                     new_screen_name = input("Enter new screen name: ")
                     updated_profile = update_user_profile(access_token, new_screen_name)
                     if updated_profile:
-                        print_success(f"Profile updated. New screen name: {updated_profile['screen_name']}")
+                        print_success(
+                            f"Profile updated. New screen name: {updated_profile['screen_name']}"
+                        )
                 elif choice == "6":
                     await connect_websocket(access_token)
                 elif choice == "7":
@@ -321,6 +347,7 @@ async def main():
                     print_error("Invalid choice. Please try again.")
 
     print(f"{Fore.MAGENTA}Thank you for using Foxhole CLI!{Style.RESET_ALL}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

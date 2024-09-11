@@ -43,6 +43,13 @@ class WebSocketManager:
 
         try:
             await websocket.close()
+        except RuntimeError as e:
+            if "Unexpected ASGI message 'websocket.close'" in str(e):
+                logger.warning(
+                    "WebSocket was already closed or in the process of closing"
+                )
+            else:
+                logger.error(f"Error closing WebSocket: {str(e)}", exc_info=True)
         except Exception as e:
             logger.error(f"Error closing WebSocket: {str(e)}", exc_info=True)
 
