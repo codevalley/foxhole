@@ -3,11 +3,14 @@ import websockets
 import asyncio
 import json
 from colorama import init, Fore, Style
+import os
+import pickle
 
 # Initialize colorama for cross-platform color support
 init()
 
 BASE_URL = "http://127.0.0.1:8000"
+SESSION_FILE = "foxhole_session.pkl"
 
 
 def print_verbose(message):
@@ -24,6 +27,19 @@ def print_warning(message):
 
 def print_error(message):
     print(f"{Fore.RED}[ERROR] {message}{Style.RESET_ALL}")
+
+
+def save_session(user_secret):
+    with open(SESSION_FILE, 'wb') as f:
+        pickle.dump(user_secret, f)
+    print_success("Session saved successfully.")
+
+
+def load_session():
+    if os.path.exists(SESSION_FILE):
+        with open(SESSION_FILE, 'rb') as f:
+            return pickle.load(f)
+    return None
 
 
 def register_user(screen_name):
@@ -135,7 +151,15 @@ async def connect_websocket(access_token):
                             f"\r{Fore.GREEN}Server acknowledged: {message[4:]}{Style.RESET_ALL}"
                         )
                     else:
-                        print(f"\r{Fore.YELLOW}Received: {message}{Style.RESET_ALL}")
+                        try:
+                            sender, content = message.split(": ", 1)
+                            parsed_content = json.loads(content)
+                            if parsed_content.get("type") == "personal":
+                                print(f"\r{Fore.MAGENTA}{sender} [private]: {parsed_content['message']}{Style.RESET_ALL}")
+                            else:
+                                print(f"\r{Fore.YELLOW}{sender}: {parsed_content['message']}{Style.RESET_ALL}")
+                        except (json.JSONDecodeError, ValueError):
+                            print(f"\r{Fore.YELLOW}Received: {message}{Style.RESET_ALL}")
                     print(f"{Fore.GREEN}You: {Style.RESET_ALL}", end="", flush=True)
                 except websockets.exceptions.ConnectionClosed:
                     print_error("\rWebSocket connection closed")
@@ -168,6 +192,21 @@ async def connect_websocket(access_token):
 
     print_verbose("WebSocket connection closed")
 
+def view_profile(access_token):
+    print_verbose("Fetching user profile")
+    response = requests.get(
+        f"{BASE_URL}/auth/users/me", headers={"Authorization": f"Bearer {access_token}"}
+    )
+    if response.status_code == 200:
+        user_info = response.json()
+        print_success("User profile retrieved successfully")
+        print(f"{Fore.CYAN}Profile Information:{Style.RESET_ALL}")
+        print(f"User ID: {user_info['id']}")
+        print(f"Screen Name: {user_info['screen_name']}")
+        # Add any other profile information here
+    else:
+        print_error(f"Failed to retrieve user profile: {response.text}")
+
 
 async def send_personal_message(access_token, recipient_id, message):
     uri = f"ws://127.0.0.1:8000/ws?token={access_token}"
@@ -194,18 +233,44 @@ async def send_personal_message(access_token, recipient_id, message):
 
 async def main():
     print(f"{Fore.MAGENTA}Welcome to the Foxhole CLI!{Style.RESET_ALL}")
-    screen_name = input("Enter your screen name: ")
-    user_data = register_user(screen_name)
+    
+    # Check for existing session
+    saved_secret = load_session()
+    if saved_secret:
+        resume = input("Do you want to resume your last session? (y/n): ").lower() == 'y'
+        if resume:
+            user_secret = saved_secret
+        else:
+            user_secret = None
+    else:
+        user_secret = None
 
-    if user_data:
-        print_success(f"User registered with ID: {user_data['id']}")
-        print_success(f"Screen name: {user_data['screen_name']}")
-        print_warning(f"Your user secret is: {user_data['user_secret']}")
-        print_warning(
-            "Please save this secret securely. It will be required for future logins."
-        )
+    if not user_secret:
+        while True:
+            choice = input("Choose an option:\n1. Sign up\n2. Login\n3. Exit\nYour choice: ")
+            if choice == '1':
+                screen_name = input("Enter your screen name: ")
+                user_data = register_user(screen_name)
+                if user_data:
+                    user_secret = user_data['user_secret']
+                    print_success(f"User registered with ID: {user_data['id']}")
+                    print_success(f"Screen name: {user_data['screen_name']}")
+                    print_warning(f"Your user secret is: {user_secret}")
+                    save = input("Do you want to save this session for future logins? (y/n): ").lower() == 'y'
+                    if save:
+                        save_session(user_secret)
+                break
+            elif choice == '2':
+                user_secret = input("Enter your user secret: ")
+                break
+            elif choice == '3':
+                print("Goodbye!")
+                return
+            else:
+                print_error("Invalid choice. Please try again.")
 
-        access_token = get_access_token(user_data["user_secret"])
+    if user_secret:
+        access_token = get_access_token(user_secret)
 
         if access_token:
             print_success(f"Access Token obtained: {access_token[:10]}...")
@@ -221,11 +286,12 @@ async def main():
                 print("1. Upload a file")
                 print("2. List files")
                 print("3. Get file URL")
-                print("4. Update profile")
-                print("5. Connect to WebSocket")
-                print("6. Send personal message")
-                print("7. Exit")
-                choice = input("Enter your choice (1-7): ")
+                print("4. View profile")
+                print("5. Update profile")
+                print("6. Connect to WebSocket")
+                print("7. Send personal message")
+                print("8. Exit")
+                choice = input("Enter your choice (1-8): ")
 
                 if choice == "1":
                     upload_file(access_token)
@@ -237,23 +303,24 @@ async def main():
                     if file_url:
                         print_success(f"File URL: {file_url}")
                 elif choice == "4":
+                    view_profile(access_token)
+                elif choice == "5":
                     new_screen_name = input("Enter new screen name: ")
                     updated_profile = update_user_profile(access_token, new_screen_name)
                     if updated_profile:
                         print_success(f"Profile updated. New screen name: {updated_profile['screen_name']}")
-                elif choice == "5":
-                    await connect_websocket(access_token)
                 elif choice == "6":
+                    await connect_websocket(access_token)
+                elif choice == "7":
                     recipient_id = input("Enter recipient's user ID: ")
                     message = input("Enter your message: ")
                     await send_personal_message(access_token, recipient_id, message)
-                elif choice == "7":
+                elif choice == "8":
                     break
                 else:
                     print_error("Invalid choice. Please try again.")
 
     print(f"{Fore.MAGENTA}Thank you for using Foxhole CLI!{Style.RESET_ALL}")
-
 
 if __name__ == "__main__":
     asyncio.run(main())
