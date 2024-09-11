@@ -2,6 +2,7 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from app.services.storage_service import StorageService
 from app.dependencies import get_storage_service, get_current_user
 from app.models import User
+from app.schemas.user_schema import UserInfo
 from typing import Dict, List, Any
 import uuid
 
@@ -12,9 +13,8 @@ router = APIRouter()
 async def upload_file(
     file: UploadFile = File(...),
     storage_service: StorageService = Depends(get_storage_service),
-    current_user: User = Depends(get_current_user),
+    current_user: UserInfo = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    # Generate a unique filename if the original filename is None
     object_name = file.filename or f"upload_{uuid.uuid4().hex}"
     uploaded_object_name = await storage_service.upload_file(
         file, "default-bucket", object_name
@@ -22,7 +22,7 @@ async def upload_file(
     return {
         "message": "File uploaded successfully",
         "object_name": uploaded_object_name,
-        "uploaded_by": current_user.id,  # Use user's id (handle) here
+        "uploaded_by": current_user.id,
     }
 
 

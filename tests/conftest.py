@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from typing import AsyncGenerator, Any, Generator
 from app.services.websocket_manager import WebSocketManager
 from utils.database import create_tables, engine, AsyncSessionLocal
+from app.middleware.request_id import RequestIDMiddleware
 
 
 @pytest.fixture(scope="session")
@@ -37,21 +38,32 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[TestClient, None]:
     app.dependency_overrides[get_db] = lambda: db_session
     app.dependency_overrides[get_storage_service] = lambda: MockStorageService()
 
+    # Clear existing middleware and add RequestIDMiddleware
+    app.middleware_stack = None
+    app.add_middleware(RequestIDMiddleware)
+
+    # Create a new TestClient with the updated app
     with TestClient(app) as test_client:
         yield test_client
 
+    # Clean up
     await app.state.websocket_manager.close_all_connections()
     app.dependency_overrides.clear()
+    app.middleware_stack = None
+
+    # Remove the middleware after the test
+    app.user_middleware = [
+        m for m in app.user_middleware if not isinstance(m.cls, RequestIDMiddleware)
+    ]
+    app.middleware_stack = None  # Reset the middleware stack
 
 
 @pytest.fixture(scope="function")
-async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    app.dependency_overrides[get_db] = lambda: db_session
-    app.dependency_overrides[get_storage_service] = lambda: MockStorageService()
-
+async def async_client(client: TestClient) -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
 
+    # Clean up
     app.dependency_overrides.clear()
 
 

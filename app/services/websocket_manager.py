@@ -1,30 +1,30 @@
 import logging
 from fastapi import WebSocket
-from app.models import User
 from typing import Dict, List
 import asyncio
+from app.schemas.user_schema import UserInfo
 
 logger = logging.getLogger(__name__)
 
 
 class WebSocketManager:
     def __init__(self) -> None:
-        self.active_connections: Dict[WebSocket, User] = {}
+        self.active_connections: Dict[WebSocket, UserInfo] = {}
         self.message_queue: List[str] = []
         self._lock = asyncio.Lock()
         self._disconnect_event = asyncio.Event()
 
-    async def connect(self, websocket: WebSocket, user: User) -> None:
+    async def connect(self, websocket: WebSocket, user_info: UserInfo) -> None:
         try:
             await websocket.accept()
             async with self._lock:
-                self.active_connections[websocket] = user
+                self.active_connections[websocket] = user_info
             logger.info(
-                f"WebSocket connected for user {user.id}. Total connections: {len(self.active_connections)}"
+                f"WebSocket connected for user {user_info.screen_name} ({user_info.id}). Total connections: {len(self.active_connections)}"
             )
         except Exception as e:
             logger.error(
-                f"Error accepting WebSocket connection for user {user.id}: {str(e)}",
+                f"Error accepting WebSocket connection for user {user_info.screen_name} ({user_info.id}): {str(e)}",
                 exc_info=True,
             )
             raise
@@ -32,9 +32,9 @@ class WebSocketManager:
     async def disconnect(self, websocket: WebSocket) -> None:
         async with self._lock:
             if websocket in self.active_connections:
-                user = self.active_connections.pop(websocket)
+                user_info = self.active_connections.pop(websocket)
                 logger.info(
-                    f"WebSocket disconnected for user {user.id}. Remaining connections: {len(self.active_connections)}"
+                    f"WebSocket disconnected for user {user_info.screen_name} ({user_info.id}). Remaining connections: {len(self.active_connections)}"
                 )
             else:
                 logger.warning(
@@ -54,12 +54,12 @@ class WebSocketManager:
         logger.info(f"Broadcasting message: {message}")
         async with self._lock:
             disconnected = []
-            for websocket, user in self.active_connections.items():
+            for websocket, user_info in self.active_connections.items():
                 try:
                     await websocket.send_text(message)
                 except Exception as e:
                     logger.error(
-                        f"Error sending message to user {user.id}: {str(e)}",
+                        f"Error sending message to user {user_info.screen_name} ({user_info.id}): {str(e)}",
                         exc_info=True,
                     )
                     disconnected.append(websocket)

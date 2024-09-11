@@ -3,8 +3,12 @@ from app.routers import auth, health, websocket
 from utils.cache import init_cache, close_cache
 from utils.database import reset_database
 from app.services.websocket_manager import WebSocketManager
+from app.middleware.request_id import RequestIDMiddleware
 
 app = FastAPI()
+
+# Add RequestIDMiddleware
+app.add_middleware(RequestIDMiddleware)
 
 
 @app.on_event("startup")

@@ -52,6 +52,19 @@ def get_access_token(user_secret):
         return None
 
 
+def get_user_info(access_token):
+    print_verbose("Fetching user information")
+    response = requests.get(
+        f"{BASE_URL}/auth/users/me", headers={"Authorization": f"Bearer {access_token}"}
+    )
+    if response.status_code == 200:
+        print_success("User information retrieved successfully")
+        return response.json()
+    else:
+        print_error(f"Failed to get user information: {response.text}")
+        return None
+
+
 def upload_file(access_token):
     file_path = input("Enter the path of the file to upload: ")
     print_verbose(f"Uploading file: {file_path}")
@@ -123,7 +136,8 @@ async def main():
     user_data = register_user(screen_name)
 
     if user_data:
-        print_success(f"User registered with Handle: {user_data['id']}")
+        print_success(f"User registered with ID: {user_data['id']}")
+        print_success(f"Screen name: {user_data['screen_name']}")
         print_warning(f"Your user secret is: {user_data['user_secret']}")
         print_warning(
             "Please save this secret securely. It will be required for future logins."
@@ -133,6 +147,12 @@ async def main():
 
         if access_token:
             print_success(f"Access Token obtained: {access_token[:10]}...")
+
+            user_info = get_user_info(access_token)
+            if user_info:
+                print_success(
+                    f"Logged in as: {user_info['screen_name']} (ID: {user_info['id']})"
+                )
 
             while True:
                 print(f"\n{Fore.MAGENTA}Foxhole CLI Menu:{Style.RESET_ALL}")

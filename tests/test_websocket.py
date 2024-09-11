@@ -45,7 +45,7 @@ def test_websocket_connection(
         ack = websocket.receive_text()
         assert ack == "ACK: Message received"
         broadcast = websocket.receive_text()
-        assert broadcast == f"User {test_user.id}: Hello"
+        assert broadcast == f"{test_user.screen_name}: Hello"
 
 
 def test_websocket_multiple_messages(
@@ -54,10 +54,10 @@ def test_websocket_multiple_messages(
     with client.websocket_connect(f"/ws?token={token}") as websocket:
         websocket.send_text("Hello")
         assert websocket.receive_text() == "ACK: Message received"
-        assert websocket.receive_text() == f"User {test_user.id}: Hello"
+        assert websocket.receive_text() == f"{test_user.screen_name}: Hello"
         websocket.send_text("World")
         assert websocket.receive_text() == "ACK: Message received"
-        assert websocket.receive_text() == f"User {test_user.id}: World"
+        assert websocket.receive_text() == f"{test_user.screen_name}: World"
 
 
 @pytest.mark.asyncio
@@ -81,7 +81,7 @@ async def test_websocket_disconnect(
                 messages[0] == "ACK: Message received"
             ), f"Unexpected response: {messages[0]}"
             assert (
-                messages[1] == f"User {test_user.id}: Hello"
+                messages[1] == f"{test_user.screen_name}: Hello"
             ), f"Unexpected response: {messages[1]}"
 
     async def disconnect_task() -> None:

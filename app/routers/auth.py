@@ -5,14 +5,21 @@ from app.schemas.user_schema import (
     UserRegistrationResponse,
     Token,
     UserUpdate,
-    UserResponse,
+    UserInfo,
 )
-from app.models import User
-from app.db.operations import get_user_by_secret, create_user, update_user
+
+from app.db.operations import (
+    get_user_by_secret,
+    create_user,
+    update_user,
+    get_user_by_id,
+)
 from utils.database import get_db
 from utils.security import create_access_token
 from app.exceptions import AuthenticationError, DatabaseOperationError
 from app.dependencies import get_current_user
+from utils.user_utils import get_user_info
+from sqlalchemy.exc import SQLAlchemyError
 
 router = APIRouter()
 
@@ -21,19 +28,6 @@ router = APIRouter()
 async def register(
     user: UserCreate, db: AsyncSession = Depends(get_db)
 ) -> UserRegistrationResponse:
-    """
-    Register a new user.
-
-    This endpoint creates a new user account and returns a user_secret.
-    The user_secret should be securely stored by the client as it will be
-    required for future authentication.
-
-    Args:
-    - user: UserCreate object containing the user's screen name
-
-    Returns:
-    - UserRegistrationResponse object containing id, screen_name, and user_secret
-    """
     new_user = await create_user(db, user.screen_name)
     if not new_user:
         raise DatabaseOperationError("Failed to create user")
@@ -48,18 +42,6 @@ async def register(
 async def login_for_access_token(
     user_secret: str = Form(...), db: AsyncSession = Depends(get_db)
 ) -> Token:
-    """
-    Authenticate a user and return an access token.
-
-    This endpoint authenticates a user using their user_secret and returns
-    a JWT access token for use in subsequent authenticated requests.
-
-    Args:
-    - user_secret: The secret key provided during user registration
-
-    Returns:
-    - Token object containing access_token and token_type
-    """
     user = await get_user_by_secret(db, user_secret)
     if not user:
         raise AuthenticationError("Invalid authentication credentials")
@@ -67,40 +49,34 @@ async def login_for_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
-@router.get("/users/me", response_model=UserResponse)
-async def read_users_me(current_user: User = Depends(get_current_user)) -> UserResponse:
-    """
-    Get the current authenticated user's information.
-
-    This endpoint returns the profile information of the currently
-    authenticated user.
-
-    Returns:
-    - UserResponse object containing id and screen_name
-    """
-    return UserResponse(id=current_user.id, screen_name=current_user.screen_name)
+@router.get("/users/me", response_model=UserInfo)
+async def read_users_me(current_user: UserInfo = Depends(get_current_user)) -> UserInfo:
+    return current_user
 
 
-@router.put("/users/me", response_model=UserResponse)
+@router.put("/users/me", response_model=UserInfo)
 async def update_user_profile(
     user_update: UserUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: UserInfo = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> UserResponse:
-    """
-    Update the current user's profile.
+) -> UserInfo:
+    user = await get_user_by_id(db, current_user.id)
+    if not user:
+        raise DatabaseOperationError("Failed to retrieve user")
 
-    This endpoint allows the authenticated user to update their profile information.
+    update_data = user_update.model_dump(exclude_unset=True)
+    updated_user = await update_user(db, user, **update_data)
 
-    Args:
-    - user_update: UserUpdate object containing the fields to be updated
-
-    Returns:
-    - UserResponse object containing the updated user information
-    """
-    updated_user = await update_user(
-        db, current_user, **user_update.model_dump(exclude_unset=True)
-    )
     if not updated_user:
         raise DatabaseOperationError("Failed to update user")
-    return UserResponse(id=updated_user.id, screen_name=updated_user.screen_name)
+
+    return get_user_info(updated_user)
+
+    try:
+        await db.commit()
+        await db.refresh(user)
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise DatabaseOperationError(f"Failed to update user: {str(e)}")
+
+    return get_user_info(user)

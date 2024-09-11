@@ -8,6 +8,14 @@ class UserBase(BaseModel):
     screen_name: str | None = None
 
 
+class UserInfo(BaseModel):
+    id: str
+    screen_name: str
+
+    class Config:
+        from_attributes = True
+
+
 class UserCreate(BaseModel):
     """Schema for user creation."""
 

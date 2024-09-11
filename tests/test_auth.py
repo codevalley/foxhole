@@ -21,16 +21,15 @@ async def test_register_user(
     assert "id" in data
     assert "user_secret" in data
     assert data["screen_name"] == "testuser"
+    assert "X-Request-ID" in response.headers
 
 
 async def test_login(async_client: AsyncClient, db_session: AsyncSession) -> None:
-    # First, register a user
     register_response = await async_client.post(
         "/auth/register", json={"screen_name": "loginuser"}
     )
     user_secret = register_response.json()["user_secret"]
 
-    # Now, try to login
     login_response = await async_client.post(
         "/auth/token", data={"user_secret": user_secret}
     )
@@ -38,12 +37,12 @@ async def test_login(async_client: AsyncClient, db_session: AsyncSession) -> Non
     data = login_response.json()
     assert "access_token" in data
     assert data["token_type"] == "bearer"
+    assert "X-Request-ID" in login_response.headers
 
 
 async def test_get_current_user(
     async_client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    # Register and login a user
     register_response = await async_client.post(
         "/auth/register", json={"screen_name": "currentuser"}
     )
@@ -53,7 +52,6 @@ async def test_get_current_user(
     )
     access_token = login_response.json()["access_token"]
 
-    # Get current user
     response = await async_client.get(
         "/auth/users/me", headers={"Authorization": f"Bearer {access_token}"}
     )
@@ -62,6 +60,7 @@ async def test_get_current_user(
     assert "id" in data
     assert data["screen_name"] == "currentuser"
     assert "user_secret" not in data
+    assert "X-Request-ID" in response.headers
 
 
 async def test_update_user_profile(

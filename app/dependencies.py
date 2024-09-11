@@ -12,6 +12,8 @@ from app.core.config import settings
 from sqlalchemy import select
 from minio import Minio
 import logging
+from utils.user_utils import get_user_info
+from app.schemas.user_schema import UserInfo
 from minio.error import S3Error
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -79,7 +81,7 @@ def get_storage_service() -> StorageService:
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
-) -> User:
+) -> UserInfo:
     user_id = verify_token(token)
     if not user_id:
         raise HTTPException(
@@ -92,7 +94,7 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    return user
+    return get_user_info(user)
 
 
 async def get_current_user_ws(
