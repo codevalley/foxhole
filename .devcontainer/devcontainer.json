@@ -1,7 +1,6 @@
 {
   "name": "FastAPI + Redis + Minio + SQLite Development",
   "dockerComposeFile": "docker-compose.yml",
-  "service": "app",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},
