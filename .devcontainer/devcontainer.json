@@ -47,7 +47,7 @@
     "terminal.integrated.defaultProfile.linux": "zsh"
   },
   "forwardPorts": [8000, 6379, 9000, 9001],
-  "postCreateCommand": "sudo service redis-server start && sudo mkdir -p /data && sudo chown vscode:vscode /data && sudo -u vscode git clone https://github.com/codevalley/foxhole.git . && sudo -u vscode git config --global --add safe.directory ${containerWorkspaceFolder}",
-  "postStartCommand": "minio server /data --console-address :9001 &",
+  "postCreateCommand": "sudo service redis-server start && sudo mkdir -p /data && sudo chown vscode:vscode /data && sudo -u vscode git clone https://github.com/codevalley/foxhole.git . && sudo -u vscode git config --global --add safe.directory ${containerWorkspaceFolder} && pip install -r requirements-dev.txt && pre-commit install",
+  "postStartCommand": "minio server /data --console-address :9001 & sleep 5 && mc alias set myminio http://localhost:9000 minioadmin minioadmin",
   "remoteUser": "vscode"
 }
