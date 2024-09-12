@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     git \
     sudo \
+    redis-server \
     && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory
@@ -26,8 +27,8 @@ RUN useradd -m -s /bin/bash -u 1000 vscode \
 # Set ownership of the workspace directory
 RUN chown -R vscode:vscode /workspace
 
-# Expose FastAPI port
-EXPOSE 8000
+# Expose FastAPI port and Redis port
+EXPOSE 8000 6379
 
 # Set the default command to bash
 CMD ["/bin/bash"]
