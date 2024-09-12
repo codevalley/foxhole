@@ -5,6 +5,7 @@ FROM python:3.12-slim
 RUN apt-get update && apt-get install -y \
     curl \
     git \
+    sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory
@@ -16,6 +17,14 @@ RUN apt-get update && apt-get install -y redis-tools && rm -rf /var/lib/apt/list
 # Install MinIO client
 RUN curl https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc \
     && chmod +x /usr/local/bin/mc
+
+# Create vscode user
+RUN useradd -m -s /bin/bash -u 1000 vscode \
+    && usermod -aG sudo vscode \
+    && echo "vscode ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Set ownership of the workspace directory
+RUN chown -R vscode:vscode /workspace
 
 # Expose FastAPI port
 EXPOSE 8000
