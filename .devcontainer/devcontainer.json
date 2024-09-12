@@ -50,4 +50,3 @@
   "postCreateCommand": "sudo service redis-server start && sudo mkdir -p /data && sudo chown vscode:vscode /data && minio server /data --console-address :9001 & && sudo -u vscode git clone https://github.com/codevalley/foxhole.git . && sudo -u vscode git config --global --add safe.directory ${containerWorkspaceFolder}",
   "remoteUser": "vscode"
 }
-
