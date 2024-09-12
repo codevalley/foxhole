@@ -1,0 +1,23 @@
+{
+    "name": "FastAPI Development",
+    "dockerFile": "Dockerfile",
+    "context": "..",
+    "postCreateCommand": "pipenv install --dev",
+    "appPort": [8000],
+    "runServices": ["redis", "minio"],
+    "service": "app",
+    "forwardPorts": [8000, 6379, 9000],
+    "remoteUser": "vscode",
+    "customizations": {
+      "vscode": {
+        "extensions": [
+          "ms-python.python",
+          "ms-python.vscode-pylance"
+        ]
+      }
+    },
+    "settings": {
+      "terminal.integrated.defaultProfile.linux": "bash"
+    }
+  }
+  
