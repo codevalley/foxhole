@@ -61,7 +61,7 @@ def register_user(screen_name):
 
 
 def get_access_token(user_secret):
-    print_verbose(f"Requesting access token for user")
+    print_verbose("Requesting access token for user")
     response = requests.post(
         f"{BASE_URL}/auth/token", data={"user_secret": user_secret}
     )
