@@ -17,9 +17,8 @@ WORKDIR /workspace
 RUN apt-get update && apt-get install -y redis-tools && rm -rf /var/lib/apt/lists/*
 
 # Install MinIO client
-RUN wget https://dl.min.io/client/mc/release/linux-amd64/mc \
-    && chmod +x mc \
-    && mv mc /usr/local/bin/
+RUN curl https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc \
+    && chmod +x /usr/local/bin/mc
 
 # Install MinIO server
 RUN wget https://dl.min.io/server/minio/release/linux-amd64/minio \
@@ -34,7 +33,7 @@ RUN useradd -m -s /bin/bash -u 1000 vscode \
 # Set ownership of the workspace directory
 RUN chown -R vscode:vscode /workspace
 
-# Expose FastAPI port, Redis port, and MinIO port
+# Expose FastAPI port, Redis port, and MinIO ports
 EXPOSE 8000 6379 9000 9001
 
 # Set the default command to bash
