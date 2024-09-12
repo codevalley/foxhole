@@ -47,6 +47,6 @@
     "terminal.integrated.defaultProfile.linux": "zsh"
   },
   "forwardPorts": [8000, 6379, 9000],
-  "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
+  "postCreateCommand": "git clone https://github.com/codevalley/foxhole.git . && git config --global --add safe.directory ${containerWorkspaceFolder}",
   "remoteUser": "vscode"
 }
