@@ -11,3 +11,6 @@ fakeredis==2.20.0
 pytest-mock==3.10.0
 aioconsole==0.8.0
 pre-commit==4.3.2
+prompt_toolkit==3.0.47
+colorama==0.4.6
+aiohttp==3.10.5
