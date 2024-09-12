@@ -3,7 +3,7 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
-  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "workspaceFolder": "/workspace",
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/common-utils:2": {
@@ -14,9 +14,6 @@
       "installOhMyZsh": true,
       "configureZshAsDefaultShell": true,
       "upgradePackages": true
-    },
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.12"
     },
     "ghcr.io/devcontainers/features/node:1": {},
     "ghcr.io/devcontainers-contrib/features/zsh-plugins:0": {
