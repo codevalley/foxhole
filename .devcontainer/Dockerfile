@@ -30,6 +30,9 @@ RUN useradd -m -s /bin/bash -u 1000 vscode \
     && usermod -aG sudo vscode \
     && echo "vscode ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
+# Create and set permissions for MinIO data directory
+RUN mkdir -p /data && chown vscode:vscode /data
+
 # Set ownership of the workspace directory
 RUN chown -R vscode:vscode /workspace
 
@@ -38,3 +41,6 @@ EXPOSE 8000 6379 9000 9001
 
 # Set the default command to bash
 CMD ["/bin/bash"]
+
+# Add volume for MinIO data
+VOLUME ["/data"]
