@@ -35,7 +35,7 @@ RUN useradd -m -s /bin/bash -u 1000 vscode \
 RUN chown -R vscode:vscode /workspace
 
 # Expose FastAPI port, Redis port, and MinIO port
-EXPOSE 8000 6379 9000
+EXPOSE 8000 6379 9000 9001
 
 # Set the default command to bash
 CMD ["/bin/bash"]
