@@ -1,45 +1,42 @@
-from colorama import Fore, Style, init
-import sys
-import os
+from prompt_toolkit import print_formatted_text
+from prompt_toolkit.formatted_text import FormattedText
+from prompt_toolkit.styles import Style
+from typing import Optional
 
-# Initialize colorama with strip=False to keep ANSI codes if the terminal supports it
-init(strip=False)
-
-
-def supports_color() -> bool:
-    """
-    Returns True if the running system's terminal supports color,
-    and False otherwise.
-    """
-    plat = sys.platform
-    supported_platform = plat != "Pocket PC" and (
-        plat != "win32" or "ANSICON" in os.environ
-    )
-    is_a_tty = hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
-    return supported_platform and is_a_tty
-
-
-use_color = supports_color()
+style = Style.from_dict(
+    {
+        "header": "#00ffff bold",
+        "info": "#00ffff",
+        "success": "#00ff00",
+        "error": "#ff0000",
+        "prefix": "#00ffff",
+        "suffix": "#ffffff",
+    }
+)
 
 
 def print_header() -> None:
-    header = f"{'=' * 50}\n{'Foxhole CLI':^50}\n{'=' * 50}"  # noqa : E231
-    if use_color:
-        print(f"{Fore.CYAN}{header}{Style.RESET_ALL}")
+    header = f"{'=' * 50}\n{'Foxhole CLI':^50}\n{'=' * 50}"  # noqa E231
+    print_formatted_text(FormattedText([("class:header", header)]), style=style)
+
+
+def print_message(
+    message: str, message_type: str = "info", prefix: Optional[str] = None
+) -> None:
+    if prefix:
+        formatted_text = [
+            (f"class:{message_type}", f"{prefix}: "),
+            ("class:suffix", message),
+        ]
     else:
-        print(header)
+        formatted_text = [(f"class:{message_type}", message)]
+
+    print_formatted_text(FormattedText(formatted_text), style=style)
 
 
-def print_message(message: str, message_type: str = "info") -> None:
-    color = Fore.WHITE
-    if message_type == "error":
-        color = Fore.RED
-    elif message_type == "success":
-        color = Fore.GREEN
-    elif message_type == "info":
-        color = Fore.CYAN
-
-    if use_color:
-        print(f"{color}{message}{Style.RESET_ALL}")
-    else:
-        print(message)
+def print_command_help(command: str, description: str) -> None:
+    formatted_text = [
+        ("class:info", f"  {command:<30}"),  # noqa E231
+        ("class:suffix", description),
+    ]  # noqa E231
+    print_formatted_text(FormattedText(formatted_text), style=style)

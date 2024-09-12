@@ -78,21 +78,25 @@ class SessionManager:
         return "_"
 
     def save_session(self) -> None:
-        if self.current_user:
+        if self.current_user and "user_secret" in self.current_user:
             with open(self.config.SESSION_FILE, "w") as f:
-                json.dump(self.current_user, f)
+                json.dump({"user_secret": self.current_user["user_secret"]}, f)
 
-    def load_session(self) -> bool:
+    async def load_session(self) -> bool:
         try:
             with open(self.config.SESSION_FILE, "r") as f:
-                self.current_user = json.load(f)
-            return True
+                data = json.load(f)
+                user_secret = data.get("user_secret")
+                if user_secret:
+                    return await self.login(user_secret)
+            return False
         except FileNotFoundError:
             return False
 
     def has_session(self) -> bool:
         try:
-            with open(self.config.SESSION_FILE, "r") as f:  # noqa: F841
-                return True
+            with open(self.config.SESSION_FILE, "r") as f:
+                data = json.load(f)
+                return "user_secret" in data
         except FileNotFoundError:
             return False

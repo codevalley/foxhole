@@ -44,11 +44,11 @@ class WebSocketClient:
                 message_type = data.get("type", "")
 
                 if message_type == "broadcast":
-                    print_message(f"{sender}: {content}", "info")
+                    print_message(content, "info", sender)
                 elif message_type == "personal":
-                    print_message(f"[DM from {sender}]: {content}", "info")
+                    print_message(content, "info", f"DM from {sender}")
                 elif message_type == "system":
-                    print_message(f"[SYSTEM]: {content}", "info")
+                    print_message(content, "info", "SYSTEM")
         except websockets.exceptions.ConnectionClosed:
             print_message("WebSocket connection closed", "error")
         except asyncio.CancelledError:

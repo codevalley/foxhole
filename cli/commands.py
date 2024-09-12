@@ -1,4 +1,4 @@
-from ui import print_message
+from ui import print_message, print_command_help
 from websocket_client import WebSocketClient
 from session_manager import SessionManager
 from prompt_toolkit import PromptSession
@@ -92,8 +92,8 @@ async def dm(ws_client: WebSocketClient, recipient_id: str, message: str) -> Non
 def whoami(session_manager: SessionManager) -> None:
     user_info = session_manager.current_user
     if user_info:
-        print_message(f"User ID: {user_info['id']}", "info")
-        print_message(f"Screen Name: {user_info['screen_name']}", "info")
+        print_message(user_info["id"], "info", "User ID")
+        print_message(user_info["screen_name"], "info", "Screen Name")
     else:
         print_message("You are not logged in", "error")
 
@@ -122,7 +122,7 @@ def show_help() -> None:
     ]
     print_message("Available commands:", "info")
     for cmd, desc in commands:
-        print_message(f"  {cmd:<30} {desc}", "info")  # noqa: E231
+        print_command_help(cmd, desc)
 
 
 async def exit_cli(session_manager: SessionManager, ws_client: WebSocketClient) -> None:

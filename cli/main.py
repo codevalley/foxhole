@@ -1,7 +1,6 @@
 import asyncio
-from prompt_toolkit import PromptSession
+from prompt_toolkit import PromptSession, HTML
 from prompt_toolkit.styles import Style
-from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.patch_stdout import patch_stdout
 from commands import handle_command
 from ui import print_header, print_message
@@ -36,7 +35,7 @@ async def handle_load_session(
             input("Do you want to resume your last session? (y/n): ").lower() == "y"
         )
         if resume:
-            if session_manager.load_session():
+            if await session_manager.load_session():
                 await ws_client.connect(session_manager.current_user["access_token"])
                 print_message("Logged in successfully", "success")
             else:
