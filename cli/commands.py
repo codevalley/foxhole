@@ -1,11 +1,15 @@
 from ui import print_message
 from websocket_client import WebSocketClient
 from session_manager import SessionManager
+from prompt_toolkit import PromptSession
 
 
 async def handle_command(
-    command, session_manager: SessionManager, ws_client: WebSocketClient, prompt_session
-):
+    command: str,
+    session_manager: SessionManager,
+    ws_client: WebSocketClient,
+    prompt_session: PromptSession,
+) -> None:
     parts = command.split()
     cmd = parts[0].lower()
     args = parts[1:]
@@ -40,7 +44,11 @@ async def handle_command(
         print_message(f"Unknown command: {cmd}", "error")
 
 
-async def login(session_manager, ws_client, prompt_session):
+async def login(
+    session_manager: SessionManager,
+    ws_client: WebSocketClient,
+    prompt_session: PromptSession,
+) -> None:
     user_secret = await prompt_session.prompt_async("Enter your user secret: ")
     success = await session_manager.login(user_secret)
     if success:
@@ -50,7 +58,11 @@ async def login(session_manager, ws_client, prompt_session):
         print_message("Login failed", "error")
 
 
-async def register(session_manager, ws_client, prompt_session):
+async def register(
+    session_manager: SessionManager,
+    ws_client: WebSocketClient,
+    prompt_session: PromptSession,
+) -> None:
     screen_name = await prompt_session.prompt_async("Enter your screen name: ")
     success, user_info = await session_manager.register(screen_name)
     if success:
@@ -63,21 +75,21 @@ async def register(session_manager, ws_client, prompt_session):
         print_message("Registration failed", "error")
 
 
-async def logout(session_manager, ws_client):
+async def logout(session_manager: SessionManager, ws_client: WebSocketClient) -> None:
     await ws_client.disconnect()
     session_manager.logout()
     print_message("Logged out successfully", "success")
 
 
-async def shout(ws_client, message):
+async def shout(ws_client: WebSocketClient, message: str) -> None:
     await ws_client.send_message("broadcast", message)
 
 
-async def dm(ws_client, recipient_id, message):
+async def dm(ws_client: WebSocketClient, recipient_id: str, message: str) -> None:
     await ws_client.send_message("personal", message, recipient_id)
 
 
-def whoami(session_manager):
+def whoami(session_manager: SessionManager) -> None:
     user_info = session_manager.current_user
     if user_info:
         print_message(f"User ID: {user_info['id']}", "info")
@@ -86,7 +98,9 @@ def whoami(session_manager):
         print_message("You are not logged in", "error")
 
 
-async def update_profile(session_manager, ws_client, field, value):
+async def update_profile(
+    session_manager: SessionManager, ws_client: WebSocketClient, field: str, value: str
+) -> None:
     success = await session_manager.update_profile(field, value)
     if success:
         print_message(f"Updated {field} successfully", "success")
@@ -94,7 +108,7 @@ async def update_profile(session_manager, ws_client, field, value):
         print_message(f"Failed to update {field}", "error")
 
 
-def show_help():
+def show_help() -> None:
     commands = [
         ("login", "Log in to your account"),
         ("register", "Create a new account"),
@@ -108,10 +122,10 @@ def show_help():
     ]
     print_message("Available commands:", "info")
     for cmd, desc in commands:
-        print_message(f"  {cmd:<30} {desc}", "info")
+        print_message(f"  {cmd:<30} {desc}", "info")  # noqa: E231
 
 
-async def exit_cli(session_manager, ws_client):
+async def exit_cli(session_manager: SessionManager, ws_client: WebSocketClient) -> None:
     await ws_client.disconnect()
     # session_manager.save_session()
     print_message("Goodbye!", "info")

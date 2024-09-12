@@ -9,11 +9,9 @@ from websocket_client import WebSocketClient
 from session_manager import SessionManager
 from commands import exit_cli
 from config import Config
-import os
-import pickle
 
 
-async def main():
+async def main() -> None:
     config = Config()
     session_manager = SessionManager(config)
     ws_client = WebSocketClient(config)
@@ -29,7 +27,9 @@ async def main():
             await handle_main_loop(session_manager, ws_client, prompt_session)
 
 
-async def handle_load_session(session_manager, ws_client):
+async def handle_load_session(
+    session_manager: SessionManager, ws_client: WebSocketClient
+) -> None:
     # Load saved session
     if session_manager.has_session():
         resume = (
@@ -43,7 +43,11 @@ async def handle_load_session(session_manager, ws_client):
                 print_message("Failed to resume session", "error")
 
 
-async def handle_auth(session_manager, ws_client, prompt_session):
+async def handle_auth(
+    session_manager: SessionManager,
+    ws_client: WebSocketClient,
+    prompt_session: PromptSession,
+) -> None:
     while not session_manager.current_user:
         action = await prompt_session.prompt_async(
             "Choose action (login/register/exit): "
@@ -66,7 +70,11 @@ async def handle_auth(session_manager, ws_client, prompt_session):
                     print_message("Session saved successfully.", "success")
 
 
-async def handle_main_loop(session_manager, ws_client, prompt_session):
+async def handle_main_loop(
+    session_manager: SessionManager,
+    ws_client: WebSocketClient,
+    prompt_session: PromptSession,
+) -> None:
     style = Style.from_dict(
         {
             "username": "#ansiyellow",
@@ -83,7 +91,7 @@ async def handle_main_loop(session_manager, ws_client, prompt_session):
             try:
                 prompt_html = HTML(
                     f"<username>{session_manager.get_name()}</username>"
-                    f"<at>@</at><host>foxhole</host><colon>:</colon><pound>#</pound> "
+                    f"<at>@</at><host>foxhole</host><pound>#</pound> "
                 )
                 user_input = await prompt_session.prompt_async(prompt_html, style=style)
                 await handle_command(

@@ -3,26 +3,29 @@ import json
 import websockets
 from ui import print_message
 from config import Config
+from typing import Optional
 
 
 class WebSocketClient:
-    def __init__(self, config):
+    def __init__(self, config: Config) -> None:
         self.config = config
-        self.ws = None
-        self.task = None
+        self.ws: Optional[websockets.WebSocketClientProtocol] = None
+        self.task: Optional[asyncio.Task] = None
 
-    async def connect(self, token):
-        uri = f"ws://{self.config.WEBSOCKET_HOST}/ws?token={token}"
+    async def connect(self, token: str) -> None:
+        uri = f"ws://{self.config.WEBSOCKET_HOST}/ws?token={token}"  # noqa : E231
         self.ws = await websockets.connect(uri)
         self.task = asyncio.create_task(self.receive_messages())
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         if self.ws:
             await self.ws.close()
         if self.task:
             self.task.cancel()
 
-    async def send_message(self, message_type, content, recipient_id=None):
+    async def send_message(
+        self, message_type: str, content: str, recipient_id: Optional[str] = None
+    ) -> None:
         if not self.ws:
             print_message("Not connected to WebSocket", "error")
             return
@@ -31,9 +34,9 @@ class WebSocketClient:
             message["recipient_id"] = recipient_id
         await self.ws.send(json.dumps(message))
 
-    async def receive_messages(self):
+    async def receive_messages(self) -> None:
         try:
-            while True:
+            while self.ws:
                 message = await self.ws.recv()
                 data = json.loads(message)
                 sender = data.get("sender", {}).get("screen_name", "Unknown")

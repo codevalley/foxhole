@@ -1,14 +1,15 @@
 import aiohttp
 import json
 from config import Config
+from typing import Optional, Tuple, Dict, Any
 
 
 class SessionManager:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         self.config = config
-        self.current_user = None
+        self.current_user: Optional[Dict[str, Any]] = None
 
-    async def login(self, user_secret):
+    async def login(self, user_secret: str) -> bool:
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{self.config.API_URL}/auth/token", data={"user_secret": user_secret}
@@ -23,7 +24,7 @@ class SessionManager:
                     return True
                 return False
 
-    async def register(self, screen_name):
+    async def register(self, screen_name: str) -> Tuple[bool, Optional[Dict[str, Any]]]:
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{self.config.API_URL}/auth/register",
@@ -40,10 +41,10 @@ class SessionManager:
                     return True, self.current_user
                 return False, None
 
-    def logout(self):
+    def logout(self) -> None:
         self.current_user = None
 
-    async def update_profile(self, field, value):
+    async def update_profile(self, field: str, value: str) -> bool:
         if not self.current_user:
             return False
         async with aiohttp.ClientSession() as session:
@@ -59,7 +60,7 @@ class SessionManager:
                     return True
                 return False
 
-    async def fetch_user_info(self):
+    async def fetch_user_info(self) -> None:
         if not self.current_user:
             return
         async with aiohttp.ClientSession() as session:
@@ -71,17 +72,17 @@ class SessionManager:
                     data = await response.json()
                     self.current_user.update(data)
 
-    def get_name(self):
-        if self.current_user:
+    def get_name(self) -> Any:
+        if self.current_user and "screen_name" in self.current_user:
             return self.current_user["screen_name"]
         return "_"
 
-    def save_session(self):
+    def save_session(self) -> None:
         if self.current_user:
             with open(self.config.SESSION_FILE, "w") as f:
                 json.dump(self.current_user, f)
 
-    def load_session(self):
+    def load_session(self) -> bool:
         try:
             with open(self.config.SESSION_FILE, "r") as f:
                 self.current_user = json.load(f)
@@ -89,9 +90,9 @@ class SessionManager:
         except FileNotFoundError:
             return False
 
-    def has_session(self):
+    def has_session(self) -> bool:
         try:
-            with open(self.config.SESSION_FILE, "r") as f:
+            with open(self.config.SESSION_FILE, "r") as f:  # noqa: F841
                 return True
         except FileNotFoundError:
             return False
