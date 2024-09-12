@@ -46,7 +46,6 @@
     "terminal.integrated.defaultProfile.linux": "zsh"
   },
   "forwardPorts": [8000, 6379, 9000],
-  "postCreateCommand": "pip install -r requirements.txt -r requirements-dev.txt",
   "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
   "runServices": ["redis", "minio"],
   "remoteUser": "vscode"
