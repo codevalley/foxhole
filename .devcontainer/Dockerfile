@@ -39,11 +39,15 @@ RUN mkdir -p /data && chown vscode:vscode /data
 # Set ownership of the workspace directory
 RUN chown -R vscode:vscode /workspace
 
+# Copy startup script
+COPY startup.sh /usr/local/bin/startup.sh
+RUN chmod +x /usr/local/bin/startup.sh
+
 # Expose FastAPI port, Redis port, and MinIO ports
 EXPOSE 8000 6379 9000 9001
 
-# Set the default command to bash
-CMD ["/bin/bash"]
+# Set the default command to our startup script
+CMD ["/usr/local/bin/startup.sh"]
 
 # Add volume for MinIO data
 VOLUME ["/data"]

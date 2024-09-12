@@ -1,7 +1,8 @@
 {
   "name": "FastAPI + Redis + Minio + SQLite Development",
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "Dockerfile",
+    "context": "."
   },
   "workspaceFolder": "/workspace",
   "features": {
@@ -48,6 +49,5 @@
   },
   "forwardPorts": [8000, 6379, 9000, 9001],
   "postCreateCommand": "sudo -u vscode git clone https://github.com/codevalley/foxhole.git . && sudo -u vscode git config --global --add safe.directory ${containerWorkspaceFolder} && pip install -r requirements-dev.txt && pre-commit install",
-  "postStartCommand": "sudo service redis-server start && minio server /data --console-address :9001 & sleep 5 && mc alias set myminio http://localhost:9000 minioadmin minioadmin",
   "remoteUser": "vscode"
 }
