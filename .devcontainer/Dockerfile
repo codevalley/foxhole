@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     sudo \
     redis-server \
     wget \
+    openssh-server \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure Redis to listen on all interfaces
@@ -39,12 +40,17 @@ RUN mkdir -p /data && chown vscode:vscode /data
 # Set ownership of the workspace directory
 RUN chown -R vscode:vscode /workspace
 
+# SSH Configuration
+RUN mkdir /var/run/sshd
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+
 # Copy startup script
 COPY startup.sh /usr/local/bin/startup.sh
 RUN chmod +x /usr/local/bin/startup.sh
 
-# Expose FastAPI port, Redis port, and MinIO ports
-EXPOSE 8000 6379 9000 9001
+# Expose FastAPI port, Redis port, MinIO ports, and SSH port
+EXPOSE 8000 6379 9000 9001 22
 
 # Set the default command to our startup script
 CMD ["/usr/local/bin/startup.sh"]

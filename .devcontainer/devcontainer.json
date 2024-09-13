@@ -47,8 +47,8 @@
   "settings": {
     "terminal.integrated.defaultProfile.linux": "zsh"
   },
-  "forwardPorts": [8000, 6379, 9000, 9001],
-  "postCreateCommand": "sudo -u vscode git clone https://github.com/codevalley/foxhole.git . && sudo -u vscode git config --global --add safe.directory ${containerWorkspaceFolder} && pip install -r requirements-dev.txt && pre-commit install",
+  "forwardPorts": [8000, 6379, 9000, 9001, 22],
+  "postCreateCommand": "mkdir -p ~/.ssh && chmod 700 ~/.ssh && ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N '' && echo 'Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null' > ~/.ssh/config && chmod 600 ~/.ssh/config && sudo -u vscode git clone https://github.com/codevalley/foxhole.git . && sudo -u vscode git config --global --add safe.directory ${containerWorkspaceFolder} && pip install -r requirements-dev.txt && pre-commit install",
   "postStartCommand": "nohup /usr/local/bin/startup.sh > /tmp/startup.log 2>&1 &",
   "remoteUser": "vscode"
 }

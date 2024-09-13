@@ -18,5 +18,9 @@ echo "MinIO alias set attempt completed"
 echo "Checking MinIO status..."
 mc admin info myminio
 
+echo "Starting SSH server..."
+sudo service ssh start
+echo "SSH server started"
+
 # Keep the script running
 tail -f /dev/null
