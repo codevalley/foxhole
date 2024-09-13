@@ -2,6 +2,9 @@ from ui import print_message, print_command_help
 from websocket_client import WebSocketClient
 from session_manager import SessionManager
 from prompt_toolkit import PromptSession
+import aiofiles
+import aiohttp
+import os
 
 
 async def handle_command(
@@ -40,6 +43,12 @@ async def handle_command(
         show_help()
     elif cmd == "exit":
         await exit_cli(session_manager, ws_client)
+    elif cmd == "upload":
+        await upload_file(session_manager, ws_client, prompt_session)
+    elif cmd == "list":
+        await list_files(session_manager, ws_client, prompt_session)
+    elif cmd == "download":
+        await download_file(session_manager, ws_client, prompt_session)
     else:
         print_message(f"Unknown command: {cmd}", "error")
 
@@ -119,6 +128,9 @@ def show_help() -> None:
         ("update <field> <value>", "Update your profile information"),
         ("help", "Show this help message"),
         ("exit", "Exit the application"),
+        ("upload", "Upload a file to the server"),
+        ("list", "List files on the server"),
+        ("download", "Download a file from the server"),
     ]
     print_message("Available commands:", "info")
     for cmd, desc in commands:
@@ -130,3 +142,112 @@ async def exit_cli(session_manager: SessionManager, ws_client: WebSocketClient) 
     # session_manager.save_session()
     print_message("Goodbye!", "info")
     raise SystemExit
+
+
+async def upload_file(
+    session_manager: SessionManager,
+    ws_client: WebSocketClient,
+    prompt_session: PromptSession,
+) -> None:
+    if not session_manager.current_user:
+        print_message("You must be logged in to upload files", "error")
+        return
+
+    file_path = await prompt_session.prompt_async(
+        "Enter the path of the file to upload: "
+    )
+    if not os.path.exists(file_path):
+        print_message("File not found", "error")
+        return
+
+    print_message(f"{file_path} is getting uploaded", "info")
+    async with aiofiles.open(file_path, "rb") as file:
+        file_name = os.path.basename(file_path)
+        file_content = await file.read()
+        print_message(f"{file_name} is {len(file_content)} bytes", "info")
+
+    async with aiohttp.ClientSession() as session:
+        headers = {
+            "Authorization": f"Bearer {session_manager.current_user['access_token']}"
+        }
+        data = aiohttp.FormData()
+        data.add_field("file", file_content, filename=file_name)
+
+        async with session.post(
+            f"{session_manager.config.API_URL}/files/upload", headers=headers, data=data
+        ) as response:
+            if response.status == 200:
+                print_message("File uploaded successfully", "success")
+            else:
+                print_message(
+                    f"Failed to upload file: {await response.text()}", "error"
+                )
+
+
+async def list_files(
+    session_manager: SessionManager,
+    ws_client: WebSocketClient,
+    prompt_session: PromptSession,
+) -> None:
+    if not session_manager.current_user:
+        print_message("You must be logged in to list files", "error")
+        return
+
+    async with aiohttp.ClientSession() as session:
+        headers = {
+            "Authorization": f"Bearer {session_manager.current_user['access_token']}"
+        }
+        async with session.get(
+            f"{session_manager.config.API_URL}/files/", headers=headers
+        ) as response:
+            if response.status == 200:
+                files = await response.json()
+                if files["files"]:
+                    print_message("Files:", "info")
+                    for file in files["files"]:
+                        print_message(file, "info")
+                else:
+                    print_message("No files found", "info")
+            else:
+                print_message(f"Failed to list files: {await response.text()}", "error")
+
+
+async def download_file(
+    session_manager: SessionManager,
+    ws_client: WebSocketClient,
+    prompt_session: PromptSession,
+) -> None:
+    if not session_manager.current_user:
+        print_message("You must be logged in to download files", "error")
+        return
+
+    file_name = await prompt_session.prompt_async(
+        "Enter the name of the file to download: "
+    )
+
+    async with aiohttp.ClientSession() as session:
+        headers = {
+            "Authorization": f"Bearer {session_manager.current_user['access_token']}"
+        }
+        async with session.get(
+            f"{session_manager.config.API_URL}/files/file/{file_name}", headers=headers
+        ) as response:
+            if response.status == 200:
+                file_url = await response.json()
+                async with session.get(file_url["url"]) as file_response:
+                    if file_response.status == 200:
+                        content = await file_response.read()
+                        async with aiofiles.open(file_name, "wb") as f:
+                            await f.write(content)
+                        print_message(
+                            f"File {file_name} downloaded successfully", "success"
+                        )
+                    else:
+                        print_message(
+                            f"Failed to download file: {await file_response.text()}",
+                            "error",
+                        )
+            else:
+                print_message(
+                    f"Failed to get file URL: {await response.text()}", "error"
+                )

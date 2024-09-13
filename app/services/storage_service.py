@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from fastapi import UploadFile
-from typing import Optional, List
+from typing import Optional
 
 
 class StorageService(ABC):
@@ -15,5 +15,5 @@ class StorageService(ABC):
         pass
 
     @abstractmethod
-    async def list_files(self, bucket_name: str) -> List[str]:
+    async def list_files(self, bucket_name: str) -> list[str]:
         pass

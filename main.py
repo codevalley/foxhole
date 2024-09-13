@@ -29,5 +29,11 @@ app.include_router(websocket.router)
 
 if __name__ == "__main__":
     import uvicorn
+    from app.app import app
+    import logging
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Configure logging
+    logging.basicConfig(level=logging.DEBUG)
+
+    # Run the application with Uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")

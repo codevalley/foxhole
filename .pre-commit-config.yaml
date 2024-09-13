@@ -29,6 +29,8 @@ repos:
         - sqlalchemy[mypy]
         - types-redis
         - types-jwt
+        - types-aiofiles==24.1.0.20240626
+
 -   repo: local
     hooks:
     -   id: pytest-check

@@ -17,12 +17,6 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    # MinIO settings
-    MINIO_ROOT_USER: str = "minioadmin"
-    MINIO_ROOT_PASSWORD: str = "minioadmin"
-    MINIO_HOST: str = "localhost:9000"
-    MINIO_SECURE: bool = False  # Add this line
-
     # JWT settings
     SECRET_KEY: str = secrets.token_urlsafe(32)
     ALGORITHM: str = "HS256"
@@ -39,10 +33,11 @@ class Settings(BaseSettings):
     LOG_FILE: Optional[str] = "logs/app.log"
 
     # Storage settings
-    USE_MOCK_STORAGE: bool = False
+    USE_MOCK_STORAGE: bool = False  # Set this to False
     MINIO_ENDPOINT: str = "localhost:9000"
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_SECURE: bool = False
 
     class Config:
         env_file = ".env"

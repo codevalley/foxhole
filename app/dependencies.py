@@ -31,12 +31,23 @@ class MinioStorageService(StorageService):
             secret_key=settings.MINIO_SECRET_KEY,
             secure=settings.MINIO_SECURE,
         )
+        self.ensure_bucket_exists("default-bucket")
+
+    def ensure_bucket_exists(self, bucket_name: str) -> None:
+        try:
+            if not self.client.bucket_exists(bucket_name):
+                self.client.make_bucket(bucket_name)
+                logger.info(f"Created bucket: {bucket_name}")
+            else:
+                logger.info(f"Bucket already exists: {bucket_name}")
+        except S3Error as e:
+            logger.error(f"Error ensuring bucket exists: {e}")
 
     async def upload_file(
         self, file: UploadFile, bucket_name: str, object_name: str
     ) -> Optional[str]:
         try:
-            # Simulate file upload
+            self.ensure_bucket_exists(bucket_name)
             self.client.put_object(bucket_name, object_name, file.file, file.size)
             return f"https://{bucket_name}.s3.amazonaws.com/{object_name}"  # noqa: E231
         except Exception as e:
@@ -45,6 +56,7 @@ class MinioStorageService(StorageService):
 
     async def get_file_url(self, bucket_name: str, object_name: str) -> Optional[str]:
         try:
+            self.ensure_bucket_exists(bucket_name)
             return str(self.client.presigned_get_object(bucket_name, object_name))
         except S3Error as e:
             logger.error(f"Error getting file URL: {e}")
@@ -52,6 +64,7 @@ class MinioStorageService(StorageService):
 
     async def list_files(self, bucket_name: str) -> list[str]:
         try:
+            self.ensure_bucket_exists(bucket_name)
             objects = self.client.list_objects(bucket_name)
             return [obj.object_name for obj in objects]
         except Exception as e:
