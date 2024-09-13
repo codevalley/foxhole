@@ -9,6 +9,17 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    services:
+      minio:
+        image: bitnami/minio:latest
+        ports:
+          - 9000:9000
+          - 9001:9001
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        options: --name=minio --health-cmd="curl http://localhost:9000/minio/health/live"
+
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python
@@ -20,6 +31,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
+    - name: Install MinIO Client
+      run: |
+        wget https://dl.min.io/client/mc/release/linux-amd64/mc
+        chmod +x mc
+        sudo mv mc /usr/local/bin/mc
+    - name: Configure MinIO
+      run: |
+        mc alias set myminio http://localhost:9000 minioadmin minioadmin
+        mc mb myminio/testbucket
     - name: Run pre-commit checks
       run: |
         pip install pre-commit
@@ -28,6 +48,11 @@ jobs:
         MYPY_CONFIG_FILE: mypy.ini
     - name: Run tests
       run: pytest --cov=app --cov-report=xml
+      env:
+        MINIO_ENDPOINT: localhost:9000
+        MINIO_ACCESS_KEY: minioadmin
+        MINIO_SECRET_KEY: minioadmin
+        MINIO_BUCKET_NAME: testbucket
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
