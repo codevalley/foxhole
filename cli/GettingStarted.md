@@ -48,17 +48,28 @@ This guide will help you set up and run the Foxhole CLI on your local machine.
    python -m cli.main
    ```
 
-3. You should see the Foxhole CLI welcome message. Use the `help` command to see available commands.
-
+3. You should see the Foxhole CLI welcome message.
+the `help` command to see available commands.
 ## Basic Usage
 
-1. Register a new account using the `register` command.
-2. Log in using the `login` command with your user secret.
-3. Use `shout` to send a message to all users.
-4. Use `dm` to send a direct message to a specific user.
-5. Use `whoami` to view your profile information.
-6. Use `update` to modify your profile information.
-7. Use `logout` to log out of your account.
-8. Use `exit` to close the CLI.
+1. **Register a new account**: Choose the "Sign up" option and enter a screen name.
+2. **Login**: Use the "Login" option and enter your user secret.
+3. **Send a broadcast message**: Use the "Send broadcast message" option.
+4. **Send a direct message**: Use the "Send personal message" option and provide the recipient's user ID.
+5. **View your profile**: Select the "View profile" option.
+6. **Update your profile**: Choose the "Edit profile" option to update your screen name.
+7. **Upload a file**: Use the "Upload" option and provide the file path.
+8. **List files**: Select the "List" option to see files on the server.
+9. **Download a file**: Use the "Download" option and specify the file name.
+10. **Logout**: Choose the "Exit" option to log out and close the CLI.
+
+## Session Management
+
+The CLI supports saving and resuming sessions. When you log in or register, you'll be asked if you want to save the session. On subsequent runs, you can choose to resume your last session.
+
+## Troubleshooting
+
+- If you encounter connection issues, ensure that the Foxhole Backend API is running and that the `API_URL` and `WEBSOCKET_HOST` in `config.py` are correct.
+- For any other issues, check the error messages displayed in the CLI for guidance.
 
 Enjoy using Foxhole CLI!

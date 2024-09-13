@@ -1,9 +1,9 @@
-# FastAPI Backend Scaffold
+# Foxhole Backend API
 
 ![CI](https://github.com/codevalley/foxhole/workflows/CI/badge.svg)
 [![codecov](https://codecov.io/gh/codevalley/foxhole/branch/main/graph/badge.svg)](https://codecov.io/gh/codevalley/foxhole)
 
-This project is a scaffold for a FastAPI backend application with WebSocket support, SQLite database, Redis caching, and MinIO object storage. It's designed to provide a robust starting point for building scalable and maintainable API services.
+Foxhole Backend API is a comprehensive starter kit for building robust Python-based API systems with real-time communication capabilities. It provides a solid foundation with integrated logging, storage, caching, database management, WebSocket support, and a fully-featured CLI.
 
 ## Key Features
 
@@ -12,13 +12,18 @@ This project is a scaffold for a FastAPI backend application with WebSocket supp
 - Asynchronous SQLite database with SQLAlchemy ORM
 - Redis caching for improved performance
 - MinIO integration for object storage
-- Secure authentication using user_secret
+- JWT-based authentication with unique user secrets
 - Structured logging
 - Global error handling
 - Docker and docker-compose setup for easy deployment
 - Comprehensive testing framework with pytest
+- Command-line interface (CLI) for easy interaction with the API
 
 ## Getting Started
+
+See the [GettingStarted.md](GettingStarted.md) file for detailed setup and usage instructions for both the backend API and CLI.
+
+## Quick Start
 
 1. Clone the repository:
    ```bash
@@ -40,13 +45,18 @@ This project is a scaffold for a FastAPI backend application with WebSocket supp
 
 4. Open your browser and navigate to `http://localhost:8000/docs` to see the API documentation.
 
+5. To use the CLI:
+   ```bash
+   python -m cli.main
+   ```
+
 ## Authentication
 
-This project uses a unique authentication approach:
+Foxhole uses a unique authentication approach:
 
 1. Users register with a screen name.
 2. The system generates a `user_secret` for each user.
-3. Users authenticate using their `user_secret` instead of a traditional username/password combination.
+3. Users authenticate using their `user_secret` to obtain a JWT token.
 
 Example:
 ```python
@@ -61,9 +71,9 @@ access_token = response.json()["access_token"]
 
 ## Development
 
-- For local development, use `uvicorn main:app --reload`
-- For deployment, utilize the provided Dockerfile and docker-compose.yml
-- Customize the deployment process using Kamal (configuration to be added)
+- For local development of the backend, use `uvicorn main:app --reload`
+- For the CLI, run `python -m cli.main`
+- Utilize the provided Dockerfile and docker-compose.yml for containerized deployment
 
 ## Testing
 
@@ -71,6 +81,35 @@ Run tests using pytest:
 ```bash
 pytest
 ```
+
+## CLI Features
+
+The Foxhole CLI provides a user-friendly interface to interact with the API. Key features include:
+
+- User authentication (login and registration)
+- Session management (save and resume sessions)
+- Send broadcast and direct messages
+- View and update user profile information
+- Real-time message reception using WebSocket connection
+- File upload, download, and listing functionality
+
+For more details on CLI usage, refer to the [CLI README](cli/README.md).
+
+## Project Structure
+
+```
+foxhole/
+├── app/            # Core application logic
+├── cli/            # Command-line interface
+├── tests/          # Test files
+├── utils/          # Utility functions and helpers
+├── main.py         # Application entry point
+├── Dockerfile
+├── docker-compose.yml
+└── requirements.txt
+```
+
+For a more detailed explanation of the project structure and components, see [GettingStarted.md](GettingStarted.md).
 
 ## Contributing
 

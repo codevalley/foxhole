@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Foxhole Backend API is a comprehensive starter kit for building robust Python-based API systems. It provides a solid foundation with integrated logging, storage, caching, database management, and more. This project aims to accelerate the development of scalable and maintainable backend services.
+Foxhole Backend API is a comprehensive starter kit for building robust Python-based API systems with real-time communication capabilities. It provides a solid foundation with integrated logging, storage, caching, database management, WebSocket support, and a fully-featured CLI. This project aims to accelerate the development of scalable and maintainable backend services.
 
 ## Key Features
 
@@ -11,11 +11,12 @@ Foxhole Backend API is a comprehensive starter kit for building robust Python-ba
 - Asynchronous SQLite database with SQLAlchemy ORM
 - Redis caching for improved performance
 - MinIO integration for object storage
-- JWT-based authentication
+- JWT-based authentication with unique user secrets
 - Structured logging
 - Global error handling
 - Docker and docker-compose setup for easy deployment
 - Comprehensive testing framework
+- Command-line interface (CLI) for easy interaction with the API
 
 ## Architecture and Components
 
@@ -32,26 +33,35 @@ foxhole/
 │   │   ├── health.py
 │   │   └── websocket.py
 │   ├── schemas/
-│   │   └── user.py
+│   │   └── user_schema.py
 │   ├── services/
 │   │   ├── storage_service.py
 │   │   └── websocket_manager.py
 │   ├── app.py
+│   ├── dependencies.py
+│   ├── exceptions.py
 │   └── models.py
+├── cli/
+│   ├── commands.py
+│   ├── config.py
+│   ├── main.py
+│   ├── session_manager.py
+│   ├── ui.py
+│   └── websocket_client.py
 ├── tests/
 │   ├── conftest.py
-│   └── test_main.py
+│   └── test_*.py
 ├── utils/
 │   ├── cache.py
 │   ├── database.py
 │   ├── error_handlers.py
 │   ├── logging.py
-│   └── security.py
+│   ├── security.py
+│   └── token.py
 ├── main.py
 ├── Dockerfile
 ├── docker-compose.yml
-├── requirements.txt
-└── pytest.ini
+└── requirements.txt
 ```
 
 ### Code Organization Philosophy
@@ -63,6 +73,7 @@ Our code organization follows a modular and separation-of-concerns approach:
   - **routers/**: API route definitions, separated by functionality
   - **schemas/**: Pydantic models for request/response validation
   - **services/**: Business logic and external service integrations
+- **cli/**: Command-line interface for interacting with the API
 - **tests/**: Holds all test files, mirroring the structure of the `app/` directory
 - **utils/**: Utility functions and helpers used across the application
 
@@ -116,6 +127,10 @@ This structure promotes:
 12. **Testing (`tests/`):**
     - Contains unit tests and test configurations
 
+13. **CLI (`cli/`):**
+    - Provides a command-line interface for interacting with the API
+    - Includes session management, WebSocket client, and user interface components
+
 ## Unique Approaches and Design Choices
 
 ### User Identification and Authentication
@@ -142,6 +157,10 @@ The application is designed with a modular service architecture, allowing easy e
 
 The project includes a robust testing framework using pytest, with fixtures for database and application setup, ensuring high code quality and reliability.
 
+### CLI Integration
+
+The CLI provides a user-friendly interface to interact with the API, supporting all major functionalities including user management, messaging, and file operations.
+
 ## Getting Started
 
 1. Clone the repository
@@ -149,6 +168,7 @@ The project includes a robust testing framework using pytest, with fixtures for 
 3. Set up environment variables or use default values in `app/core/config.py`
 4. Run the application: `python main.py`
 5. Access the API documentation at `http://localhost:8000/docs`
+6. For CLI usage, run: `python -m cli.main`
 
 ## Development and Deployment
 
