@@ -1,7 +1,11 @@
+import warnings
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
+
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose.jwt")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="minio.time")
 
 logger = logging.getLogger(__name__)
 

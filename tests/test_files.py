@@ -1,8 +1,12 @@
+import warnings
 import pytest
 from httpx import AsyncClient
 from app.services.storage_service import StorageService
 import logging
 from typing import TypedDict
+
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose.jwt")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="minio.time")
 
 
 logger = logging.getLogger(__name__)

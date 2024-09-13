@@ -1,13 +1,18 @@
-import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.routers.auth import create_access_token
 from typing import Dict, Any
 import logging
+import warnings
+
+# Add these warning filters
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose.jwt")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="minio.time")
 
 logger = logging.getLogger(__name__)
 
-pytestmark = pytest.mark.asyncio
+# Remove the global pytestmark
+# pytestmark = pytest.mark.asyncio
 
 
 async def test_register_user(

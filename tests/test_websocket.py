@@ -1,3 +1,4 @@
+import warnings
 import pytest
 from fastapi.testclient import TestClient
 from app.routers.auth import create_access_token
@@ -12,6 +13,10 @@ from app.routers.websocket import init_websocket_manager
 from sqlalchemy.exc import SQLAlchemyError
 import uuid
 from typing import Any
+
+
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose.jwt")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="minio.time")
 
 logger = logging.getLogger(__name__)
 

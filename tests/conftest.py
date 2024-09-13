@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from app.models import User
 from app.app import app
@@ -7,17 +6,17 @@ from app.dependencies import get_db, get_storage_service
 from tests.mocks.mock_storage_service import MockStorageService
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
-from typing import AsyncGenerator, Any, Generator
+from typing import AsyncGenerator, Any
 from app.services.websocket_manager import WebSocketManager
 from utils.database import create_tables, engine, AsyncSessionLocal
 from app.middleware.request_id import RequestIDMiddleware
+import warnings
 
+# Remove the custom event_loop fixture
 
-@pytest.fixture(scope="session")
-def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+# Add this at the top of the file to suppress DeprecationWarnings from jwt and minio
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose.jwt")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="minio.time")
 
 
 @pytest.fixture(scope="session")

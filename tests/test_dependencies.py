@@ -1,3 +1,4 @@
+import warnings
 import pytest
 from unittest.mock import patch, MagicMock, Mock
 from app.dependencies import (
@@ -11,6 +12,10 @@ from fastapi import UploadFile
 from typing import Generator  # Add this import
 from app.dependencies import get_current_user_ws, get_token_from_websocket
 from sqlalchemy.ext.asyncio import AsyncSession
+
+
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose.jwt")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="minio.time")
 
 
 @pytest.fixture
