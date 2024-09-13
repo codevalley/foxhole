@@ -9,6 +9,8 @@ from app.core.config import settings
 from minio.error import S3Error
 from fastapi import UploadFile
 from typing import Generator  # Add this import
+from app.dependencies import get_current_user_ws, get_token_from_websocket
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.fixture
@@ -72,4 +74,30 @@ def test_get_storage_service_minio() -> None:
         assert isinstance(service, MinioStorageService)
 
 
-# ... existing tests ...
+@pytest.mark.asyncio
+async def test_get_current_user_ws_missing_sub_claim(db_session: AsyncSession) -> None:
+    mock_websocket = MagicMock()
+    with patch("app.dependencies.jwt.decode") as mock_decode:
+        mock_decode.return_value = {}  # Missing 'sub' claim
+        result = await get_current_user_ws(mock_websocket, "valid_token", db_session)
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_token_from_websocket_invalid_format() -> None:
+    mock_websocket = MagicMock()
+    mock_websocket.headers = {"Authorization": "InvalidFormat token"}
+    token = await get_token_from_websocket(mock_websocket)
+    assert token is None
+
+
+def test_minio_storage_service_init() -> None:
+    with patch("app.dependencies.Minio") as mock_minio:
+        service = MinioStorageService()
+        mock_minio.assert_called_once_with(
+            settings.MINIO_ENDPOINT,
+            access_key=settings.MINIO_ACCESS_KEY,
+            secret_key=settings.MINIO_SECRET_KEY,
+            secure=settings.MINIO_SECURE,
+        )
+        assert service.client == mock_minio.return_value
