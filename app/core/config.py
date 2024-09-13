@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     # JWT settings
-    SECRET_KEY: str = secrets.token_urlsafe(32)
-    ALGORITHM: str = "HS256"
+    JWT_SECRET: str = secrets.token_urlsafe(32)
+    JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Database settings

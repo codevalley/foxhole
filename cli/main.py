@@ -7,7 +7,7 @@ from ui import print_header, print_message
 from websocket_client import WebSocketClient
 from session_manager import SessionManager
 from commands import exit_cli
-from config import Config
+from cli.config import Config
 
 
 async def main() -> None:

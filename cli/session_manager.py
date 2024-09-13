@@ -1,6 +1,6 @@
 import aiohttp
 import json
-from config import Config
+from cli.config import Config
 from typing import Optional, Tuple, Dict, Any
 
 

@@ -1,0 +1,54 @@
+service: foxhole
+image: ${DOCKER_REGISTRY}/foxhole
+
+servers:
+  web:
+    hosts:
+      - ${SERVER_HOST}
+    labels:
+      traefik.http.routers.foxhole.rule: Host(`${DOMAIN}`)
+
+registry:
+  username: ${DOCKER_REGISTRY_USERNAME}
+  password:
+    - DOCKER_REGISTRY_PASSWORD
+
+env:
+  clear:
+    DATABASE_URL: sqlite:///./data/app.db
+    REDIS_URL: redis://redis:6379
+    MINIO_ENDPOINT: minio:9000
+    MINIO_BUCKET_NAME: foxhole
+  secret:
+    - MINIO_ACCESS_KEY
+    - MINIO_SECRET_KEY
+    - DOCKER_REGISTRY_PASSWORD
+
+volumes:
+  - ${HOST_DATA_PATH}:/app/data
+  - ${HOST_MINIO_PATH}:/data
+
+accessories:
+  redis:
+    image: redis:alpine
+    host: redis
+    port: 6379
+  minio:
+    image: minio/minio
+    host: minio
+    port: 9000
+    cmd: server /data --console-address ":9001"
+    env:
+      secret:
+        - MINIO_ROOT_USER
+        - MINIO_ROOT_PASSWORD
+    volumes:
+      - ${HOST_MINIO_PATH}:/data
+
+traefik:
+  options:
+    publish:
+      - "443:443"
+    volume:
+      - ${TRAEFIK_CONFIG_PATH}:/etc/traefik
+      - ${TRAEFIK_CERTS_PATH}:/certs

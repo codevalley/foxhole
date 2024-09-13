@@ -37,9 +37,9 @@
       ~~- Catch specific exceptions rather than using broad except clauses.~~
       ~~- Provide more informative error messages to clients.~~
 
-   d) Add request ID to logs:
-      - Implement a middleware to assign a unique ID to each request.
-      - Include this ID in all log messages for better traceability.
+   d) ~~Add request ID to logs:~~
+      ~~- Implement a middleware to assign a unique ID to each request.~~
+      ~~- Include this ID in all log messages for better traceability.~~
 
 Plan of Action:
 
@@ -53,7 +53,7 @@ Plan of Action:
 ### Pending
 1. Ensure robust input validation using Pydantic models for all API endpoints.
 2. Setup consistent logging configuration for the entire application, and have centralized management (log levels, formatting, integrations etc.)
-3. Evaluate middlewares (Unique request ID per request, error handling, logging etc.).
+3. ~~Evaluate middlewares (Unique request ID per request, error handling, logging etc.).~~
 
 ## Pick up next
 - [ ] Set up Docker and Kamal configuration for deployment

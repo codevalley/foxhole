@@ -36,7 +36,7 @@ def create_access_token(data: Dict[str, str]) -> str:
     expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": str(int(expire.timestamp()))})
     encoded_jwt = jwt.encode(
-        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+        to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM
     )
     return str(encoded_jwt)
 
@@ -44,7 +44,7 @@ def create_access_token(data: Dict[str, str]) -> str:
 def verify_token(token: str) -> Optional[str]:
     try:
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
         )
         user_id: Optional[str] = payload.get("sub")
         return user_id

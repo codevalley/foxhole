@@ -2,7 +2,7 @@ import asyncio
 import json
 import websockets
 from ui import print_message
-from config import Config
+from cli.config import Config
 from typing import Optional
 
 
