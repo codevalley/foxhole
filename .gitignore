@@ -50,5 +50,6 @@ kamal.yml
 
 # AI
 .ai/
+.cursorrules
 repopack-output.txt
 cli/foxhole_session.json
