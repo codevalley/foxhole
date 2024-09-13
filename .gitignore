@@ -37,7 +37,7 @@ Thumbs.db
 # MinIO
 data/
 minio_data/
-
+start/
 # Redis
 dump.rdb
 

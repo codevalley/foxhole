@@ -19,7 +19,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose.jwt"
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="minio.time")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 async def db_engine() -> AsyncGenerator[AsyncEngine, None]:
     await create_tables()  # Create tables before running tests
     yield engine

@@ -2,12 +2,12 @@ import asyncio
 import json
 import websockets
 from ui import print_message
-from cli.config import Config
+from cli_config import CliConfig
 from typing import Optional
 
 
 class WebSocketClient:
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: CliConfig) -> None:
         self.config = config
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self.task: Optional[asyncio.Task] = None

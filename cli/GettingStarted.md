@@ -45,7 +45,7 @@ This guide will help you set up and run the Foxhole CLI on your local machine.
 
 2. From the root directory of the project, run:
    ```
-   python -m cli.main
+   python -m main.py
    ```
 
 3. You should see the Foxhole CLI welcome message.

@@ -1,11 +1,11 @@
 import aiohttp
 import json
-from cli.config import Config
+from cli_config import CliConfig
 from typing import Optional, Tuple, Dict, Any
 
 
 class SessionManager:
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: CliConfig) -> None:
         self.config = config
         self.current_user: Optional[Dict[str, Any]] = None
 
