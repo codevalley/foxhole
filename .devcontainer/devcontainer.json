@@ -49,5 +49,6 @@
   },
   "forwardPorts": [8000, 6379, 9000, 9001],
   "postCreateCommand": "sudo -u vscode git clone https://github.com/codevalley/foxhole.git . && sudo -u vscode git config --global --add safe.directory ${containerWorkspaceFolder} && pip install -r requirements-dev.txt && pre-commit install",
+  "postStartCommand": "nohup /usr/local/bin/startup.sh > /tmp/startup.log 2>&1 &",
   "remoteUser": "vscode"
 }

@@ -1,16 +1,22 @@
 #!/bin/bash
 
-# Start Redis
+echo "Starting Redis..."
 sudo service redis-server start
+echo "Redis started"
 
-# Start MinIO
+echo "Starting MinIO..."
 nohup minio server /data --console-address :9001 > /tmp/minio.log 2>&1 &
+echo "MinIO start command executed"
 
-# Wait for MinIO to start
-sleep 5
+echo "Waiting for MinIO to initialize..."
+sleep 10
 
-# Set up MinIO alias
+echo "Attempting to set MinIO alias..."
 mc alias set myminio http://localhost:9000 minioadmin minioadmin
+echo "MinIO alias set attempt completed"
+
+echo "Checking MinIO status..."
+mc admin info myminio
 
 # Keep the script running
 tail -f /dev/null
