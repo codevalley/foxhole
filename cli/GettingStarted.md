@@ -10,28 +10,34 @@ This guide will help you set up and run the Foxhole CLI on your local machine.
 ## Installation
 
 1. Clone the repository:
-   ```
+
+   ```bash
    git clone https://github.com/your-repo/foxhole.git
    cd foxhole
    ```
 
 2. Create a virtual environment:
-   ```
+
+   ```bash
    python -m venv venv
    ```
 
 3. Activate the virtual environment:
    - On Windows:
-     ```
+
+     ```bash
      venv\Scripts\activate
      ```
+
    - On macOS and Linux:
-     ```
+
+     ```bash
      source venv/bin/activate
      ```
 
 4. Install the required packages:
-   ```
+
+   ```bash
    pip install -r cli/requirements.txt
    ```
 
@@ -44,12 +50,14 @@ This guide will help you set up and run the Foxhole CLI on your local machine.
 1. Ensure your Foxhole Backend API is running.
 
 2. From the root directory of the project, run:
-   ```
+
+   ```bash
    python -m main.py
    ```
 
 3. You should see the Foxhole CLI welcome message.
 the `help` command to see available commands.
+
 ## Basic Usage
 
 1. **Register a new account**: Choose the "Sign up" option and enter a screen name.

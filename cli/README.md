@@ -21,7 +21,7 @@ See the [GettingStarted.md](GettingStarted.md) file for detailed installation an
 
 After installation, you can run the Foxhole CLI by executing:
 
-```
+```bash
 python -m cli.py
 ```
 

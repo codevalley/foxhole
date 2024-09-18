@@ -22,7 +22,7 @@ Foxhole Backend API is a comprehensive starter kit for building robust Python-ba
 
 ### Folder Structure
 
-```
+```markdown
 foxhole/
 ├── app/
 │   ├── core/
@@ -78,6 +78,7 @@ Our code organization follows a modular and separation-of-concerns approach:
 - **utils/**: Utility functions and helpers used across the application
 
 This structure promotes:
+
 1. **Modularity**: Each component has a clear responsibility
 2. **Scalability**: Easy to add new features or modify existing ones
 3. **Maintainability**: Clear separation of concerns makes the codebase easier to understand and maintain
@@ -169,6 +170,24 @@ The CLI provides a user-friendly interface to interact with the API, supporting 
 4. Run the application: `python main.py`
 5. Access the API documentation at `http://localhost:8000/docs`
 6. For CLI usage, run: `python -m cli.main`
+
+## Docker Setup
+
+To run the application using Docker:
+
+1. Build the Docker image:
+
+   ```bash
+   docker build -t foxhole-backend .
+   ```
+
+2. Run the container:
+
+   ```bash
+   docker run -p 8000:8000 foxhole-backend
+   ```
+
+The application will be available at `http://localhost:8000`
 
 ## Development and Deployment
 

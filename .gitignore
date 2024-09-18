@@ -47,7 +47,7 @@ kamal.yml
 # Environment variables
 .env
 *.pkl
-
+foxhole_session.json
 # AI
 .ai/
 .cursorrules

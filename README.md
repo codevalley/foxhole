@@ -26,12 +26,14 @@ See the [GettingStarted.md](GettingStarted.md) file for detailed setup and usage
 ## Quick Start
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/codevalley/foxhole.git
    cd foxhole
    ```
 
 2. Create a virtual environment and install dependencies:
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
@@ -39,6 +41,7 @@ See the [GettingStarted.md](GettingStarted.md) file for detailed setup and usage
    ```
 
 3. Run the application:
+
    ```bash
    uvicorn main:app --reload
    ```
@@ -46,6 +49,7 @@ See the [GettingStarted.md](GettingStarted.md) file for detailed setup and usage
 4. Open your browser and navigate to `http://localhost:8000/docs` to see the API documentation.
 
 5. To use the CLI:
+
    ```bash
    python -m cli.main
    ```
@@ -59,6 +63,7 @@ Foxhole uses a unique authentication approach:
 3. Users authenticate using their `user_secret` to obtain a JWT token.
 
 Example:
+
 ```python
 # Register a new user
 response = requests.post("/auth/register", json={"screen_name": "testuser"})
@@ -78,6 +83,7 @@ access_token = response.json()["access_token"]
 ## Testing
 
 Run tests using pytest:
+
 ```bash
 pytest
 ```
@@ -97,7 +103,7 @@ For more details on CLI usage, refer to the [CLI README](cli/README.md).
 
 ## Project Structure
 
-```
+```markdown
 foxhole/
 ├── app/            # Core application logic
 ├── cli/            # Command-line interface

@@ -51,16 +51,19 @@ Plan of Action:
 6. ~~Update error responses to use a consistent format.~~
 
 ### Pending
+
 1. Ensure robust input validation using Pydantic models for all API endpoints.
 2. Setup consistent logging configuration for the entire application, and have centralized management (log levels, formatting, integrations etc.)
 3. ~~Evaluate middlewares (Unique request ID per request, error handling, logging etc.).~~
 
 ## Pick up next
-- [ ] Set up Docker and Kamal configuration for deployment
+
+- [x] Set up Docker and Kamal configuration for deployment
 - [ ] Add more logging statements throughout the application for better debugging and monitoring
 - [ ] Expand test coverage, especially for dependencies.py, auth.py and websocket.py
 
 ## To Do
+
 - [ ] Implement rollback and monitoring strategies
 - [ ] Enhance documentation
 - [ ] Design and implement offline message queueing
@@ -69,6 +72,7 @@ Plan of Action:
 - [ ] Add API versioning to make future updates easier
 
 ## Issues and Improvements
+
 - [ ] Implement a more comprehensive error handling and reporting system
 - [ ] Consider adding integration tests to cover end-to-end scenarios
 - [ ] Optimize database queries for better performance, especially for file operations
