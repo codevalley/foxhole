@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query, status
 from app.dependencies import get_current_user_ws
-from app.services.websocket_manager import WebSocketManager
+from app.services.websocket_manager import (
+    WebSocketManager,
+)  # Add SYSTEM_USER_ID import
 import logging
 from sqlalchemy.exc import SQLAlchemyError
 from utils.database import get_db

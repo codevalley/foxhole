@@ -7,6 +7,11 @@ from app.routers import auth, files, websocket, health
 from app.services.websocket_manager import WebSocketManager
 from typing import Dict
 import logging
+from fastapi.exceptions import RequestValidationError
+from app.middleware.error_handler import (
+    validation_exception_handler,
+    generic_exception_handler,
+)
 
 app = FastAPI()
 logger = logging.getLogger(__name__)
@@ -22,6 +27,10 @@ app.include_router(health.router)
 
 # Pass WebSocketManager instance to websocket router
 websocket.init_websocket_manager(app.state.websocket_manager)
+
+# Add exception handlers
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
 
 
 @app.get("/")

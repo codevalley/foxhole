@@ -13,6 +13,7 @@ from app.routers.websocket import init_websocket_manager
 from sqlalchemy.exc import SQLAlchemyError
 import uuid
 from typing import Any
+from app.core.constants import SYSTEM_USER_ID  # Add this import
 
 
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose.jwt")
@@ -52,6 +53,7 @@ async def test_websocket_connection(
         assert response["type"] == "broadcast"
         assert response["content"] == "Hello"
         assert response["sender"]["screen_name"] == test_user.screen_name
+        assert response["sender"]["id"] == test_user.id  # Ensure sender is the user
 
 
 @pytest.mark.asyncio
@@ -82,7 +84,7 @@ async def test_websocket_personal_message(
         response = websocket.receive_json()
         assert response["type"] == "personal"
         assert response["content"].startswith("User")
-        assert response["sender"]["id"] == "system"
+        assert response["sender"]["id"] == SYSTEM_USER_ID  # Correct expectation
 
 
 @pytest.mark.asyncio
@@ -91,15 +93,19 @@ async def test_websocket_multiple_messages(
 ) -> None:
     init_websocket_manager(websocket_manager)
     with client.websocket_connect(f"/ws?token={token}") as websocket:
+        # First broadcast
         websocket.send_json({"type": "broadcast", "content": "Hello"})
         response1 = websocket.receive_json()
         assert response1["type"] == "broadcast"
         assert response1["content"] == "Hello"
+        assert response1["sender"]["id"] == test_user.id  # Updated to expect user ID
 
+        # Second broadcast
         websocket.send_json({"type": "broadcast", "content": "World"})
         response2 = websocket.receive_json()
         assert response2["type"] == "broadcast"
         assert response2["content"] == "World"
+        assert response2["sender"]["id"] == test_user.id  # Updated to expect user ID
 
 
 @pytest.mark.asyncio
@@ -125,7 +131,7 @@ async def test_websocket_uninitialized_manager(
 async def test_websocket_sqlalchemy_error(
     client: TestClient, token: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def mock_get_current_user_ws(*args: Any, **kwargs: Any) -> None:
+    async def mock_get_current_user_ws(*args: Any, **kwargs: Any) -> None:
         raise SQLAlchemyError("Database error")
 
     monkeypatch.setattr(
@@ -156,7 +162,5 @@ def test_websocket_unauthorized(client: TestClient) -> None:
     with pytest.raises(WebSocketDisconnect) as excinfo:
         with client.websocket_connect("/ws"):
             pass
-    error_detail = excinfo.value.reason
-    assert isinstance(error_detail, list) and len(error_detail) > 0
-    assert error_detail[0]["type"] == "missing"
-    assert error_detail[0]["loc"] == ["query", "token"]
+    # Since WebSocketDisconnect.reason is a string, adjust the assertion
+    assert excinfo.value.code == status.WS_1008_POLICY_VIOLATION

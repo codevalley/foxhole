@@ -3,6 +3,7 @@ from typing import Dict, Any, Optional
 import asyncio
 from app.schemas.user_schema import UserInfo
 import logging
+from app.core.constants import SYSTEM_USER_ID  # Ensure this import
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class WebSocketManager:
     ) -> None:
         if recipient_id in self.active_connections:
             sender_info = self.user_info.get(
-                sender_id, UserInfo(id="system", screen_name="System")
+                sender_id, UserInfo(id=SYSTEM_USER_ID, screen_name="System")
             )
             await self.active_connections[recipient_id].send_json(
                 {
@@ -47,7 +48,7 @@ class WebSocketManager:
         self, sender_id: str, message: str, exclude_user: Optional[str] = None
     ) -> None:
         sender_info = self.user_info.get(
-            sender_id, UserInfo(id="system", screen_name="System")
+            sender_id, UserInfo(id=SYSTEM_USER_ID, screen_name="System")
         )
         for user_id, websocket in self.active_connections.items():
             if user_id != exclude_user:
@@ -78,7 +79,7 @@ class WebSocketManager:
                 await self.send_personal_message(user_id, recipient_id, content)
             else:
                 await self.send_personal_message(
-                    "system", user_id, f"User {recipient_id} is not connected"
+                    SYSTEM_USER_ID, user_id, f"User {recipient_id} is not connected"
                 )
         else:
             logger.warning(f"Unknown message type: {message_type}")
@@ -88,7 +89,7 @@ class WebSocketManager:
             await self.active_connections[user_id].send_json(
                 {
                     "type": "system",
-                    "sender": {"id": "system", "screen_name": "System"},
+                    "sender": {"id": SYSTEM_USER_ID, "screen_name": "System"},
                     "content": message,
                 }
             )
@@ -96,4 +97,5 @@ class WebSocketManager:
     async def broadcast_system_message(
         self, message: str, exclude_user: Optional[str] = None
     ) -> None:
-        await self.broadcast("system", message, exclude_user=exclude_user)
+        # system_user = UserInfo(id=SYSTEM_USER_ID, screen_name="System")
+        await self.broadcast(SYSTEM_USER_ID, message, exclude_user=exclude_user)

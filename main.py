@@ -3,6 +3,7 @@ from app.routers import auth, health, websocket
 from utils.cache import init_cache, close_cache
 from app.services.websocket_manager import WebSocketManager
 from app.middleware.request_id import RequestIDMiddleware
+from app.core.logging_config import setup_logging
 
 app = FastAPI()
 
@@ -30,10 +31,9 @@ app.include_router(websocket.router)
 if __name__ == "__main__":
     import uvicorn
     from app.app import app
-    import logging
 
     # Configure logging
-    logging.basicConfig(level=logging.DEBUG)
+    setup_logging()
 
     # Run the application with Uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")
