@@ -3,6 +3,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
+from app.core.config import settings
 
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose.jwt")
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="minio.time")
@@ -88,7 +89,10 @@ async def test_update_user_profile(
 async def test_health_check(async_client: AsyncClient) -> None:
     response = await async_client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["version"] == settings.APP_VERSION
+    assert data["database_status"] == "ok"
 
 
 async def test_invalid_login(

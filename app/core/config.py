@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     MINIO_SECRET_KEY: str = "minioadmin"
     MINIO_SECURE: bool = False
 
+    APP_VERSION: str = "0.1.0"  # Add this line
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
