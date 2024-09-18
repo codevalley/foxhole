@@ -2,58 +2,61 @@ import warnings
 import pytest
 from httpx import AsyncClient
 from app.services.storage_service import StorageService
-import logging
-from typing import TypedDict
+from tests.mocks.mock_storage_service import MockStorageService
+from fastapi import FastAPI
+from app.dependencies import get_storage_service
+from app.routers.auth import create_access_token
+from app.models import User
+from sqlalchemy.ext.asyncio import AsyncSession
+import uuid
+from app.app import app as fastapi_app  # Import the FastAPI app
+from typing import AsyncGenerator
 
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose.jwt")
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="minio.time")
 
-
-logger = logging.getLogger(__name__)
-
-
 pytestmark = pytest.mark.asyncio
 
 
-class RegisterResponse(TypedDict):
-    user_secret: str
-
-
-class LoginResponse(TypedDict):
-    access_token: str
-
-
-async def get_access_token(async_client: AsyncClient) -> str:
-    register_response = await async_client.post(
-        "/auth/register", json={"screen_name": "testuser"}
-    )
-    register_data = register_response.json()
-    if "user_secret" not in register_data:
-        raise ValueError("Register response missing user_secret")
-    user_secret = register_data["user_secret"]
-    if not isinstance(user_secret, str):
-        raise TypeError("user_secret is not a string")
-
-    login_response = await async_client.post(
-        "/auth/token", data={"user_secret": user_secret}
-    )
-    login_data = login_response.json()
-    if "access_token" not in login_data:
-        raise ValueError("Login response missing access_token")
-    access_token = login_data["access_token"]
-    if not isinstance(access_token, str):
-        raise TypeError("access_token is not a string")
-
-    return access_token
+@pytest.fixture
+def app() -> FastAPI:
+    return fastapi_app
 
 
 @pytest.fixture
-async def access_token(async_client: AsyncClient) -> str:
-    return await get_access_token(async_client)
+async def test_user(db_session: AsyncSession) -> User:
+    user_id = str(uuid.uuid4())
+    user = User(id=user_id, screen_name="testuser")
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest.fixture
+def access_token(test_user: User) -> str:
+    return create_access_token({"sub": test_user.id})
+
+
+@pytest.fixture
+def mock_storage_service() -> StorageService:
+    return MockStorageService()
+
+
+@pytest.fixture
+async def override_get_storage_service(
+    mock_storage_service: StorageService, app: FastAPI
+) -> AsyncGenerator[None, None]:
+    """
+    Override the get_storage_service dependency to use the mock.
+    """
+    app.dependency_overrides[get_storage_service] = lambda: mock_storage_service
+    yield
+    app.dependency_overrides.pop(get_storage_service, None)
 
 
 async def test_upload_file(
-    async_client: AsyncClient, mock_storage_service: StorageService, access_token: str
+    async_client: AsyncClient, access_token: str, override_get_storage_service: None
 ) -> None:
     response = await async_client.post(
         "/files/upload",
@@ -62,30 +65,34 @@ async def test_upload_file(
     )
     assert response.status_code == 200
     assert response.json()["message"] == "File uploaded successfully"
+    assert (
+        response.json()["object_name"] == "test.txt"
+    )  # Assuming the mock returns the filename
 
 
 async def test_list_files(
-    async_client: AsyncClient, mock_storage_service: StorageService, access_token: str
+    async_client: AsyncClient, access_token: str, override_get_storage_service: None
 ) -> None:
     response = await async_client.get(
         "/files/", headers={"Authorization": f"Bearer {access_token}"}
     )
     assert response.status_code == 200
     assert "files" in response.json()
+    assert response.json()["files"] == ["file1.txt", "file2.txt"]
 
 
 async def test_get_file_url(
-    async_client: AsyncClient, mock_storage_service: StorageService, access_token: str
+    async_client: AsyncClient, access_token: str, override_get_storage_service: None
 ) -> None:
     response = await async_client.get(
         "/files/file/test_object", headers={"Authorization": f"Bearer {access_token}"}
     )
     assert response.status_code == 200
-    assert response.json() == {"url": "http://mock-url.com/default-bucket/test_object"}
+    assert response.json() == {"url": "http://mockstorage/default-bucket/test_object"}
 
 
 async def test_get_file_url_not_found(
-    async_client: AsyncClient, mock_storage_service: StorageService, access_token: str
+    async_client: AsyncClient, access_token: str, override_get_storage_service: None
 ) -> None:
     response = await async_client.get(
         "/files/file/non_existent_object",

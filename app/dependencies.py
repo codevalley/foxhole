@@ -86,10 +86,12 @@ class MockStorageService(StorageService):
 
 
 def get_storage_service() -> StorageService:
+    """
+    Dependency to provide the appropriate StorageService instance.
+    """
     if settings.USE_MOCK_STORAGE:
         return MockStorageService()
-    else:
-        return MinioStorageService()
+    return MinioStorageService()
 
 
 async def get_current_user(
