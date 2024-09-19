@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./app.db"
 
     # Redis settings
-    REDIS_URL: str = "redis://localhost:6379"  # Ensure this is correct
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
 
     # Logging settings
     LOG_LEVEL: str = "INFO"
