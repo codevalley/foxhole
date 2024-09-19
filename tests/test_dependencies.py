@@ -5,6 +5,7 @@ from app.dependencies import (
     MinioStorageService,
     get_storage_service,
     MockStorageService,
+    StorageConfig,
 )
 from app.core.config import settings
 from minio.error import S3Error
@@ -24,12 +25,23 @@ def mock_minio_client() -> Generator[MagicMock, None, None]:
         yield mock_minio.return_value
 
 
+@pytest.fixture
+def storage_config() -> StorageConfig:
+    return StorageConfig(
+        endpoint=settings.MINIO_ENDPOINT,
+        access_key=settings.MINIO_ACCESS_KEY,
+        secret_key=settings.MINIO_SECRET_KEY,
+        secure=settings.MINIO_SECURE,
+    )
+
+
 @pytest.mark.asyncio
 async def test_minio_storage_service_upload_file_error(
     mock_minio_client: MagicMock,
+    storage_config: StorageConfig,
 ) -> None:
     mock_minio_client.put_object.side_effect = Exception("Upload error")
-    service = MinioStorageService()
+    service = MinioStorageService(storage_config)
 
     result = await service.upload_file(
         MagicMock(spec=UploadFile), "test-bucket", "test-object"
@@ -40,6 +52,7 @@ async def test_minio_storage_service_upload_file_error(
 @pytest.mark.asyncio
 async def test_minio_storage_service_get_file_url_error(
     mock_minio_client: MagicMock,
+    storage_config: StorageConfig,
 ) -> None:
     mock_response = Mock()
     mock_minio_client.presigned_get_object.side_effect = S3Error(
@@ -50,7 +63,7 @@ async def test_minio_storage_service_get_file_url_error(
         host_id="host_id",
         response=mock_response,
     )
-    service = MinioStorageService()
+    service = MinioStorageService(storage_config)
 
     result = await service.get_file_url("test-bucket", "test-object")
     assert result is None
@@ -59,9 +72,10 @@ async def test_minio_storage_service_get_file_url_error(
 @pytest.mark.asyncio
 async def test_minio_storage_service_list_files_error(
     mock_minio_client: MagicMock,
+    storage_config: StorageConfig,
 ) -> None:
     mock_minio_client.list_objects.side_effect = Exception("List error")
-    service = MinioStorageService()
+    service = MinioStorageService(storage_config)
 
     result = await service.list_files("test-bucket")
     assert result == []
@@ -96,13 +110,13 @@ async def test_get_token_from_websocket_invalid_format() -> None:
     assert token is None
 
 
-def test_minio_storage_service_init() -> None:
+def test_minio_storage_service_init(storage_config: StorageConfig) -> None:
     with patch("app.dependencies.Minio") as mock_minio:
-        service = MinioStorageService()
+        service = MinioStorageService(storage_config)
         mock_minio.assert_called_once_with(
-            settings.MINIO_ENDPOINT,
-            access_key=settings.MINIO_ACCESS_KEY,
-            secret_key=settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_SECURE,
+            storage_config.endpoint,
+            access_key=storage_config.access_key,
+            secret_key=storage_config.secret_key,
+            secure=storage_config.secure,
         )
         assert service.client == mock_minio.return_value

@@ -1,14 +1,13 @@
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query, status
 from app.dependencies import get_current_user_ws
-from app.services.websocket_manager import (
-    WebSocketManager,
-)  # Add SYSTEM_USER_ID import
+from app.services.websocket_manager import WebSocketManager
 import logging
 from sqlalchemy.exc import SQLAlchemyError
 from utils.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from utils.user_utils import get_user_info
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -16,7 +15,18 @@ logger = logging.getLogger(__name__)
 websocket_manager: Optional[WebSocketManager] = None
 
 
+class WebSocketMessage(BaseModel):
+    """Schema for WebSocket messages."""
+
+    type: str = Field(..., description="Type of the message")
+    content: str = Field(..., description="Content of the message")
+    recipient_id: Optional[str] = Field(
+        None, description="Recipient ID for personal messages"
+    )
+
+
 def init_websocket_manager(manager: WebSocketManager) -> None:
+    """Initialize the global WebSocketManager."""
     global websocket_manager
     websocket_manager = manager
 
@@ -25,6 +35,9 @@ def init_websocket_manager(manager: WebSocketManager) -> None:
 async def websocket_endpoint(
     websocket: WebSocket, token: str = Query(...), db: AsyncSession = Depends(get_db)
 ) -> None:
+    """
+    WebSocket endpoint for real-time communication.
+    """
     try:
         if websocket_manager is None:
             logger.error("WebSocketManager is not initialized")
@@ -54,11 +67,16 @@ async def websocket_endpoint(
             )
 
             while True:
-                data = await websocket.receive_json()
-                logger.debug(
-                    f"Received WebSocket message from {user_info.screen_name} ({user_info.id}): {data}"
-                )
-                await websocket_manager.handle_message(user_info.id, data)
+                raw_data = await websocket.receive_json()
+                try:
+                    data = WebSocketMessage(**raw_data)
+                    logger.debug(
+                        f"Received WebSocket message from {user_info.screen_name} ({user_info.id}): {data}"
+                    )
+                    await websocket_manager.handle_message(user_info.id, data.dict())
+                except ValueError as e:
+                    logger.warning(f"Invalid message format: {e}")
+                    await websocket.send_json({"error": "Invalid message format"})
         except WebSocketDisconnect:
             logger.info(
                 f"WebSocket disconnected for user {user_info.screen_name} ({user_info.id})"
