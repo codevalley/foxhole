@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Form
+from fastapi import APIRouter, Depends, Form, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.user_schema import (
     UserCreate,
@@ -7,7 +7,6 @@ from app.schemas.user_schema import (
     UserUpdate,
     UserInfo,
 )
-
 from app.db.operations import (
     get_user_by_secret,
     create_user,
@@ -20,103 +19,179 @@ from app.exceptions import AuthenticationError, DatabaseOperationError
 from app.dependencies import get_current_user
 from utils.user_utils import get_user_info
 import logging
-
+from app.schemas.error_schema import ErrorResponse
+from pydantic import SecretStr
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserRegistrationResponse)
+@router.post(
+    "/register",
+    response_model=UserRegistrationResponse,
+    responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
 async def register(
-    user: UserCreate, db: AsyncSession = Depends(get_db)
+    user: UserCreate = Body(..., description="User registration details"),
+    db: AsyncSession = Depends(get_db),
 ) -> UserRegistrationResponse:
-    logger.info(
-        f"Attempting to register user with screen_name: {user.screen_name}"
-    )  # Added logging
+    """
+    Register a new user.
+
+    Args:
+        user (UserCreate): User registration details.
+        db (AsyncSession): Database session.
+
+    Returns:
+        UserRegistrationResponse: Newly created user information including user_secret.
+
+    Raises:
+        HTTPException: If registration fails due to database error or unexpected issues.
+    """
+    logger.info(f"Attempting to register user with screen_name: {user.screen_name}")
     try:
         new_user = await create_user(db, user.screen_name)
         if not new_user:
-            logger.error("Failed to create user in the database")  # Added logging
+            logger.error("Failed to create user in the database")
             raise DatabaseOperationError("Failed to create user")
-        logger.info(f"User registered successfully: {new_user.id}")  # Added logging
+        logger.info(f"User registered successfully: {new_user.id}")
         return UserRegistrationResponse(
             id=new_user.id,
             screen_name=new_user.screen_name,
             user_secret=new_user.user_secret,
         )
     except DatabaseOperationError as e:
-        logger.exception(
-            f"Database operation error during registration: {e}"
-        )  # Added logging
-        raise
+        logger.exception(f"Database operation error during registration: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
     except Exception as e:
-        logger.exception(f"Unexpected error during registration: {e}")  # Added logging
-        raise DatabaseOperationError("An unexpected error occurred during registration")
+        logger.exception(f"Unexpected error during registration: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred during registration",
+        )
 
 
-@router.post("/token", response_model=Token)
+@router.post(
+    "/token",
+    response_model=Token,
+    responses={401: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
 async def login_for_access_token(
-    user_secret: str = Form(...), db: AsyncSession = Depends(get_db)
+    user_secret: SecretStr = Form(
+        ..., description="User's secret key for authentication"
+    ),
+    db: AsyncSession = Depends(get_db),
 ) -> Token:
-    logger.info(f"Login attempt with user_secret: {user_secret}")  # Added logging
+    """
+    Authenticate a user and return an access token.
+
+    Args:
+        user_secret (SecretStr): User's secret key for authentication.
+        db (AsyncSession): Database session.
+
+    Returns:
+        Token: Access token for authenticated user.
+
+    Raises:
+        HTTPException: If authentication fails or unexpected issues occur.
+    """
+    logger.info("Login attempt received")
     try:
-        user = await get_user_by_secret(db, user_secret)
+        user = await get_user_by_secret(db, user_secret.get_secret_value())
         if not user:
-            logger.warning("Invalid user_secret provided")  # Added logging
+            logger.warning("Invalid user_secret provided")
             raise AuthenticationError("Invalid authentication credentials")
         access_token = create_access_token(data={"sub": str(user.id)})
-        logger.info(f"User logged in successfully: {user.id}")  # Added logging
+        logger.info(f"User logged in successfully: {user.id}")
         return Token(access_token=access_token, token_type="bearer")
     except AuthenticationError as e:
-        logger.exception(f"Authentication error during login: {e}")  # Added logging
-        raise
+        logger.exception(f"Authentication error during login: {e}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
     except Exception as e:
-        logger.exception(f"Unexpected error during login: {e}")  # Added logging
-        raise AuthenticationError("An unexpected error occurred during login")
+        logger.exception(f"Unexpected error during login: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred during login",
+        )
 
 
-@router.get("/users/me", response_model=UserInfo)
+@router.get(
+    "/users/me",
+    response_model=UserInfo,
+    responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+)
 async def read_users_me(current_user: UserInfo = Depends(get_current_user)) -> UserInfo:
-    logger.debug(f"Retrieving profile for user: {current_user.id}")  # Added logging
+    """
+    Get the current authenticated user's information.
+
+    Args:
+        current_user (UserInfo): Current authenticated user (injected by dependency).
+
+    Returns:
+        UserInfo: Current user's information.
+    """
+    logger.debug(f"Retrieving profile for user: {current_user.id}")
     return current_user
 
 
-@router.put("/users/me", response_model=UserInfo)
+@router.put(
+    "/users/me",
+    response_model=UserInfo,
+    responses={
+        400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
 async def update_user_profile(
-    user_update: UserUpdate,
+    user_update: UserUpdate = Body(..., description="User profile update details"),
     current_user: UserInfo = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> UserInfo:
-    logger.info(
-        f"User {current_user.id} is attempting to update their profile"
-    )  # Added logging
+    """
+    Update the current user's profile.
+
+    Args:
+        user_update (UserUpdate): User profile update details.
+        current_user (UserInfo): Current authenticated user (injected by dependency).
+        db (AsyncSession): Database session.
+
+    Returns:
+        UserInfo: Updated user information.
+
+    Raises:
+        HTTPException: If user is not found, update fails, or other unexpected issues occur.
+    """
+    logger.info(f"User {current_user.id} is attempting to update their profile")
     try:
         user = await get_user_by_id(db, current_user.id)
         if not user:
-            logger.error(f"User not found: {current_user.id}")  # Added logging
-            raise DatabaseOperationError("Failed to retrieve user")
+            logger.error(f"User not found: {current_user.id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
 
         update_data = user_update.model_dump(exclude_unset=True)
         updated_user = await update_user(db, user, **update_data)
 
         if not updated_user:
-            logger.error(f"Failed to update user: {current_user.id}")  # Added logging
+            logger.error(f"Failed to update user: {current_user.id}")
             raise DatabaseOperationError("Failed to update user")
 
-        logger.info(
-            f"User profile updated successfully: {updated_user.id}"
-        )  # Added logging
+        logger.info(f"User profile updated successfully: {updated_user.id}")
         return get_user_info(updated_user)
     except DatabaseOperationError as e:
-        logger.exception(
-            f"Database operation error during profile update: {e}"
-        )  # Added logging
-        raise
+        logger.exception(f"Database operation error during profile update: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
     except Exception as e:
-        logger.exception(
-            f"Unexpected error during profile update: {e}"
-        )  # Added logging
-        raise DatabaseOperationError(
-            "An unexpected error occurred during profile update"
+        logger.exception(f"Unexpected error during profile update: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred during profile update",
         )
