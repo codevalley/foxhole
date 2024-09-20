@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     # Application settings
     APP_NAME: str = "Foxhole Backend API"
     DEBUG: bool = False
+    APP_ENV: str = "production"
 
     # Server settings
     HOST: str = "0.0.0.0"
@@ -38,6 +39,7 @@ class Settings(BaseSettings):
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin"
     MINIO_SECURE: bool = False
+    MINIO_BUCKET_NAME: str = "foxhole"
 
     APP_VERSION: str = "0.1.0"  # Add this line
 
@@ -54,5 +56,7 @@ if settings.REDIS_URL == "redis://your_actual_redis_host:6379":
     settings.REDIS_URL = "redis://localhost:6379"
 
 # Print the loaded environment variables for debugging
+print(f"Loaded APP_ENV: {settings.APP_ENV}")
+print(f"Loaded DATABASE_URL: {settings.DATABASE_URL}")
 print(f"Loaded REDIS_URL: {settings.REDIS_URL}")
-print(f"Environment REDIS_URL: {os.getenv('REDIS_URL')}")
+print(f"Loaded MINIO_ENDPOINT: {settings.MINIO_ENDPOINT}")

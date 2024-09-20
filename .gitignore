@@ -48,6 +48,9 @@ kamal.yml
 .env
 *.pkl
 foxhole_session.json
+.env.production
+.env.staging
+
 # AI
 .ai/
 .cursorrules

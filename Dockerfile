@@ -45,6 +45,8 @@ USER appuser
 EXPOSE 8000
 
 # Run the application
+ARG APP_ENV=production
+COPY .env.${APP_ENV} .env
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # Health check

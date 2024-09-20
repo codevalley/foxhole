@@ -1,3 +1,4 @@
+# Kamal deployment configuration
 service: foxhole
 image: ${DOCKER_REGISTRY}/foxhole
 
@@ -8,6 +9,22 @@ servers:
     labels:
       traefik.http.routers.foxhole.rule: Host(`${DOMAIN}`)
 
+environments:
+  staging:
+    servers:
+      web:
+        hosts:
+          - ${STAGING_SERVER_HOST}
+    env:
+      APP_ENV: staging
+  production:
+    servers:
+      web:
+        hosts:
+          - ${PRODUCTION_SERVER_HOST}
+    env:
+      APP_ENV: production
+
 registry:
   username: ${DOCKER_REGISTRY_USERNAME}
   password:
@@ -15,14 +32,15 @@ registry:
 
 env:
   clear:
-    DATABASE_URL: sqlite:///./data/app.db
+    DATABASE_URL: sqlite+aiosqlite:///./data/app.db
     REDIS_URL: redis://redis:6379
     MINIO_ENDPOINT: minio:9000
     MINIO_BUCKET_NAME: foxhole
   secret:
     - MINIO_ACCESS_KEY
     - MINIO_SECRET_KEY
-    - DOCKER_REGISTRY_PASSWORD
+    - JWT_SECRET
+    - JWT_ALGORITHM
 
 volumes:
   - ${HOST_DATA_PATH}:/app/data
@@ -45,6 +63,10 @@ accessories:
     volumes:
       - ${HOST_MINIO_PATH}:/data
 
+healthcheck:
+  path: /health
+  port: 8000
+
 traefik:
   options:
     publish:
@@ -52,3 +74,10 @@ traefik:
     volume:
       - ${TRAEFIK_CONFIG_PATH}:/etc/traefik
       - ${TRAEFIK_CERTS_PATH}:/certs
+
+deploy:
+  - builtin:secrets
+  - builtin:predeploy
+  - builtin:core
+  - builtin:health
+  - builtin:postdeploy
