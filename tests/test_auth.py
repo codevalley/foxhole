@@ -33,7 +33,10 @@ async def test_login(async_client: AsyncClient, db_session: AsyncSession) -> Non
     register_response = await async_client.post(
         "/auth/register", json={"screen_name": "loginuser"}
     )
-    user_secret = register_response.json()["user_secret"]
+    assert register_response.status_code == 200
+    user_data = register_response.json()
+    assert "user_secret" in user_data, f"Unexpected response: {user_data}"
+    user_secret = user_data["user_secret"]
 
     login_response = await async_client.post(
         "/auth/token", data={"user_secret": user_secret}

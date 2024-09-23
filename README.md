@@ -18,6 +18,7 @@ Foxhole Backend API is a comprehensive starter kit for building robust Python-ba
 - Docker and docker-compose setup for easy deployment
 - Comprehensive testing framework with pytest
 - Command-line interface (CLI) for easy interaction with the API
+- **Rate limiting for API endpoints using slowapi and Redis**
 
 ## Getting Started
 
@@ -124,3 +125,16 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Rate Limiting
+
+The API implements rate limiting using slowapi and Redis to prevent abuse and ensure fair usage. The following rate limits are applied:
+
+- **Login endpoint**: 5 requests per minute
+- **Registration endpoint**: 10 requests per minute
+
+Rate limit information is included in the response headers:
+
+- `X-RateLimit-Limit`: The maximum number of requests allowed in the current time window
+- `X-RateLimit-Remaining`: The number of requests remaining in the current time window
+- `X-RateLimit-Reset`: The time at which the current rate limit window resets

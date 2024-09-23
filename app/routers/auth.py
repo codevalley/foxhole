@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Form, HTTPException, status, Body
+from fastapi import APIRouter, Depends, Form, HTTPException, status, Body, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.user_schema import (
     UserCreate,
@@ -21,6 +21,7 @@ from utils.user_utils import get_user_info
 import logging
 from app.schemas.error_schema import ErrorResponse
 from pydantic import SecretStr
+from app.core.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,9 @@ router = APIRouter()
     response_model=UserRegistrationResponse,
     responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
 )
+@limiter.limit("10/minute")
 async def register(
+    request: Request,
     user: UserCreate = Body(..., description="User registration details"),
     db: AsyncSession = Depends(get_db),
 ) -> UserRegistrationResponse:
@@ -40,6 +43,7 @@ async def register(
     Register a new user.
 
     Args:
+        request (Request): The request object.
         user (UserCreate): User registration details.
         db (AsyncSession): Database session.
 
@@ -79,7 +83,9 @@ async def register(
     response_model=Token,
     responses={401: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
 )
+@limiter.limit("5/minute")
 async def login_for_access_token(
+    request: Request,
     user_secret: SecretStr = Form(
         ..., description="User's secret key for authentication"
     ),
@@ -89,6 +95,7 @@ async def login_for_access_token(
     Authenticate a user and return an access token.
 
     Args:
+        request (Request): The request object.
         user_secret (SecretStr): User's secret key for authentication.
         db (AsyncSession): Database session.
 

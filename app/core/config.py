@@ -28,6 +28,9 @@ class Settings(BaseSettings):
 
     # Redis settings
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
+    RATE_LIMIT_REDIS_URL: str = (
+        "redis://localhost:6379/1"  # Use a different DB than the main cache
+    )
 
     # Logging settings
     LOG_LEVEL: str = "INFO"

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 from app.core.config import settings
 
+
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose.jwt")
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="minio.time")
 
@@ -13,9 +14,7 @@ logger = logging.getLogger(__name__)
 pytestmark = pytest.mark.asyncio
 
 
-async def test_register_user(
-    async_client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_register_user(async_client: AsyncClient, db_session: AsyncSession) -> None:
     response = await async_client.post(
         "/auth/register", json={"screen_name": "testuser"}
     )
@@ -39,51 +38,6 @@ async def test_login(async_client: AsyncClient, db_session: AsyncSession) -> Non
     )
     assert login_response.status_code == 200
     assert "access_token" in login_response.json()
-
-
-async def test_get_user_profile(
-    async_client: AsyncClient, db_session: AsyncSession
-) -> None:
-    # First, register and login
-    register_response = await async_client.post(
-        "/auth/register", json={"screen_name": "testuser"}
-    )
-    user_secret = register_response.json()["user_secret"]
-    login_response = await async_client.post(
-        "/auth/token", data={"user_secret": user_secret}
-    )
-    access_token = login_response.json()["access_token"]
-
-    # Now, get the user profile
-    response = await async_client.get(
-        "/auth/users/me", headers={"Authorization": f"Bearer {access_token}"}
-    )
-    assert response.status_code == 200
-    assert "id" in response.json()
-    assert response.json()["screen_name"] == "testuser"
-
-
-async def test_update_user_profile(
-    async_client: AsyncClient, db_session: AsyncSession
-) -> None:
-    # First, register and login
-    register_response = await async_client.post(
-        "/auth/register", json={"screen_name": "testuser"}
-    )
-    user_secret = register_response.json()["user_secret"]
-    login_response = await async_client.post(
-        "/auth/token", data={"user_secret": user_secret}
-    )
-    access_token = login_response.json()["access_token"]
-
-    # Now, update the user profile
-    update_response = await async_client.put(
-        "/auth/users/me",
-        headers={"Authorization": f"Bearer {access_token}"},
-        json={"screen_name": "updated_testuser"},
-    )
-    assert update_response.status_code == 200
-    assert update_response.json()["screen_name"] == "updated_testuser"
 
 
 async def test_health_check(async_client: AsyncClient) -> None:

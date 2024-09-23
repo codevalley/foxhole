@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from utils.user_utils import get_user_info
 from pydantic import BaseModel, Field
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ def init_websocket_manager(manager: WebSocketManager) -> None:
 
 
 @router.websocket("/ws")
+@limiter.exempt
 async def websocket_endpoint(
     websocket: WebSocket, token: str = Query(...), db: AsyncSession = Depends(get_db)
 ) -> None:

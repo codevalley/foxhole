@@ -1,15 +1,12 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
-from app.models import User
 from app.app import app
-from app.dependencies import get_db, get_storage_service
 from tests.mocks.mock_storage_service import MockStorageService
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
 from typing import AsyncGenerator, Any
 from app.services.websocket_manager import WebSocketManager
 from utils.database import create_tables, engine, AsyncSessionLocal
-from app.middleware.request_id import RequestIDMiddleware
 import warnings
 
 # Remove the custom event_loop fixture
@@ -29,59 +26,16 @@ async def db_engine() -> AsyncGenerator[AsyncEngine, None]:
 async def db_session(db_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
-        await session.rollback()
 
 
 @pytest.fixture(scope="function")
-async def client(db_session: AsyncSession) -> AsyncGenerator[TestClient, None]:
-    app.dependency_overrides[get_db] = lambda: db_session
-    app.dependency_overrides[get_storage_service] = lambda: MockStorageService()
-
-    # Clear existing middleware and add RequestIDMiddleware
-    app.middleware_stack = None
-    app.add_middleware(RequestIDMiddleware)
-
-    # Create a new TestClient with the updated app
-    with TestClient(app) as test_client:
-        yield test_client
-
-    # Clean up
-    if hasattr(app.state, "websocket_manager"):
-        for websocket in app.state.websocket_manager.active_connections.values():
-            await websocket.close()
-        app.state.websocket_manager.active_connections.clear()
-        app.state.websocket_manager.user_info.clear()
-
-    app.dependency_overrides.clear()
-    app.middleware_stack = None
-
-    # Remove the middleware after the test
-    app.user_middleware = [
-        m for m in app.user_middleware if not isinstance(m.cls, RequestIDMiddleware)
-    ]
-    app.middleware_stack = None  # Reset the middleware stack
+async def async_client() -> AsyncGenerator[AsyncClient, None]:
+    async with AsyncClient(app=app, base_url="http://testserver") as client:
+        yield client
 
 
 @pytest.fixture(scope="function")
-async def async_client(client: TestClient) -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        yield ac
-
-    # Clean up
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture
-async def test_user(db_session: AsyncSession) -> User:
-    user = User(screen_name="testuser")
-    db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
-    return user
-
-
-@pytest.fixture
-async def authenticated_user(async_client: AsyncClient) -> dict[str, Any]:
+async def authenticated_user(async_client: AsyncClient, db_session: AsyncSession) -> dict:
     user_data = {"screen_name": "testuser"}
     response = await async_client.post("/auth/register", json=user_data)
     assert response.status_code == 200, f"Registration failed: {response.text}"
@@ -111,10 +65,19 @@ def configure_logging() -> None:
 
 
 @pytest.fixture
-def test_client(client: TestClient) -> TestClient:
-    return client
+def test_client():
+    return TestClient(app)
 
 
 @pytest.fixture
 def mock_storage_service() -> MockStorageService:
     return MockStorageService()
+
+
+@pytest.fixture(autouse=True)
+def mock_rate_limiter(monkeypatch: pytest.MonkeyPatch) -> None:
+    def mock_hit(*args: Any, **kwargs: Any) -> None:
+        return None
+
+    monkeypatch.setattr("slowapi.extension.RateLimiter.hit", mock_hit)
+
