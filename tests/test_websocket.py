@@ -50,7 +50,10 @@ def websocket_manager() -> WebSocketManager:
 
 @pytest.mark.asyncio
 async def test_websocket_connection(
-    test_client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
+    test_client: TestClient,
+    token: str,
+    websocket_manager: WebSocketManager,
+    test_user: User,
 ) -> None:
     init_websocket_manager(websocket_manager)
     with test_client.websocket_connect(f"/ws?token={token}") as websocket:
@@ -64,7 +67,10 @@ async def test_websocket_connection(
 
 @pytest.mark.asyncio
 async def test_websocket_disconnect(
-    test_client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
+    test_client: TestClient,
+    token: str,
+    websocket_manager: WebSocketManager,
+    test_user: User,
 ) -> None:
     init_websocket_manager(websocket_manager)
     with test_client.websocket_connect(f"/ws?token={token}") as websocket:
@@ -79,7 +85,10 @@ async def test_websocket_disconnect(
 
 @pytest.mark.asyncio
 async def test_websocket_personal_message(
-    test_client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
+    test_client: TestClient,
+    token: str,
+    websocket_manager: WebSocketManager,
+    test_user: User,
 ) -> None:
     init_websocket_manager(websocket_manager)
     with test_client.websocket_connect(f"/ws?token={token}") as websocket:
@@ -95,7 +104,10 @@ async def test_websocket_personal_message(
 
 @pytest.mark.asyncio
 async def test_websocket_multiple_messages(
-    test_client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
+    test_client: TestClient,
+    token: str,
+    websocket_manager: WebSocketManager,
+    test_user: User,
 ) -> None:
     init_websocket_manager(websocket_manager)
     with test_client.websocket_connect(f"/ws?token={token}") as websocket:
@@ -155,7 +167,10 @@ async def test_websocket_sqlalchemy_error(
 
 @pytest.mark.asyncio
 async def test_websocket_invalid_json(
-    test_client: TestClient, token: str, websocket_manager: WebSocketManager, test_user: User
+    test_client: TestClient,
+    token: str,
+    websocket_manager: WebSocketManager,
+    test_user: User,
 ) -> None:
     init_websocket_manager(websocket_manager)
     with pytest.raises(WebSocketDisconnect):

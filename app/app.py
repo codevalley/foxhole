@@ -7,6 +7,7 @@ from app.routers import auth, health, websocket, files  # Added 'files' import
 from utils.cache import init_cache, close_cache
 from app.services.websocket_manager import WebSocketManager
 from app.middleware.request_id import RequestIDMiddleware
+from app.middleware.rate_limit_info import RateLimitInfoMiddleware
 from app.middleware.error_handler import (
     validation_exception_handler,
     generic_exception_handler,
@@ -21,6 +22,7 @@ setup_logging()
 
 # Add RequestIDMiddleware
 app.add_middleware(RequestIDMiddleware)
+app.add_middleware(RateLimitInfoMiddleware)
 
 
 @app.on_event("startup")

@@ -8,6 +8,11 @@ from typing import AsyncGenerator, Any
 from app.services.websocket_manager import WebSocketManager
 from utils.database import create_tables, engine, AsyncSessionLocal
 import warnings
+from fastapi import Response
+from app.core.rate_limit import limiter
+from fastapi import Request
+from typing import Callable
+
 
 # Remove the custom event_loop fixture
 
@@ -35,7 +40,9 @@ async def async_client() -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest.fixture(scope="function")
-async def authenticated_user(async_client: AsyncClient, db_session: AsyncSession) -> dict:
+async def authenticated_user(
+    async_client: AsyncClient, db_session: AsyncSession
+) -> dict:
     user_data = {"screen_name": "testuser"}
     response = await async_client.post("/auth/register", json=user_data)
     assert response.status_code == 200, f"Registration failed: {response.text}"
@@ -74,10 +81,41 @@ def mock_storage_service() -> MockStorageService:
     return MockStorageService()
 
 
+class DummyLimiter:
+    async def __call__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def reset(self) -> None:
+        pass
+
+
 @pytest.fixture(autouse=True)
-def mock_rate_limiter(monkeypatch: pytest.MonkeyPatch) -> None:
-    def mock_hit(*args: Any, **kwargs: Any) -> None:
-        return None
+def disable_rate_limiting(monkeypatch: pytest.MonkeyPatch) -> None:
+    dummy_limiter = DummyLimiter()
 
-    monkeypatch.setattr("slowapi.extension.RateLimiter.hit", mock_hit)
+    # Replace the limiter on the FastAPI app
+    app.state.limiter = dummy_limiter
 
+    # Replace all limited routes with unlimited ones
+    for route in app.routes:
+        if hasattr(route, "decorators"):
+            route.decorators = [
+                d for d in route.decorators if not isinstance(d, limiter.__class__)
+            ]
+
+
+@pytest.fixture(autouse=True)
+def mock_rate_limit_headers(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def mock_dispatch(self, request: Request, call_next: Callable) -> Response:
+        response = await call_next(request)
+        response.headers["X-RateLimit-Limit"] = "1000"
+        response.headers["X-RateLimit-Remaining"] = "999"
+        response.headers["X-RateLimit-Reset"] = "3600"
+        return response
+
+    monkeypatch.setattr(
+        "app.middleware.rate_limit_info.RateLimitInfoMiddleware.dispatch", mock_dispatch
+    )
+
+
+# Keep other fixtures as they are
