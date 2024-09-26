@@ -72,7 +72,7 @@ def configure_logging() -> None:
 
 
 @pytest.fixture
-def test_client():
+def test_client() -> TestClient:
     return TestClient(app)
 
 

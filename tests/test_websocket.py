@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
-def test_client():
+def test_client() -> TestClient:
     return TestClient(app)
 
 

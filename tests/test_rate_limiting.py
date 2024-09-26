@@ -5,7 +5,7 @@ import asyncio
 pytestmark = pytest.mark.asyncio
 
 
-async def test_rate_limiting(async_client: AsyncClient):
+async def test_rate_limiting(async_client: AsyncClient) -> None:
     # Register a user
     register_response = await async_client.post(
         "/auth/register", json={"screen_name": "testuser"}
@@ -32,7 +32,7 @@ async def test_rate_limiting(async_client: AsyncClient):
         assert "X-RateLimit-Reset" in register_response.headers
 
 
-async def test_register_rate_limiting(async_client: AsyncClient):
+async def test_register_rate_limiting(async_client: AsyncClient) -> None:
     # Try to register 11 times
     success_count = 0
     rate_limited_count = 0
