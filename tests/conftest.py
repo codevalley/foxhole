@@ -4,14 +4,13 @@ from app.app import app
 from tests.mocks.mock_storage_service import MockStorageService
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
-from typing import AsyncGenerator, Any
+from typing import AsyncGenerator, Any, Callable, Awaitable
 from app.services.websocket_manager import WebSocketManager
 from utils.database import create_tables, engine, AsyncSessionLocal
 import warnings
 from fastapi import Response
 from app.core.rate_limit import limiter
 from fastapi import Request
-from typing import Callable
 
 
 # Remove the custom event_loop fixture
@@ -106,7 +105,9 @@ def disable_rate_limiting(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture(autouse=True)
 def mock_rate_limit_headers(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def mock_dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def mock_dispatch(
+        self: Any, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         response = await call_next(request)
         response.headers["X-RateLimit-Limit"] = "1000"
         response.headers["X-RateLimit-Remaining"] = "999"
