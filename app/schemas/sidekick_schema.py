@@ -47,3 +47,5 @@ class SidekickOutput(BaseModel):
     status: str
     primary_type: str
     new_prompt: Optional[str] = None
+    is_thread_complete: bool
+    updated_entities: List[str]

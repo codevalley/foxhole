@@ -54,6 +54,11 @@ class SidekickService:
             # Process the response
             processed_response = self.process_data(llm_response)
 
+            # Log the instructions
+            logger.info(
+                f"OpenAI Instructions: {json.dumps(processed_response['instructions'])}"
+            )
+
             # Update thread with both user input and assistant response
             final_history = updated_history + [
                 {"role": "assistant", "content": json.dumps(llm_response)}
@@ -73,15 +78,31 @@ class SidekickService:
                             ),
                         )
                         context_updates[context_type] = context.data
+                        logger.info(
+                            f"Updated {context_type} entities: {json.dumps(data)}"
+                        )
 
             instructions = processed_response["instructions"]
+
+            # Check if the thread is complete
+            is_thread_complete = instructions["status"] == "complete"
+            new_thread_id = ""
+            if is_thread_complete:
+                logger.info(f"Thread {thread.id} completed. Starting a new thread.")
+                new_thread = await create_sidekick_thread(
+                    db, SidekickThreadCreate(user_id=user_id)
+                )
+                new_thread_id = new_thread.id
+
             return SidekickOutput(
                 response=instructions["followup"],
-                thread_id=thread.id,
+                thread_id=new_thread_id if is_thread_complete else thread.id,
                 context_updates=context_updates if context_updates else None,
                 status=instructions["status"],
                 primary_type=instructions["primary_type"],
                 new_prompt=instructions.get("new_prompt"),
+                is_thread_complete=is_thread_complete,
+                updated_entities=list(context_updates.keys()),
             )
         except Exception as e:
             logger.error(f"Error in process_input: {str(e)}")

@@ -46,16 +46,17 @@ async def call_sidekick_api(
             "Authorization": f"Bearer {session_manager.current_user['access_token']}"
         }
         data = {"user_input": user_input, "thread_id": thread_id}
-        async with session.post(
-            f"{config.API_URL}/sidekick", headers=headers, json=data
-        ) as response:
-            if response.status == 200:
-                return await response.json()
-            else:
-                console.print(
-                    f"[bold red]Error:[/bold red] {await response.text()}"
-                )  # noqa E231
-                return None
+        with console.status("[bold green]Thinking...", spinner="dots"):
+            async with session.post(
+                f"{config.API_URL}/sidekick", headers=headers, json=data
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    console.print(
+                        f"[bold red]Error:[/bold red] {await response.text()}"
+                    )
+                    return None
 
 
 async def main() -> None:
@@ -115,14 +116,22 @@ async def main() -> None:
             console.print(
                 Panel(markdown_followup, title="Sidekick", border_style="blue")
             )
+
+            if response["is_thread_complete"]:
+                console.print(
+                    "[bold green]Thread completed. Starting a new thread.[/bold green]"
+                )
+                if response["updated_entities"]:
+                    console.print("[bold yellow]Updated entities:[/bold yellow]")
+                    for entity in response["updated_entities"]:
+                        console.print(f"- {entity}")
+
             thread_id = response["thread_id"]
 
             if response.get("context_updates"):
                 console.print("[bold green]Context updated:[/bold green]")
                 for context_type, updates in response["context_updates"].items():
-                    console.print(
-                        f"[bold blue]{context_type}:[/bold blue]"
-                    )  # noqa E231
+                    console.print(f"[bold blue]{context_type}:[/bold blue]")
                     for update in updates:
                         console.print(update)
 

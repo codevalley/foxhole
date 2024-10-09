@@ -17,6 +17,7 @@ cli/foxhole_session.json
 *.sqlite3
 
 # Logs
+logs/
 *.log
 
 
