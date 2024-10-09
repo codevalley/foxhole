@@ -43,9 +43,8 @@ class SidekickInput(BaseModel):
 class SidekickOutput(BaseModel):
     response: str
     thread_id: str
-    context_updates: Optional[Dict[str, List[Dict[str, Any]]]] = None
     status: str
     primary_type: str
     new_prompt: Optional[str] = None
     is_thread_complete: bool
-    updated_entities: List[str]
+    updated_entities: Dict[str, int]

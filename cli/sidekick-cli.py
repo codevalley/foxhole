@@ -112,28 +112,36 @@ async def main() -> None:
         response = await call_sidekick_api(session_manager, user_input, thread_id)
 
         if response:
-            markdown_followup = Markdown(response["response"])
+            # Create a list to store all the parts of the response
+            response_parts = []
+
+            # Add updated entities information
+            if response["updated_entities"]:
+                entity_updates = []
+                for entity, count in response["updated_entities"].items():
+                    if count > 0:
+                        entity_updates.append(f"* {count} new {entity} added")
+                if entity_updates:
+                    response_parts.append("\n".join(entity_updates))
+
+            # Add followup text
+            response_parts.append(response["response"])
+
+            # Add thread completion message if applicable
+            if response["is_thread_complete"]:
+                response_parts.append("Thread finished!")
+
+            # Add new prompt if available
+            if response.get("new_prompt"):
+                response_parts.append(response["new_prompt"])
+
+            # Join all parts with newlines and create a Markdown object
+            markdown_response = Markdown("\n\n".join(response_parts))
             console.print(
-                Panel(markdown_followup, title="Sidekick", border_style="blue")
+                Panel(markdown_response, title="Sidekick", border_style="blue")
             )
 
-            if response["is_thread_complete"]:
-                console.print(
-                    "[bold green]Thread completed. Starting a new thread.[/bold green]"
-                )
-                if response["updated_entities"]:
-                    console.print("[bold yellow]Updated entities:[/bold yellow]")
-                    for entity in response["updated_entities"]:
-                        console.print(f"- {entity}")
-
             thread_id = response["thread_id"]
-
-            if response.get("context_updates"):
-                console.print("[bold green]Context updated:[/bold green]")
-                for context_type, updates in response["context_updates"].items():
-                    console.print(f"[bold blue]{context_type}:[/bold blue]")
-                    for update in updates:
-                        console.print(update)
 
     session_manager.save_session()
     print("Session saved. Goodbye!")
