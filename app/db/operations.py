@@ -1,8 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models import User
-from typing import Optional, Any
+from app.models import User, SidekickThread, SidekickContext
+from typing import Optional, Any, Dict, List
 import logging
+from app.schemas.sidekick_schema import SidekickThreadCreate, SidekickContextCreate
+import uuid
+
 
 logger = logging.getLogger(__name__)
 
@@ -54,3 +57,93 @@ async def update_user(db: AsyncSession, user: User, **kwargs: Any) -> Optional[U
         logger.error(f"Error updating user: {str(e)}")
         await db.rollback()
         return None
+
+
+# Sidekick methods
+
+
+async def create_sidekick_thread(
+    db: AsyncSession, thread: SidekickThreadCreate
+) -> SidekickThread:
+    db_thread = SidekickThread(
+        id=str(uuid.uuid4()),
+        user_id=thread.user_id,
+        conversation_history=thread.conversation_history,
+    )
+    db.add(db_thread)
+    await db.commit()
+    await db.refresh(db_thread)
+    return db_thread
+
+
+async def get_sidekick_thread(
+    db: AsyncSession, thread_id: str
+) -> Optional[SidekickThread]:
+    result = await db.execute(
+        select(SidekickThread).filter(SidekickThread.id == thread_id)
+    )
+    return result.scalars().first()
+
+
+async def update_sidekick_thread(
+    db: AsyncSession, thread_id: str, conversation_history: List[Dict[str, str]]
+) -> Optional[SidekickThread]:
+    thread = await get_sidekick_thread(db, thread_id)
+    if thread:
+        thread.conversation_history = conversation_history
+        await db.commit()
+        await db.refresh(thread)
+    return thread
+
+
+async def create_sidekick_context(
+    db: AsyncSession, context: SidekickContextCreate
+) -> SidekickContext:
+    db_context = SidekickContext(
+        id=str(uuid.uuid4()),
+        user_id=context.user_id,
+        context_type=context.context_type,
+        data=context.data,
+    )
+    db.add(db_context)
+    await db.commit()
+    await db.refresh(db_context)
+    return db_context
+
+
+async def get_sidekick_context(
+    db: AsyncSession, user_id: str, context_type: str
+) -> Optional[SidekickContext]:
+    result = await db.execute(
+        select(SidekickContext).filter(
+            SidekickContext.user_id == user_id,
+            SidekickContext.context_type == context_type,
+        )
+    )
+    return result.scalars().first()
+
+
+async def update_sidekick_context(
+    db: AsyncSession, user_id: str, context_type: str, data: Dict[str, Any]
+) -> Optional[SidekickContext]:
+    context = await get_sidekick_context(db, user_id, context_type)
+    if context:
+        context.data = data
+        await db.commit()
+        await db.refresh(context)
+    return context
+
+
+async def update_or_create_sidekick_context(
+    db: AsyncSession, context: SidekickContextCreate
+) -> SidekickContext:
+    existing_context = await get_sidekick_context(
+        db, context.user_id, context.context_type
+    )
+    if existing_context:
+        existing_context.data = context.data
+        await db.commit()
+        await db.refresh(existing_context)
+        return existing_context
+    else:
+        return await create_sidekick_context(db, context)

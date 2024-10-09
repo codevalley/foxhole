@@ -1,3 +1,4 @@
+import os
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from app.app import app
@@ -11,6 +12,8 @@ import warnings
 from fastapi import Response
 from app.core.rate_limit import limiter
 from fastapi import Request
+from app.core.config import settings  # Add this import
+from _pytest.capture import CaptureFixture
 
 
 # Remove the custom event_loop fixture
@@ -18,6 +21,22 @@ from fastapi import Request
 # Add this at the top of the file to suppress DeprecationWarnings from jwt and minio
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose.jwt")
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="minio.time")
+
+
+# Set the environment to development for tests
+os.environ["APP_ENV"] = "development"
+
+# Force reload of settings after setting APP_ENV
+settings = settings.model_validate({})  # This will reload the settings
+
+
+@pytest.fixture(autouse=True)
+def print_env(capsys: CaptureFixture[str]) -> None:
+    """Print the current environment for each test."""
+    with capsys.disabled():
+        print(f"\nTest environment: {settings.APP_ENV}")
+        print(f"Register rate: {settings.RATE_LIMIT_AUTH_REGISTER}")
+        print(f"Token rate: {settings.RATE_LIMIT_AUTH_TOKEN}")
 
 
 @pytest.fixture(scope="function")
@@ -120,3 +139,8 @@ def mock_rate_limit_headers(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 # Keep other fixtures as they are
+@pytest.fixture(autouse=True)
+async def reset_rate_limiter() -> AsyncGenerator[None, None]:
+    """Reset the rate limiter before each test."""
+    limiter.reset()
+    yield

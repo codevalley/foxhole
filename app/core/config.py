@@ -1,7 +1,8 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
+from typing import Optional, Dict, List
 import secrets
 import os
+from typing import Any
 
 
 class Settings(BaseSettings):
@@ -44,12 +45,67 @@ class Settings(BaseSettings):
     MINIO_SECURE: bool = False
     MINIO_BUCKET_NAME: str = "foxhole"
 
-    APP_VERSION: str = "0.1.0"  # Add this line
+    # Sidekick settings
+    OPENAI_API_KEY: Optional[str] = None
+    SIDEKICK_SYSTEM_PROMPT_FILE: str = "sidekick_prompt.txt"
+
+    APP_VERSION: str = "0.1.0"
+
+    # Rate limiting settings
+    RATE_LIMIT_DEFAULT: str = "100/minute"
+    RATE_LIMIT_AUTH_REGISTER: str = "10/minute"
+    RATE_LIMIT_AUTH_TOKEN: str = "5/minute"
+    RATE_LIMIT_WEBSOCKET: str = "1000/minute"  # High limit for WebSocket connections
+
+    @property
+    def rate_limits(self) -> Dict[str, str]:
+        return {
+            "default": self.RATE_LIMIT_DEFAULT,
+            "auth_register": self.RATE_LIMIT_AUTH_REGISTER,
+            "auth_token": self.RATE_LIMIT_AUTH_TOKEN,
+            "websocket": self.RATE_LIMIT_WEBSOCKET,
+        }
+
+    @property
+    def SIDEKICK_SYSTEM_PROMPT(self) -> str:
+        try:
+            with open(self.SIDEKICK_SYSTEM_PROMPT_FILE, "r") as file:
+                return file.read().strip()
+        except FileNotFoundError:
+            print(
+                f"Warning: {self.SIDEKICK_SYSTEM_PROMPT_FILE} not found. Using empty prompt."
+            )
+            return ""
+
+    @classmethod
+    def get_env_file(cls) -> List[str]:
+        app_env = os.getenv("APP_ENV", "production").lower()
+        env_files = [f".env.{app_env}", ".env"]
+        print(f"Attempting to load environment from files: {env_files}")
+        return env_files
 
     model_config = SettingsConfigDict(
-        env_file=".env",
         case_sensitive=True,
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
+
+    def __init__(self: "Settings", **kwargs: Any) -> None:
+        env_files = self.get_env_file()
+        super().__init__(_env_file=env_files, **kwargs)
+        # self._log_loaded_values()
+
+    def _log_loaded_values(self) -> None:
+        print(f"Loaded APP_ENV: {self.APP_ENV}")
+        print(f"Loaded RATE_LIMIT_DEFAULT: {self.RATE_LIMIT_DEFAULT}")
+        print(f"Loaded RATE_LIMIT_AUTH_REGISTER: {self.RATE_LIMIT_AUTH_REGISTER}")
+        print(f"Loaded RATE_LIMIT_AUTH_TOKEN: {self.RATE_LIMIT_AUTH_TOKEN}")
+        print(f"Loaded RATE_LIMIT_WEBSOCKET: {self.RATE_LIMIT_WEBSOCKET}")
+        print(f"Loaded DATABASE_URL: {self.DATABASE_URL}")
+        print(f"Loaded REDIS_URL: {self.REDIS_URL}")
+        print(f"Loaded MINIO_ENDPOINT: {self.MINIO_ENDPOINT}")
+        print(f"Loaded SIDEKICK_SYSTEM_PROMPT_FILE: {self.SIDEKICK_SYSTEM_PROMPT_FILE}")
+        print(f"SIDEKICK_SYSTEM_PROMPT length: {len(self.SIDEKICK_SYSTEM_PROMPT)}")
 
 
 settings = Settings()
@@ -59,7 +115,9 @@ if settings.REDIS_URL == "redis://your_actual_redis_host:6379":
     settings.REDIS_URL = "redis://localhost:6379"
 
 # Print the loaded environment variables for debugging
-print(f"Loaded APP_ENV: {settings.APP_ENV}")
-print(f"Loaded DATABASE_URL: {settings.DATABASE_URL}")
-print(f"Loaded REDIS_URL: {settings.REDIS_URL}")
-print(f"Loaded MINIO_ENDPOINT: {settings.MINIO_ENDPOINT}")
+# print(f"Loaded APP_ENV: {settings.APP_ENV}")
+# print(f"Loaded DATABASE_URL: {settings.DATABASE_URL}")
+# print(f"Loaded REDIS_URL: {settings.REDIS_URL}")
+# print(f"Loaded MINIO_ENDPOINT: {settings.MINIO_ENDPOINT}")
+# print(f"SIDEKICK_SYSTEM_PROMPT length: {len(settings.SIDEKICK_SYSTEM_PROMPT)}")
+# print(f"SIDEKICK_SYSTEM_PROMPT: {settings.SIDEKICK_SYSTEM_PROMPT}")

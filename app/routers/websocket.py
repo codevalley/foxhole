@@ -10,6 +10,7 @@ from utils.user_utils import get_user_info
 from pydantic import BaseModel, Field
 from app.core.rate_limit import limiter
 
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 

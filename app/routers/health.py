@@ -1,17 +1,21 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 import logging
 from app.core.config import settings
 from app.schemas.health_schema import HealthResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from utils.database import get_db
 from sqlalchemy import text
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
+@limiter.limit(settings.rate_limits["default"])
+async def health_check(
+    request: Request, db: AsyncSession = Depends(get_db)
+) -> HealthResponse:
     """
     Comprehensive health check endpoint to verify the API and its dependencies are running.
     """

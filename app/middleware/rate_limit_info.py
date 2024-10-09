@@ -7,13 +7,10 @@ class RateLimitInfoMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         response = await call_next(request)
         if hasattr(request.state, "view_rate_limit"):
-            response.headers["X-RateLimit-Limit"] = str(
-                request.state.view_rate_limit.limit
-            )
-            response.headers["X-RateLimit-Remaining"] = str(
-                request.state.view_rate_limit.remaining
-            )
-            response.headers["X-RateLimit-Reset"] = str(
-                request.state.view_rate_limit.reset
-            )
+            rate_limit = request.state.view_rate_limit
+            if isinstance(rate_limit, tuple) and len(rate_limit) == 3:
+                limit, remaining, reset = rate_limit
+                response.headers["X-RateLimit-Limit"] = str(limit)
+                response.headers["X-RateLimit-Remaining"] = str(remaining)
+                response.headers["X-RateLimit-Reset"] = str(reset)
         return response

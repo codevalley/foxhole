@@ -22,6 +22,7 @@ import logging
 from app.schemas.error_schema import ErrorResponse
 from pydantic import SecretStr
 from app.core.rate_limit import limiter
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ router = APIRouter()
     response_model=UserRegistrationResponse,
     responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
 )
-@limiter.limit("10/minute")
+@limiter.limit(settings.rate_limits["auth_register"])
 async def register(
     request: Request,
     user: UserCreate = Body(..., description="User registration details"),
@@ -83,7 +84,7 @@ async def register(
     response_model=Token,
     responses={401: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
 )
-@limiter.limit("5/minute")
+@limiter.limit(settings.rate_limits["auth_token"])
 async def login_for_access_token(
     request: Request,
     user_secret: SecretStr = Form(
@@ -125,6 +126,7 @@ async def login_for_access_token(
         )
 
 
+# TODO: Add rate limiting to this endpoint
 @router.get(
     "/users/me",
     response_model=UserInfo,
@@ -144,6 +146,7 @@ async def read_users_me(current_user: UserInfo = Depends(get_current_user)) -> U
     return current_user
 
 
+# TODO: Add rate limiting to this endpoint
 @router.put(
     "/users/me",
     response_model=UserInfo,

@@ -5,6 +5,7 @@ from prompt_toolkit import PromptSession
 import aiofiles
 import aiohttp
 import os
+import json
 
 
 async def handle_command(
@@ -17,7 +18,9 @@ async def handle_command(
     cmd = parts[0].lower()
     args = parts[1:]
 
-    if cmd == "login":
+    if cmd == "sidekick":
+        await sidekick(session_manager, prompt_session, " ".join(args))
+    elif cmd == "login":
         await login(session_manager, ws_client, prompt_session)
     elif cmd == "register":
         await register(session_manager, ws_client, prompt_session)
@@ -51,6 +54,35 @@ async def handle_command(
         await download_file(session_manager, ws_client, prompt_session)
     else:
         print_message(f"Unknown command: {cmd}", "error")
+
+
+async def sidekick(
+    session_manager: SessionManager, prompt_session: PromptSession, user_input: str
+) -> None:
+    if not session_manager.current_user:
+        print_message("You must be logged in to use Sidekick", "error")
+        return
+
+    async with aiohttp.ClientSession() as session:
+        headers = {
+            "Authorization": f"Bearer {session_manager.current_user['access_token']}"
+        }
+        data = {
+            "user_input": user_input,
+            "thread_id": session_manager.current_sidekick_thread,
+        }
+        async with session.post(
+            f"{session_manager.config.API_URL}/sidekick", headers=headers, json=data
+        ) as response:
+            if response.status == 200:
+                result = await response.json()
+                print_message(result["response"], "info", "Sidekick")
+                session_manager.current_sidekick_thread = result["thread_id"]
+                if result.get("context_updates"):
+                    print_message("Context updates:", "info")
+                    print(json.dumps(result["context_updates"], indent=2))
+            else:
+                print_message(f"Error: {await response.text()}", "error")
 
 
 async def login(
@@ -130,6 +162,7 @@ def show_help() -> None:
         ("exit", "Exit the application"),
         ("upload", "Upload a file to the server"),
         ("list", "List files on the server"),
+        ("sidekick <message>", "Interact with Sidekick AI assistant"),
         ("download", "Download a file from the server"),
     ]
     print_message("Available commands:", "info")

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request
 from app.services.storage_service import StorageService
 from app.dependencies import get_storage_service, get_current_user
 from app.models import User
@@ -9,7 +9,8 @@ from app.schemas.file_schema import (
 )
 import logging
 from app.core.exceptions import DatabaseOperationError
-
+from app.core.rate_limit import limiter
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,9 @@ router = APIRouter()
 
 
 @router.post("/upload", response_model=FileUploadResponse)
+@limiter.limit(settings.rate_limits["default"])
 async def upload_file(
+    request: Request,
     file: UploadFile = File(...),
     storage_service: StorageService = Depends(get_storage_service),
     current_user: User = Depends(get_current_user),
@@ -50,7 +53,9 @@ async def upload_file(
 
 
 @router.get("/file/{object_name}", response_model=FileURLResponse)
+@limiter.limit(settings.rate_limits["default"])
 async def get_file_url(
+    request: Request,
     object_name: str,
     storage_service: StorageService = Depends(get_storage_service),
     current_user: User = Depends(get_current_user),
@@ -80,7 +85,9 @@ async def get_file_url(
 
 
 @router.get("/", response_model=FileListResponse)
+@limiter.limit(settings.rate_limits["default"])
 async def list_files(
+    request: Request,
     storage_service: StorageService = Depends(get_storage_service),
     current_user: User = Depends(get_current_user),
 ) -> FileListResponse:

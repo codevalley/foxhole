@@ -8,7 +8,6 @@ from app.dependencies import get_storage_service
 from app.routers.auth import create_access_token
 from app.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
-import uuid
 from app.app import app as fastapi_app  # Import the FastAPI app
 from typing import AsyncGenerator
 
@@ -25,8 +24,7 @@ def app() -> FastAPI:
 
 @pytest.fixture
 async def test_user(db_session: AsyncSession) -> User:
-    user_id = str(uuid.uuid4())
-    user = User(id=user_id, screen_name="testuser")
+    user = User(screen_name="testuser", user_secret=User.generate_user_secret())
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)

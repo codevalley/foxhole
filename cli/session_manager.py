@@ -8,6 +8,7 @@ class SessionManager:
     def __init__(self, config: CliConfig) -> None:
         self.config = config
         self.current_user: Optional[Dict[str, Any]] = None
+        self.current_sidekick_thread: Optional[str] = None
 
     async def login(self, user_secret: str) -> bool:
         async with aiohttp.ClientSession() as session:
@@ -80,13 +81,20 @@ class SessionManager:
     def save_session(self) -> None:
         if self.current_user and "user_secret" in self.current_user:
             with open(self.config.SESSION_FILE, "w") as f:
-                json.dump({"user_secret": self.current_user["user_secret"]}, f)
+                json.dump(
+                    {
+                        "user_secret": self.current_user["user_secret"],
+                        "sidekick_thread": self.current_sidekick_thread,
+                    },
+                    f,
+                )
 
     async def load_session(self) -> bool:
         try:
             with open(self.config.SESSION_FILE, "r") as f:
                 data = json.load(f)
                 user_secret = data.get("user_secret")
+                self.current_sidekick_thread = data.get("sidekick_thread")
                 if user_secret:
                     return await self.login(user_secret)
             return False

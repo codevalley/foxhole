@@ -14,6 +14,7 @@ from app.middleware.error_handler import (
 )
 from app.core.logging_config import setup_logging
 from fastapi.exceptions import RequestValidationError
+from app.routers import sidekick
 
 app = FastAPI()
 
@@ -45,6 +46,7 @@ app.include_router(websocket.router, tags=["websocket"])
 app.include_router(
     files.router, prefix="/files", tags=["files"]
 )  # Included 'files' router
+app.include_router(sidekick.router, tags=["sidekick"])
 
 # Add exception handlers
 app.add_exception_handler(RequestValidationError, validation_exception_handler)

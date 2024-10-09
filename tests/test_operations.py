@@ -15,7 +15,11 @@ pytestmark = pytest.mark.asyncio
 
 @pytest.fixture
 async def test_user(db_session: AsyncSession) -> User:
-    user = User(screen_name="testuser", user_secret=User.generate_user_secret())
+    user = User(
+        screen_name="testuser",
+        user_secret=User.generate_user_secret(),
+        id=str(uuid.uuid4()),
+    )
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
