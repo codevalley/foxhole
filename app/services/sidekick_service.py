@@ -5,11 +5,13 @@ from app.core.config import settings
 from app.schemas.sidekick_schema import SidekickInput, SidekickOutput
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.operations import (
+    get_sidekick_context,
+    update_or_create_sidekick_context,
+)
+from app.db.operations import (
     get_sidekick_thread,
     update_sidekick_thread,
     create_sidekick_thread,
-    get_sidekick_context,
-    update_or_create_sidekick_context,
 )
 from app.schemas.sidekick_schema import SidekickThreadCreate, SidekickContextCreate
 from app.models import SidekickThread
@@ -54,31 +56,32 @@ class SidekickService:
 
             # Update thread with both user input and assistant response
             final_history = updated_history + [
-                {"role": "assistant", "content": json.dumps(llm_response)}  # noqa E231
+                {"role": "assistant", "content": json.dumps(llm_response)}
             ]
             await update_sidekick_thread(db, thread.id, final_history)
 
             # Update context if necessary
             context_updates: Dict[str, List[Dict[str, Any]]] = {}
             if processed_response.get("data"):
-                for context_type, data in processed_response["data"].items():
-                    if isinstance(data, dict):
+                for context_type in ["tasks", "people", "knowledge"]:
+                    data = processed_response["data"].get(context_type, [])
+                    if data:
                         context = await update_or_create_sidekick_context(
                             db,
                             SidekickContextCreate(
                                 user_id=user_id, context_type=context_type, data=data
                             ),
                         )
-                        context_updates[context_type] = [context.data]
-                    else:
-                        logger.error(
-                            f"Error: data for {context_type} is not a dictionary: {data}"
-                        )
+                        context_updates[context_type] = context.data
 
+            instructions = processed_response["instructions"]
             return SidekickOutput(
-                response=processed_response["instructions"]["followup"],
+                response=instructions["followup"],
                 thread_id=thread.id,
                 context_updates=context_updates if context_updates else None,
+                status=instructions["status"],
+                primary_type=instructions["primary_type"],
+                new_prompt=instructions.get("new_prompt"),
             )
         except Exception as e:
             logger.error(f"Error in process_input: {str(e)}")
@@ -90,7 +93,7 @@ class SidekickService:
         try:
             # Load current context
             context = {}
-            for context_type in ["people", "tasks", "knowledge"]:
+            for context_type in ["tasks", "people", "knowledge"]:
                 context_data = await get_sidekick_context(db, user_id, context_type)
                 if context_data:
                     context[context_type] = context_data.data
@@ -113,7 +116,7 @@ class SidekickService:
     async def call_openai_api(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
         try:
             response = await openai.ChatCompletion.acreate(
-                model="gpt-4o-mini-2024-07-18",  # Use the appropriate model
+                model="gpt-4o-mini-2024-07-18",
                 messages=messages,
             )
             api_response = json.loads(response.choices[0].message.content)
@@ -121,9 +124,7 @@ class SidekickService:
             return cast(Dict[str, Any], api_response)
         except openai.error.OpenAIError as e:
             logger.error(f"OpenAI API error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"OpenAI API error: {str(e)}"
-            )  # noqa E231
+            raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(e)}")
         except json.JSONDecodeError as e:
             logger.error(f"JSON decode error: {str(e)}")
             raise HTTPException(
@@ -138,25 +139,27 @@ class SidekickService:
     def process_data(self, llm_response: Dict[str, Any]) -> Dict[str, Any]:
         logger.debug(f"Raw LLM response: {llm_response}")
 
-        if "data" in llm_response:
-            for context_type, data in llm_response["data"].items():
-                logger.debug(
-                    f"Context type: {context_type}, Data type: {type(data)}, Data: {data}"
-                )
-
         # Ensure the response has the expected structure
-        if (
-            "instructions" not in llm_response
-            or "followup" not in llm_response["instructions"]
-        ):
+        if "instructions" not in llm_response or "data" not in llm_response:
             logger.error("LLM response is missing required fields")
             raise ValueError("Invalid LLM response structure")
 
-        # Ensure data is a dictionary if present
-        if "data" in llm_response and not isinstance(llm_response["data"], dict):
-            logger.error(
-                f"LLM response 'data' is not a dictionary: {llm_response['data']}"
-            )
-            llm_response["data"] = {}  # Set to empty dict to prevent further errors
+        instructions = llm_response["instructions"]
+        required_instruction_fields = ["status", "followup", "primary_type"]
+        for field in required_instruction_fields:
+            if field not in instructions:
+                logger.error(
+                    f"LLM response is missing required instruction field: {field}"
+                )
+                raise ValueError(f"Invalid LLM response structure: missing {field}")
+
+        # Validate data structure
+        data = llm_response["data"]
+        for context_type in ["tasks", "people", "knowledge"]:
+            if context_type in data and not isinstance(data[context_type], list):
+                logger.error(
+                    f"LLM response 'data.{context_type}' is not a list: {data[context_type]}"
+                )
+                data[context_type] = []
 
         return llm_response

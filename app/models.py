@@ -61,12 +61,12 @@ class SidekickContext(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     context_type: Mapped[str] = mapped_column(String)
-    data: Mapped[Dict[str, Any]] = mapped_column(JSON)
+    data: Mapped[List[Dict[str, Any]]] = mapped_column(JSON)
 
     user: Mapped["User"] = relationship("User", back_populates="sidekick_contexts")
 
     def __init__(
-        self, id: str, user_id: str, context_type: str, data: Dict[str, Any]
+        self, id: str, user_id: str, context_type: str, data: List[Dict[str, Any]]
     ) -> None:
         self.id = id
         self.user_id = user_id

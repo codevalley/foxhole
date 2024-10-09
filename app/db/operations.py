@@ -1,10 +1,13 @@
+from typing import List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.models import User, SidekickThread, SidekickContext
-from typing import Optional, Any, Dict, List
-import logging
-from app.schemas.sidekick_schema import SidekickThreadCreate, SidekickContextCreate
+from app.models import SidekickContext
+from app.schemas.sidekick_schema import SidekickContextCreate
 import uuid
+import logging
+from typing import Optional
+from app.models import User, SidekickThread
+from sqlalchemy import select
+from app.schemas.sidekick_schema import SidekickThreadCreate
 
 
 logger = logging.getLogger(__name__)
@@ -124,7 +127,7 @@ async def get_sidekick_context(
 
 
 async def update_sidekick_context(
-    db: AsyncSession, user_id: str, context_type: str, data: Dict[str, Any]
+    db: AsyncSession, user_id: str, context_type: str, data: List[Dict[str, Any]]
 ) -> Optional[SidekickContext]:
     context = await get_sidekick_context(db, user_id, context_type)
     if context:
@@ -136,7 +139,7 @@ async def update_sidekick_context(
 
 async def update_or_create_sidekick_context(
     db: AsyncSession, context: SidekickContextCreate
-) -> SidekickContext:
+) -> SidekickContext | Any:
     existing_context = await get_sidekick_context(
         db, context.user_id, context.context_type
     )
@@ -146,4 +149,13 @@ async def update_or_create_sidekick_context(
         await db.refresh(existing_context)
         return existing_context
     else:
-        return await create_sidekick_context(db, context)
+        new_context = SidekickContext(
+            id=str(uuid.uuid4()),
+            user_id=context.user_id,
+            context_type=context.context_type,
+            data=context.data,
+        )
+        db.add(new_context)
+        await db.commit()
+        await db.refresh(new_context)
+        return new_context

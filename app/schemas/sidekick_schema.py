@@ -19,7 +19,10 @@ class SidekickThreadResponse(BaseModel):
 class SidekickContextCreate(BaseModel):
     user_id: str
     context_type: str
-    data: Dict[str, Any]
+    data: List[Dict[str, Any]]
+
+    class Config:
+        from_attributes = True
 
 
 class SidekickContextResponse(BaseModel):
@@ -41,3 +44,6 @@ class SidekickOutput(BaseModel):
     response: str
     thread_id: str
     context_updates: Optional[Dict[str, List[Dict[str, Any]]]] = None
+    status: str
+    primary_type: str
+    new_prompt: Optional[str] = None
