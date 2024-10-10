@@ -51,7 +51,15 @@ class SidekickService:
             await update_sidekick_thread(db, thread.id, final_history)
 
             context_updates: Dict[str, int] = {"tasks": 0, "people": 0, "knowledge": 0}
-            if processed_response.get("data"):
+
+            instructions = processed_response["instructions"]
+            is_thread_complete = instructions["status"] == "complete"
+            new_thread_id = ""
+
+            # Only process data if primary_type is not "List"
+            if instructions["primary_type"] != "List" and processed_response.get(
+                "data"
+            ):
                 for context_type in ["tasks", "people", "knowledge"]:
                     new_data = processed_response["data"].get(context_type, [])
                     if new_data:
@@ -62,7 +70,10 @@ class SidekickService:
                             existing_context.data if existing_context else []
                         )
 
-                        updated_data = existing_data + new_data
+                        # Implement deduplication
+                        updated_data = self.deduplicate_entities(
+                            existing_data, new_data
+                        )
 
                         await update_or_create_sidekick_context(
                             db,
@@ -74,9 +85,6 @@ class SidekickService:
                         )
                         context_updates[context_type] = len(new_data)
 
-            instructions = processed_response["instructions"]
-            is_thread_complete = instructions["status"] == "complete"
-            new_thread_id = ""
             if is_thread_complete:
                 new_thread = await create_sidekick_thread(
                     db, SidekickThreadCreate(user_id=user_id)
@@ -95,6 +103,42 @@ class SidekickService:
         except Exception as e:
             logger.error(f"Error in process_input: {str(e)}")
             raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+    def deduplicate_entities(
+        self, existing_data: List[Dict[str, Any]], new_data: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        # Create a dictionary of existing entities keyed by their ID
+        existing_dict = {}
+        for item in existing_data:
+            if "task_id" in item:
+                existing_dict[item["task_id"]] = item
+            elif "person_id" in item:
+                existing_dict[item["person_id"]] = item
+            elif "knowledge_id" in item:
+                existing_dict[item["knowledge_id"]] = item
+
+        for new_item in new_data:
+            # Determine the ID field based on the entity type
+            if "task_id" in new_item:
+                item_id = new_item["task_id"]
+            elif "person_id" in new_item:
+                item_id = new_item["person_id"]
+            elif "knowledge_id" in new_item:
+                item_id = new_item["knowledge_id"]
+            else:
+                item_id = None
+
+            if item_id and item_id in existing_dict:
+                # Update existing item
+                existing_dict[item_id].update(new_item)
+            elif item_id:
+                # Add new item
+                existing_dict[item_id] = new_item
+            else:
+                # Handle items without ID (should be rare)
+                existing_data.append(new_item)
+
+        return list(existing_dict.values())
 
     async def construct_prompt(
         self, db: AsyncSession, user_id: str, conversation_history: List[Dict[str, str]]
