@@ -1,7 +1,7 @@
-from sqlalchemy import String, ForeignKey, JSON
-from sqlalchemy.orm import declarative_base, relationship, Mapped, mapped_column
-from typing import List, Dict, Any
 import uuid
+from sqlalchemy import String, ForeignKey, JSON, Enum
+from sqlalchemy.orm import declarative_base, relationship, Mapped, mapped_column
+from typing import List, Dict, Any, Optional
 
 Base: Any = declarative_base()
 
@@ -18,12 +18,13 @@ class User(Base):
     sidekick_threads: Mapped[List["SidekickThread"]] = relationship(
         "SidekickThread", back_populates="user"
     )
-    sidekick_contexts: Mapped[List["SidekickContext"]] = relationship(
-        "SidekickContext", back_populates="user"
-    )
+    people: Mapped[List["Person"]] = relationship("Person", back_populates="user")
+    tasks: Mapped[List["Task"]] = relationship("Task", back_populates="user")
+    topics: Mapped[List["Topic"]] = relationship("Topic", back_populates="user")
+    notes: Mapped[List["Note"]] = relationship("Note", back_populates="user")
 
     def __init__(
-        self, screen_name: str, user_secret: str, id: str | None = None
+        self, screen_name: str, user_secret: str, id: Optional[str] = None
     ) -> None:
         self.id = id or str(uuid.uuid4())
         self.screen_name = screen_name
@@ -37,7 +38,73 @@ class User(Base):
         return str(uuid.uuid4())
 
 
-# Update SidekickThread and SidekickContext models similarly
+class Task(Base):
+    __tablename__ = "tasks"
+
+    task_id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
+    type: Mapped[str] = mapped_column(Enum("1", "2", "3", "4", name="task_type_enum"))
+    description: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(
+        Enum("active", "pending", "completed", name="task_status_enum")
+    )
+    actions: Mapped[List[str]] = mapped_column(JSON)
+    people: Mapped[Dict[str, Any]] = mapped_column(JSON)
+    dependencies: Mapped[List[str]] = mapped_column(JSON)
+    schedule: Mapped[str] = mapped_column(String)
+    priority: Mapped[str] = mapped_column(
+        Enum("high", "medium", "low", name="priority_enum")
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="tasks")
+
+
+class Person(Base):
+    __tablename__ = "people"
+
+    person_id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    designation: Mapped[str] = mapped_column(String)
+    relationship: Mapped[str] = mapped_column(String)
+    importance: Mapped[str] = mapped_column(
+        Enum("high", "medium", "low", name="importance_enum")
+    )
+    notes: Mapped[str] = mapped_column(String)
+    contact: Mapped[Dict[str, str]] = mapped_column(JSON)
+
+    user: Mapped["User"] = relationship("User", back_populates="people")
+
+
+class Topic(Base):
+    __tablename__ = "topics"
+
+    topic_id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str] = mapped_column(String)
+    keywords: Mapped[List[str]] = mapped_column(JSON)
+    related_people: Mapped[List[str]] = mapped_column(JSON)
+    related_tasks: Mapped[List[str]] = mapped_column(JSON)
+
+    user: Mapped["User"] = relationship("User", back_populates="topics")
+
+
+class Note(Base):
+    __tablename__ = "notes"
+
+    note_id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
+    content: Mapped[str] = mapped_column(String)
+    created_at: Mapped[str] = mapped_column(String)
+    updated_at: Mapped[str] = mapped_column(String)
+    related_people: Mapped[List[str]] = mapped_column(JSON)
+    related_tasks: Mapped[List[str]] = mapped_column(JSON)
+    related_topics: Mapped[List[str]] = mapped_column(JSON)
+
+    user: Mapped["User"] = relationship("User", back_populates="notes")
+
+
 class SidekickThread(Base):
     __tablename__ = "sidekick_threads"
 
@@ -55,6 +122,7 @@ class SidekickThread(Base):
         self.conversation_history = conversation_history
 
 
+# Keeping SidekickContext for backwards compatibility, but marked as deprecated
 class SidekickContext(Base):
     __tablename__ = "sidekick_contexts"
 
