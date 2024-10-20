@@ -10,14 +10,17 @@ class PersonContact(BaseModel):
 class PersonBase(BaseModel):
     name: str
     designation: str
-    relationship: str
+    relation_type: str
     importance: Literal["high", "medium", "low"]
     notes: str
     contact: PersonContact
 
 
 class PersonCreate(PersonBase):
-    pass
+    person_id: str
+    importance: Literal["high", "medium", "low"] = Field(
+        ..., pattern="^(high|medium|low)$"
+    )
 
 
 class Person(PersonBase):
@@ -45,7 +48,7 @@ class TaskBase(BaseModel):
 
 
 class TaskCreate(TaskBase):
-    pass
+    task_id: str
 
 
 class Task(TaskBase):
@@ -64,7 +67,7 @@ class TopicBase(BaseModel):
 
 
 class TopicCreate(TopicBase):
-    pass
+    topic_id: str
 
 
 class Topic(TopicBase):
@@ -84,7 +87,7 @@ class NoteBase(BaseModel):
 
 
 class NoteCreate(NoteBase):
-    pass
+    note_id: str
 
 
 class Note(NoteBase):

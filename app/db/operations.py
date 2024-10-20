@@ -66,8 +66,10 @@ async def update_user(db: AsyncSession, user: User, **kwargs: Any) -> Optional[U
 
 
 # Person operations
-async def create_person(db: AsyncSession, person: PersonCreate) -> Person:
-    db_person = Person(**person.model_dump())
+async def create_person(db: AsyncSession, person: PersonCreate, user_id: str) -> Person:
+    person_data = person.model_dump()
+    person_data["user_id"] = user_id
+    db_person = Person(**person_data)
     db.add(db_person)
     await db.commit()
     await db.refresh(db_person)
@@ -106,8 +108,10 @@ async def get_people_for_user(db: AsyncSession, user_id: str) -> List[Person]:
 
 
 # Task operations
-async def create_task(db: AsyncSession, task: TaskCreate) -> Task:
-    db_task = Task(**task.model_dump())
+async def create_task(db: AsyncSession, task: TaskCreate, user_id: str) -> Task:
+    task_data = task.model_dump()
+    task_data["user_id"] = user_id
+    db_task = Task(**task_data)
     db.add(db_task)
     await db.commit()
     await db.refresh(db_task)
@@ -146,8 +150,10 @@ async def get_tasks_for_user(db: AsyncSession, user_id: str) -> List[Task]:
 
 
 # Topic operations
-async def create_topic(db: AsyncSession, topic: TopicCreate) -> Topic:
-    db_topic = Topic(**topic.model_dump())
+async def create_topic(db: AsyncSession, topic: TopicCreate, user_id: str) -> Topic:
+    topic_data = topic.model_dump()
+    topic_data["user_id"] = user_id
+    db_topic = Topic(**topic_data)
     db.add(db_topic)
     await db.commit()
     await db.refresh(db_topic)
@@ -186,8 +192,10 @@ async def get_topics_for_user(db: AsyncSession, user_id: str) -> List[Topic]:
 
 
 # Note operations
-async def create_note(db: AsyncSession, note: NoteCreate) -> Note:
-    db_note = Note(**note.model_dump())
+async def create_note(db: AsyncSession, note: NoteCreate, user_id: str) -> Note:
+    note_data = note.model_dump()
+    note_data["user_id"] = user_id
+    db_note = Note(**note_data)
     db.add(db_note)
     await db.commit()
     await db.refresh(db_note)

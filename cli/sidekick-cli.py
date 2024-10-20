@@ -8,7 +8,7 @@ from rich.text import Text
 from session_manager import SessionManager
 from cli_config import CliConfig
 import aiohttp
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 
 config = CliConfig()
 console = Console()
@@ -40,7 +40,7 @@ async def login_or_register(session_manager: SessionManager) -> bool:
 
 async def call_sidekick_api(
     session_manager: SessionManager, user_input: str, thread_id: Optional[str] = None
-) -> Optional[Any]:
+) -> Optional[Dict[str, Any]]:
     async with aiohttp.ClientSession() as session:
         headers = {
             "Authorization": f"Bearer {session_manager.current_user['access_token']}"
@@ -122,18 +122,26 @@ async def main() -> None:
                     if count > 0:
                         entity_updates.append(f"* {count} new {entity} added")
                 if entity_updates:
-                    response_parts.append("\n".join(entity_updates))
+                    response_parts.append("Updates:\n" + "\n".join(entity_updates))
 
-            # Add followup text
+            # Add main response
             response_parts.append(response["response"])
 
             # Add thread completion message if applicable
             if response["is_thread_complete"]:
-                response_parts.append("Thread finished!")
+                response_parts.append("Thread finished! Starting a new conversation.")
 
             # Add new prompt if available
             if response.get("new_prompt"):
-                response_parts.append(response["new_prompt"])
+                response_parts.append(f"New suggested prompt: {response['new_prompt']}")
+
+            # Add token usage information
+            token_usage = response["token_usage"]
+            response_parts.append(
+                f"Token usage: {token_usage['prompt_tokens']} (prompt) + "
+                f"{token_usage['completion_tokens']} (completion) = "
+                f"{token_usage['total_tokens']} (total)"
+            )
 
             # Join all parts with newlines and create a Markdown object
             markdown_response = Markdown("\n\n".join(response_parts))

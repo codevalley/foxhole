@@ -41,7 +41,9 @@ class User(Base):
 class Task(Base):
     __tablename__ = "tasks"
 
-    task_id: Mapped[str] = mapped_column(String, primary_key=True)
+    task_id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     type: Mapped[str] = mapped_column(Enum("1", "2", "3", "4", name="task_type_enum"))
     description: Mapped[str] = mapped_column(String)
@@ -58,28 +60,38 @@ class Task(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="tasks")
 
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
 
 class Person(Base):
     __tablename__ = "people"
 
-    person_id: Mapped[str] = mapped_column(String, primary_key=True)
+    person_id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String, nullable=False)
     designation: Mapped[str] = mapped_column(String)
     relation_type: Mapped[str] = mapped_column(String)
     importance: Mapped[str] = mapped_column(
-        Enum("high", "medium", "low", name="importance_enum")
+        Enum("high", "medium", "low", name="importance_enum"), default="medium"
     )
     notes: Mapped[str] = mapped_column(String)
     contact: Mapped[Dict[str, str]] = mapped_column(JSON)
 
     user: Mapped["User"] = relationship("User", back_populates="people")
 
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
 
 class Topic(Base):
     __tablename__ = "topics"
 
-    topic_id: Mapped[str] = mapped_column(String, primary_key=True)
+    topic_id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(String)
@@ -89,11 +101,16 @@ class Topic(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="topics")
 
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
 
 class Note(Base):
     __tablename__ = "notes"
 
-    note_id: Mapped[str] = mapped_column(String, primary_key=True)
+    note_id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     content: Mapped[str] = mapped_column(String)
     created_at: Mapped[str] = mapped_column(String)
@@ -103,6 +120,9 @@ class Note(Base):
     related_topics: Mapped[List[str]] = mapped_column(JSON)
 
     user: Mapped["User"] = relationship("User", back_populates="notes")
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class SidekickThread(Base):
@@ -120,23 +140,3 @@ class SidekickThread(Base):
         self.id = id
         self.user_id = user_id
         self.conversation_history = conversation_history
-
-
-# Keeping SidekickContext for backwards compatibility, but marked as deprecated
-class SidekickContext(Base):
-    __tablename__ = "sidekick_contexts"
-
-    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
-    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
-    context_type: Mapped[str] = mapped_column(String)
-    data: Mapped[List[Dict[str, Any]]] = mapped_column(JSON)
-
-    user: Mapped["User"] = relationship("User", back_populates="sidekick_contexts")
-
-    def __init__(
-        self, id: str, user_id: str, context_type: str, data: List[Dict[str, Any]]
-    ) -> None:
-        self.id = id
-        self.user_id = user_id
-        self.context_type = context_type
-        self.data = data

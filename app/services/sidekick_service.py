@@ -1,5 +1,5 @@
 import json
-from typing import List, Dict, Any, cast
+from typing import List, Dict, Any, Optional
 import openai
 from app.core.config import settings
 from app.schemas.sidekick_schema import (
@@ -52,42 +52,48 @@ class SidekickService:
         self, db: AsyncSession, user_id: str, sidekick_input: SidekickInput
     ) -> SidekickOutput:
         try:
-            thread = (
-                await get_sidekick_thread(db, sidekick_input.thread_id)
-                if sidekick_input.thread_id
-                else await create_sidekick_thread(
-                    db, SidekickThreadCreate(user_id=user_id)
-                )
+            # Get or create thread
+            thread = await self.get_or_create_thread(
+                db, user_id, sidekick_input.thread_id
             )
 
-            thread = cast(SidekickThread, thread)
-
+            # Update conversation history
             updated_history = thread.conversation_history + [
                 {"role": "user", "content": sidekick_input.user_input}
             ]
 
+            # Construct prompt with user context
             prompt = await self.construct_prompt(db, user_id, updated_history)
+
+            # Call OpenAI API
             llm_response, token_usage = await self.call_openai_api(prompt)
+
+            # Process LLM response
             processed_response = self.process_data(llm_response)
 
+            # Update thread with new conversation history
             final_history = updated_history + [
-                {"role": "assistant", "content": json.dumps(llm_response)}
+                {"role": "assistant", "content": json.dumps(llm_response.model_dump())}
             ]
             await update_sidekick_thread(db, thread.id, final_history)
 
-            context_updates = await self.update_entities(db, processed_response["data"])
+            # Update entities based on LLM response
+            context_updates = await self.update_entities(
+                db, processed_response["data"], user_id
+            )
 
+            # Check if thread is complete and create a new one if necessary
             is_thread_complete = (
                 processed_response["instructions"]["status"] == "complete"
             )
             new_thread_id = ""
-
             if is_thread_complete:
                 new_thread = await create_sidekick_thread(
                     db, SidekickThreadCreate(user_id=user_id)
                 )
                 new_thread_id = new_thread.id
 
+            # Construct and return SidekickOutput
             return SidekickOutput(
                 response=processed_response["instructions"]["followup"],
                 thread_id=new_thread_id if is_thread_complete else thread.id,
@@ -97,69 +103,89 @@ class SidekickService:
                 updated_entities=context_updates,
                 token_usage=token_usage,
             )
+        except HTTPException:
+            # Re-raise HTTP exceptions
+            raise
         except Exception as e:
             logger.error(f"Error in process_input: {str(e)}")
             raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
+    async def get_or_create_thread(
+        self, db: AsyncSession, user_id: str, thread_id: Optional[str]
+    ) -> SidekickThread:
+        if thread_id:
+            thread = await get_sidekick_thread(db, thread_id)
+            if not thread or thread.user_id != user_id:
+                raise HTTPException(status_code=404, detail="Thread not found")
+            return thread
+        else:
+            return await create_sidekick_thread(
+                db, SidekickThreadCreate(user_id=user_id)
+            )
+
     async def update_entities(
-        self, db: AsyncSession, data: Dict[str, List[Dict[str, Any]]]
+        self, db: AsyncSession, data: Dict[str, List[Dict[str, Any]]], user_id: str
     ) -> Dict[str, int]:
         context_updates = {"tasks": 0, "people": 0, "topics": 0, "notes": 0}
 
         for entity_type, entities in data.items():
             for entity in entities:
                 if entity_type == "people":
-                    await self.update_or_create_person(db, entity)
+                    await self.update_or_create_person(db, entity, user_id)
                 elif entity_type == "tasks":
-                    await self.update_or_create_task(db, entity)
+                    await self.update_or_create_task(db, entity, user_id)
                 elif entity_type == "topics":
-                    await self.update_or_create_topic(db, entity)
+                    await self.update_or_create_topic(db, entity, user_id)
                 elif entity_type == "notes":
-                    await self.update_or_create_note(db, entity)
+                    await self.update_or_create_note(db, entity, user_id)
 
                 context_updates[entity_type] += 1
 
         return context_updates
 
     async def update_or_create_person(
-        self, db: AsyncSession, person_data: Dict[str, Any]
+        self, db: AsyncSession, person_data: Dict[str, Any], user_id: str
     ) -> None:
+        # Set a default importance if it's missing or has an empty/whitespace-only value
+        if not person_data.get("importance", "").strip():
+            person_data["importance"] = "medium"
+
         person_create = PersonCreate(**person_data)
         existing_person = await get_person(db, person_data["person_id"])
         if existing_person:
             await update_person(db, person_data["person_id"], person_create)
         else:
-            await create_person(db, person_create)
+            await create_person(db, person_create, user_id)
 
     async def update_or_create_task(
-        self, db: AsyncSession, task_data: Dict[str, Any]
+        self, db: AsyncSession, task_data: Dict[str, Any], user_id: str
     ) -> None:
         task_create = TaskCreate(**task_data)
         existing_task = await get_task(db, task_data["task_id"])
         if existing_task:
             await update_task(db, task_data["task_id"], task_create)
         else:
-            await create_task(db, task_create)
+            await create_task(db, task_create, user_id)
 
     async def update_or_create_topic(
-        self, db: AsyncSession, topic_data: Dict[str, Any]
+        self, db: AsyncSession, topic_data: Dict[str, Any], user_id: str
     ) -> None:
         topic_create = TopicCreate(**topic_data)
         existing_topic = await get_topic(db, topic_data["topic_id"])
         if existing_topic:
             await update_topic(db, topic_data["topic_id"], topic_create)
         else:
-            await create_topic(db, topic_create)
+            await create_topic(db, topic_create, user_id)
 
     async def update_or_create_note(
-        self, db: AsyncSession, note_data: Dict[str, Any]
+        self, db: AsyncSession, note_data: Dict[str, Any], user_id: str
     ) -> None:
         note_create = NoteCreate(**note_data)
         existing_note = await get_note(db, note_data["note_id"])
         if existing_note:
             await update_note(db, note_data["note_id"], note_create)
         else:
-            await create_note(db, note_create)
+            await create_note(db, note_create, user_id)
 
     async def construct_prompt(
         self, db: AsyncSession, user_id: str, conversation_history: List[Dict[str, str]]
@@ -283,4 +309,4 @@ class SidekickService:
             )
 
     def process_data(self, llm_response: LLMResponse) -> Dict[str, Any]:
-        return dict(llm_response.model_dump())
+        return llm_response.model_dump()
