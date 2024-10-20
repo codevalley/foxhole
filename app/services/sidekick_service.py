@@ -25,6 +25,10 @@ from app.db.operations import (
     get_task,
     get_topic,
     get_note,
+    get_people_for_user,
+    get_tasks_for_user,
+    get_topics_for_user,
+    get_notes_for_user,
 )
 from app.schemas.sidekick_schema import (
     SidekickThreadCreate,
@@ -33,7 +37,7 @@ from app.schemas.sidekick_schema import (
     TopicCreate,
     NoteCreate,
 )
-from app.models import SidekickThread
+from app.models import SidekickThread, Person, Task, Topic, Note
 from fastapi import HTTPException
 import logging
 
@@ -175,10 +179,75 @@ class SidekickService:
     async def get_user_context(
         self, db: AsyncSession, user_id: str
     ) -> Dict[str, List[Dict[str, Any]]]:
-        # This method should be implemented to fetch all relevant user context
-        # from the database (people, tasks, topics, notes)
-        # For now, returning an empty context
-        return {"people": [], "tasks": [], "topics": [], "notes": []}
+        context: Dict[str, List[Dict[str, Any]]] = {
+            "people": [],
+            "tasks": [],
+            "topics": [],
+            "notes": [],
+        }
+
+        # Fetch people
+        people = await get_people_for_user(db, user_id)
+        context["people"] = [self.person_to_dict(person) for person in people]
+
+        # Fetch tasks
+        tasks = await get_tasks_for_user(db, user_id)
+        context["tasks"] = [self.task_to_dict(task) for task in tasks]
+
+        # Fetch topics
+        topics = await get_topics_for_user(db, user_id)
+        context["topics"] = [self.topic_to_dict(topic) for topic in topics]
+
+        # Fetch notes
+        notes = await get_notes_for_user(db, user_id)
+        context["notes"] = [self.note_to_dict(note) for note in notes]
+
+        return context
+
+    def person_to_dict(self, person: Person) -> Dict[str, Any]:
+        return {
+            "person_id": person.person_id,
+            "name": person.name,
+            "designation": person.designation,
+            "relation_type": person.relation_type,
+            "importance": person.importance,
+            "notes": person.notes,
+            "contact": person.contact,
+        }
+
+    def task_to_dict(self, task: Task) -> Dict[str, Any]:
+        return {
+            "task_id": task.task_id,
+            "type": task.type,
+            "description": task.description,
+            "status": task.status,
+            "actions": task.actions,
+            "people": task.people,
+            "dependencies": task.dependencies,
+            "schedule": task.schedule,
+            "priority": task.priority,
+        }
+
+    def topic_to_dict(self, topic: Topic) -> Dict[str, Any]:
+        return {
+            "topic_id": topic.topic_id,
+            "name": topic.name,
+            "description": topic.description,
+            "keywords": topic.keywords,
+            "related_people": topic.related_people,
+            "related_tasks": topic.related_tasks,
+        }
+
+    def note_to_dict(self, note: Note) -> Dict[str, Any]:
+        return {
+            "note_id": note.note_id,
+            "content": note.content,
+            "created_at": note.created_at,
+            "updated_at": note.updated_at,
+            "related_people": note.related_people,
+            "related_tasks": note.related_tasks,
+            "related_topics": note.related_topics,
+        }
 
     async def call_openai_api(
         self, messages: List[Dict[str, str]]
@@ -214,4 +283,4 @@ class SidekickService:
             )
 
     def process_data(self, llm_response: LLMResponse) -> Dict[str, Any]:
-        return llm_response.model_dump()
+        return dict(llm_response.model_dump())

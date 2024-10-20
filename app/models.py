@@ -66,7 +66,7 @@ class Person(Base):
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String, nullable=False)
     designation: Mapped[str] = mapped_column(String)
-    relationship: Mapped[str] = mapped_column(String)
+    relation_type: Mapped[str] = mapped_column(String)
     importance: Mapped[str] = mapped_column(
         Enum("high", "medium", "low", name="importance_enum")
     )
