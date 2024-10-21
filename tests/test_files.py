@@ -8,7 +8,7 @@ from app.dependencies import get_storage_service
 from app.routers.auth import create_access_token
 from app.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.app import app as fastapi_app  # Import the FastAPI app
+from main import app as fastapi_app  # Import the FastAPI app
 from typing import AsyncGenerator
 
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="jose.jwt")

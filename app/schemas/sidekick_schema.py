@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
-from typing import List, Literal, Optional, Dict
+from pydantic import BaseModel, Field, ConfigDict
+from typing import List, Literal, Optional, Dict, TypeVar, Generic
 
 
 class PersonContact(BaseModel):
@@ -25,9 +25,7 @@ class PersonCreate(PersonBase):
 
 class Person(PersonBase):
     person_id: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaskPeople(BaseModel):
@@ -53,9 +51,7 @@ class TaskCreate(TaskBase):
 
 class Task(TaskBase):
     task_id: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TopicBase(BaseModel):
@@ -72,9 +68,7 @@ class TopicCreate(TopicBase):
 
 class Topic(TopicBase):
     topic_id: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NoteBase(BaseModel):
@@ -92,9 +86,7 @@ class NoteCreate(NoteBase):
 
 class Note(NoteBase):
     note_id: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AffectedEntities(BaseModel):
@@ -133,9 +125,7 @@ class SidekickThreadResponse(BaseModel):
     id: str
     user_id: str
     conversation_history: List[Dict[str, str]]
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SidekickInput(BaseModel):
@@ -157,3 +147,13 @@ class SidekickOutput(BaseModel):
     updated_entities: Dict[str, int]
     status: Literal["incomplete", "complete"]
     token_usage: TokenUsage
+
+
+T = TypeVar("T")
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    items: List[T]
+    total: int
+    page: int
+    page_size: int

@@ -8,7 +8,7 @@ from rich.text import Text
 from session_manager import SessionManager
 from cli_config import CliConfig
 import aiohttp
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, cast
 
 config = CliConfig()
 console = Console()
@@ -48,10 +48,10 @@ async def call_sidekick_api(
         data = {"user_input": user_input, "thread_id": thread_id}
         with console.status("[bold green]Thinking...", spinner="dots"):
             async with session.post(
-                f"{config.API_URL}/sidekick", headers=headers, json=data
+                f"{config.API_URL}/api/v1/sidekick/ask", headers=headers, json=data
             ) as response:
                 if response.status == 200:
-                    return await response.json()
+                    return cast(Dict[str, Any], await response.json())
                 else:
                     console.print(
                         f"[bold red]Error:[/bold red] {await response.text()}"
@@ -75,7 +75,10 @@ async def main() -> None:
     console.print(
         Panel.fit(
             Text("Welcome to Sidekick!", style="bold magenta")
-            + Text("\nYour personal executive assistant", style="italic"),
+            + Text(
+                f"\nYour personal executive assistant \n{session_manager.current_user['access_token']}",
+                style="italic",
+            ),
             title="Sidekick",
             subtitle="Type 'exit' to quit",
         )

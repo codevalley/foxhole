@@ -103,3 +103,57 @@
   - Implement background tasks and integrate with the main application
 
 These next steps will further improve the robustness, scalability, and maintainability of your application. Focus on the high-priority items first, then move on to medium and low priority tasks as time and resources allow.
+
+## Current activity
+
+[API Enhancement] Implement new endpoints for Sidekick service:
+
+1. Added new endpoints for topics, tasks, people, and notes under the `/api/v1/sidekick` prefix:
+   - GET `/topics`: List topics (with pagination)
+   - POST `/topics`: Create a new topic
+   - PUT `/topics/{topic_id}`: Update an existing topic
+   - DELETE `/topics/{topic_id}`: Delete a topic
+   - Similar endpoints for tasks, people, and notes
+2. Updated the main Sidekick endpoint to `/api/v1/sidekick/ask`
+3. Implemented proper error handling and logging for all new endpoints
+4. Updated Pydantic models in `sidekick_schema.py` to support new endpoints
+5. Modified `operations.py` to support CRUD operations for all entity types
+6. Updated `main.py` to include the new Sidekick router with the correct prefix
+
+[Testing] Expand test coverage:
+
+1. Need to add new tests to cover the newly added endpoints:
+   - Test CRUD operations for topics, tasks, people, and notes
+   - Test pagination functionality
+   - Test error handling for invalid inputs or non-existent resources
+2. Update existing tests to reflect changes in API structure and responses
+3. Ensure all new functions in `operations.py` are covered by unit tests
+4. Add integration tests to verify the entire flow from API request to database operation
+
+[Documentation] Update API documentation:
+
+1. Update OpenAPI/Swagger documentation to reflect new endpoints
+2. Add examples and descriptions for new request/response models
+3. Update any existing API documentation or README files
+
+[Code Quality] Address type hinting and linting issues:
+
+1. Resolved type hinting issues in `sidekick.py` for return types
+2. Need to review and fix any remaining type hinting issues in other files
+3. Run and fix any new linting errors introduced by recent changes
+
+## Next Steps
+
+1. Implement the new tests as mentioned above
+2. Review and update rate limiting for new endpoints
+3. Perform thorough manual testing of all new endpoints
+4. Update client-side code (if any) to use the new API structure
+5. Consider implementing API versioning strategy for future updates
+
+## Recent Improvements
+
+1. Enhanced Sidekick service with new CRUD endpoints for topics, tasks, people, and notes
+2. Implemented pagination for list endpoints to improve performance with large datasets
+3. Updated database operations to support new API functionality
+4. Improved type hinting and error handling across the application
+5. Consolidated API routing in `main.py` for better organization

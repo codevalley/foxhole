@@ -1,7 +1,7 @@
 import os
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
-from app.app import app
+from main import app
 from tests.mocks.mock_storage_service import MockStorageService
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
@@ -106,6 +106,25 @@ class DummyLimiter:
     def reset(self) -> None:
         pass
 
+    def _inject_headers(self, response: Any, request: Any) -> Any:
+        # Mimic the behavior of injecting rate limit headers
+        response.headers["X-RateLimit-Limit"] = "1000"
+        response.headers["X-RateLimit-Remaining"] = "999"
+        response.headers["X-RateLimit-Reset"] = "3600"
+        return response
+
+    async def check(self, *args: Any, **kwargs: Any) -> bool:
+        # Always return True to indicate that the request is allowed
+        return True
+
+    def get_window_stats(self, *args: Any, **kwargs: Any) -> tuple:
+        # Return dummy window stats
+        return (0, 1000, 3600)
+
+    async def update_rate_limit(self, *args: Any, **kwargs: Any) -> None:
+        # Do nothing in the dummy implementation
+        pass
+
 
 @pytest.fixture(autouse=True)
 def disable_rate_limiting(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -120,6 +139,9 @@ def disable_rate_limiting(monkeypatch: pytest.MonkeyPatch) -> None:
             route.decorators = [
                 d for d in route.decorators if not isinstance(d, limiter.__class__)
             ]
+
+    # Monkeypatch the Limiter class to return our DummyLimiter
+    monkeypatch.setattr("slowapi.Limiter", lambda *args, **kwargs: dummy_limiter)
 
 
 @pytest.fixture(autouse=True)

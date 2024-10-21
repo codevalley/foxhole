@@ -1,5 +1,5 @@
 import json
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, cast
 import openai
 from app.core.config import settings
 from app.schemas.sidekick_schema import (
@@ -309,4 +309,4 @@ class SidekickService:
             )
 
     def process_data(self, llm_response: LLMResponse) -> Dict[str, Any]:
-        return llm_response.model_dump()
+        return cast(Dict[str, Any], llm_response.model_dump())

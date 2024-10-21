@@ -14,7 +14,7 @@ async def main() -> None:
     config = CliConfig()
     session_manager = SessionManager(config)
     ws_client = WebSocketClient(config)
-    prompt_session = PromptSession()
+    prompt_session: PromptSession = PromptSession()
 
     print_header()
 

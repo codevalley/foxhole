@@ -13,7 +13,7 @@ from app.routers.websocket import init_websocket_manager
 from sqlalchemy.exc import SQLAlchemyError
 import uuid
 from typing import Any
-from app.app import app
+from main import app
 from app.core.constants import SYSTEM_USER_ID  # Add this import
 
 
