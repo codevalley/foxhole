@@ -286,7 +286,7 @@ class SidekickService:
             raw_response = response.choices[0].message.content
             logger.info(f"Raw OpenAI API response: {raw_response}")
 
-            api_response = LLMResponse.parse_raw(raw_response)
+            api_response = LLMResponse.model_validate_json(raw_response)
             token_usage = TokenUsage(
                 prompt_tokens=response.usage.prompt_tokens,
                 completion_tokens=response.usage.completion_tokens,
