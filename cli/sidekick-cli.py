@@ -76,7 +76,7 @@ async def main() -> None:
         Panel.fit(
             Text("Welcome to Sidekick!", style="bold magenta")
             + Text(
-                f"\nYour personal executive assistant \n{session_manager.current_user['access_token']}",
+                "\nYour personal executive assistant \n",
                 style="italic",
             ),
             title="Sidekick",
