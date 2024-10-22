@@ -4,10 +4,20 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import User, SidekickThread, Topic, Task, Person, Note
 from app.services.sidekick_service import SidekickService
-from unittest.mock import patch
 from app.routers.auth import create_access_token
 from datetime import datetime
 from typing import Any, cast
+from unittest.mock import AsyncMock, patch, MagicMock
+from app.schemas.sidekick_schema import (
+    SidekickInput,
+    SidekickOutput,
+    LLMResponse,
+    Instructions,
+    Data,
+    AffectedEntities,
+    TokenUsage,
+)
+from fastapi import HTTPException
 
 
 @pytest.fixture
@@ -539,3 +549,163 @@ async def test_sidekick_service_update_entities(
 #     # This request should succeed again
 #     response = await make_request()
 #     assert response.status_code == status.HTTP_200_OK
+
+
+# Add these new test functions
+
+
+@pytest.mark.asyncio
+@patch.object(SidekickService, "get_or_create_thread", new_callable=AsyncMock)
+@patch.object(SidekickService, "construct_prompt", new_callable=AsyncMock)
+@patch.object(SidekickService, "call_openai_api", new_callable=AsyncMock)
+@patch.object(SidekickService, "process_data")
+@patch.object(SidekickService, "update_entities", new_callable=AsyncMock)
+async def test_process_input(
+    mock_update_entities: AsyncMock,
+    mock_process_data: AsyncMock,
+    mock_call_openai_api: AsyncMock,
+    mock_construct_prompt: AsyncMock,
+    mock_get_or_create_thread: AsyncMock,
+    db_session: AsyncSession,
+    test_user: User,
+) -> None:
+    service = SidekickService()
+
+    # Set up the mock returns
+    mock_thread = MagicMock(spec=SidekickThread)
+    mock_thread.id = "test_thread_id"
+    mock_thread.conversation_history = []
+    mock_get_or_create_thread.return_value = mock_thread
+
+    mock_construct_prompt.return_value = [{"role": "user", "content": "test prompt"}]
+
+    mock_llm_response = LLMResponse(
+        instructions=Instructions(
+            status="complete",
+            followup="Test followup",
+            new_prompt="",
+            write=False,
+            affected_entities=AffectedEntities(),
+        ),
+        data=Data(),
+    )
+    mock_token_usage = TokenUsage(
+        prompt_tokens=10, completion_tokens=20, total_tokens=30
+    )
+    mock_call_openai_api.return_value = (mock_llm_response, mock_token_usage)
+
+    mock_process_data.return_value = mock_llm_response.model_dump()
+    mock_update_entities.return_value = {
+        "tasks": 0,
+        "people": 0,
+        "topics": 0,
+        "notes": 0,
+    }
+
+    # Mock create_sidekick_thread
+    new_thread = MagicMock(spec=SidekickThread)
+    new_thread.id = "new_test_thread_id"
+    with patch(
+        "app.services.sidekick_service.create_sidekick_thread", new_callable=AsyncMock
+    ) as mock_create_thread:
+        mock_create_thread.return_value = new_thread
+
+        # Call the method
+        result = await service.process_input(
+            db_session, test_user.id, SidekickInput(user_input="Test input")
+        )
+
+        # Assert the result
+        assert isinstance(result, SidekickOutput)
+        assert result.response == "Test followup"
+        assert result.thread_id == "new_test_thread_id"  # Check for the new thread ID
+        assert result.status == "complete"
+        assert result.is_thread_complete is True
+
+    # Verify that create_sidekick_thread was called
+    mock_create_thread.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_thread(db_session: AsyncSession, test_user: User) -> None:
+    service = SidekickService()
+
+    # Test creating a new thread
+    new_thread = await service.get_or_create_thread(db_session, test_user.id, None)
+    assert isinstance(new_thread, SidekickThread)
+    assert new_thread.user_id == test_user.id
+
+    # Test getting an existing thread
+    existing_thread = await service.get_or_create_thread(
+        db_session, test_user.id, new_thread.id
+    )
+    assert existing_thread.id == new_thread.id
+
+    # Test with non-existent thread_id
+    with pytest.raises(HTTPException):
+        await service.get_or_create_thread(db_session, test_user.id, "non_existent_id")
+
+
+@pytest.mark.asyncio
+@patch.object(SidekickService, "get_user_context", new_callable=AsyncMock)
+async def test_construct_prompt(
+    mock_get_user_context: AsyncMock, db_session: AsyncSession, test_user: User
+) -> None:
+    service = SidekickService()
+
+    # Set up the mock return
+    mock_get_user_context.return_value = {
+        "tasks": [],
+        "people": [],
+        "topics": [],
+        "notes": [],
+    }
+
+    conversation_history = [
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there!"},
+    ]
+
+    result = await service.construct_prompt(
+        db_session, test_user.id, conversation_history
+    )
+
+    assert isinstance(result, list)
+    assert len(result) == 4  # system prompt, context, and 2 conversation messages
+    assert result[0]["role"] == "system"
+    assert result[1]["role"] == "user"
+    assert "Current context" in result[1]["content"]
+    assert result[2:] == conversation_history
+
+
+@pytest.mark.asyncio
+async def test_call_openai_api() -> None:
+    service = SidekickService()
+
+    # Mock the openai.ChatCompletion.acreate method
+    mock_response = MagicMock()
+    mock_response.choices[
+        0
+    ].message.content = '{"instructions": {"status": "complete", "followup": "Test followup", "new_prompt": "", "write": false, "affected_entities": {}}, "data": {}}'
+    mock_response.usage.prompt_tokens = 10
+    mock_response.usage.completion_tokens = 20
+    mock_response.usage.total_tokens = 30
+
+    with patch("openai.ChatCompletion.acreate", new_callable=AsyncMock) as mock_acreate:
+        mock_acreate.return_value = mock_response
+
+        messages = [{"role": "user", "content": "Test message"}]
+        result, token_usage = await service.call_openai_api(messages)
+
+        assert isinstance(result, LLMResponse)
+        assert result.instructions.status == "complete"
+        assert result.instructions.followup == "Test followup"
+        assert isinstance(token_usage, TokenUsage)
+        assert token_usage.total_tokens == 30
+
+    # Test error handling
+    with patch("openai.ChatCompletion.acreate", new_callable=AsyncMock) as mock_acreate:
+        mock_acreate.side_effect = Exception("API Error")
+
+        with pytest.raises(HTTPException):
+            await service.call_openai_api(messages)
