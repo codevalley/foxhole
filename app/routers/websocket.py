@@ -76,7 +76,9 @@ async def websocket_endpoint(
                     logger.debug(
                         f"Received WebSocket message from {user_info.screen_name} ({user_info.id}): {data}"
                     )
-                    await websocket_manager.handle_message(user_info.id, data.dict())
+                    await websocket_manager.handle_message(
+                        user_info.id, data.model_dump()
+                    )
                 except ValueError as e:
                     logger.warning(f"Invalid message format: {e}")
                     await websocket.send_json({"error": "Invalid message format"})

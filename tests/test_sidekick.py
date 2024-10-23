@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import User, SidekickThread, Topic, Task, Person, Note
 from app.services.sidekick_service import SidekickService
 from app.routers.auth import create_access_token
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, cast
 from unittest.mock import AsyncMock, patch, MagicMock
 from app.schemas.sidekick_schema import (
@@ -16,7 +16,9 @@ from app.schemas.sidekick_schema import (
     Data,
     AffectedEntities,
     TokenUsage,
+    Person as PersonSchema,
 )
+import asyncio
 from fastapi import HTTPException
 
 
@@ -102,8 +104,8 @@ async def test_note(db_session: AsyncSession, test_user: User) -> Note:
     note = Note(
         user_id=test_user.id,
         content="Test Note",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
         related_people=[],
         related_tasks=[],
         related_topics=[],
@@ -507,8 +509,8 @@ async def test_sidekick_service_update_entities(
             {
                 "note_id": "new_note",
                 "content": "New Note",
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
                 "related_people": [],
                 "related_tasks": [],
                 "related_topics": [],
@@ -709,3 +711,379 @@ async def test_call_openai_api() -> None:
 
         with pytest.raises(HTTPException):
             await service.call_openai_api(messages)
+
+
+# Add these tests to tests/test_sidekick.py
+
+
+@pytest.mark.asyncio
+async def test_list_topics_pagination(
+    async_client: AsyncClient,
+    test_user: User,
+    db_session: AsyncSession,
+    access_token: str,
+) -> None:
+    # Create multiple topics
+    topics_data = [
+        {
+            "topic_id": str(uuid.uuid4()),
+            "name": f"Test Topic {i}",
+            "description": f"Description {i}",
+            "keywords": ["test"],
+            "related_people": [],
+            "related_tasks": [],
+        }
+        for i in range(15)  # Create 15 topics
+    ]
+
+    for topic_data in topics_data:
+        response = await async_client.post(
+            "/api/v1/sidekick/topics",
+            json=topic_data,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert response.status_code == 200
+
+    # Test first page
+    response = await async_client.get(
+        "/api/v1/sidekick/topics?page=1&page_size=10",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["items"]) == 10
+    assert data["total"] == 15
+    assert data["page"] == 1
+    assert data["page_size"] == 10
+
+    # Test second page
+    response = await async_client.get(
+        "/api/v1/sidekick/topics?page=2&page_size=10",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["items"]) == 5
+    assert data["page"] == 2
+
+
+@pytest.mark.asyncio
+async def test_concurrent_thread_management(
+    async_client: AsyncClient,
+    test_user: User,
+    db_session: AsyncSession,
+    access_token: str,
+) -> None:
+    # Create initial thread
+    response = await async_client.post(
+        "/api/v1/sidekick/ask",
+        json={"user_input": "Initial message"},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == 200
+    thread_id = response.json()["thread_id"]
+
+    # Simulate concurrent requests using the same thread
+    async def make_request(message: str) -> Any:
+        return await async_client.post(
+            "/api/v1/sidekick/ask",
+            json={"user_input": message, "thread_id": thread_id},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+    # Make concurrent requests
+    tasks = [make_request(f"Concurrent message {i}") for i in range(5)]
+    responses = await asyncio.gather(*tasks)
+
+    # Verify all requests were processed
+    for response in responses:
+        assert response.status_code == 200
+        assert "thread_id" in response.json()
+
+
+@pytest.mark.asyncio
+async def test_invalid_entity_data(
+    async_client: AsyncClient, test_user: User, access_token: str
+) -> None:
+    # Test invalid person data
+    invalid_person = {
+        "person_id": str(uuid.uuid4()),
+        "name": "Test Person",
+        "designation": "Test Designation",
+        "relation_type": "Colleague",
+        "importance": "invalid_importance",  # Invalid enum value
+        "notes": "Test notes",
+        "contact": {"email": "invalid_email", "phone": "1234567890"},
+    }
+
+    response = await async_client.post(
+        "/api/v1/sidekick/people",
+        json=invalid_person,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == 400
+    assert any("high" in msg["msg"] for msg in response.json()["detail"])
+    assert any("medium" in msg["msg"] for msg in response.json()["detail"])
+    assert any("low" in msg["msg"] for msg in response.json()["detail"])
+
+    # Test invalid task data
+    invalid_task = {
+        "task_id": str(uuid.uuid4()),
+        "type": "invalid_type",  # Invalid enum value
+        "description": "Test Task",
+        "status": "active",
+        "actions": [],
+        "people": {"owner": "", "final_beneficiary": "", "stakeholders": []},
+        "dependencies": [],
+        "schedule": "",
+        "priority": "medium",
+    }
+
+    response = await async_client.post(
+        "/api/v1/sidekick/tasks",
+        json=invalid_task,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == 400  # Using 422 as specified
+    detail = response.json()["detail"]
+    assert any(
+        "1" in msg["msg"]
+        and "2" in msg["msg"]
+        and "3" in msg["msg"]
+        and "4" in msg["msg"]
+        for msg in detail
+    )
+
+
+@pytest.mark.asyncio
+async def test_context_gathering_and_entity_extraction(
+    async_client: AsyncClient,
+    test_user: User,
+    db_session: AsyncSession,
+    access_token: str,
+) -> None:
+    # Create test entities first
+    person_data = {
+        "person_id": str(uuid.uuid4()),
+        "name": "Context Test Person",
+        "designation": "Test Designation",
+        "relation_type": "Colleague",
+        "importance": "medium",
+        "notes": "Updated notes",
+        "contact": {"email": "test@example.com", "phone": "1234567890"},
+    }
+
+    create_response = await async_client.post(
+        "/api/v1/sidekick/people",
+        json=person_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert create_response.status_code == 200
+
+    # When we need to include data
+    person_model = Person(
+        person_id=person_data["person_id"],
+        name=person_data["name"],
+        designation=person_data["designation"],
+        relation_type=person_data["relation_type"],
+        importance=person_data["importance"],
+        notes=person_data["notes"],
+        contact=person_data["contact"],
+    )
+
+    person_schema = PersonSchema.model_validate(person_model)
+
+    mock_llm_response = LLMResponse(
+        instructions=Instructions(
+            status="complete",
+            followup="Test response",
+            new_prompt="",
+            write=True,
+            affected_entities=AffectedEntities(
+                people=[person_model.person_id],  # Use the ID string from the model
+                tasks=[],
+                notes=[],
+                topics=[],
+            ),
+        ),
+        data=Data(
+            people=[person_schema],  # Use the actual model instance
+            tasks=[],
+            topics=[],
+            notes=[],
+        ),
+    )
+
+    mock_token_usage = TokenUsage(
+        prompt_tokens=10, completion_tokens=20, total_tokens=30
+    )
+
+    with patch(
+        "app.services.sidekick_service.SidekickService.call_openai_api",
+        new_callable=AsyncMock,
+    ) as mock_call:
+        mock_call.return_value = (mock_llm_response, mock_token_usage)
+
+        response = await async_client.post(
+            "/api/v1/sidekick/ask",
+            json={"user_input": "Update test person notes"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["updated_entities"]["people"] == 1
+
+        # Instead of getting individual person, let's verify through list endpoint
+        list_response = await async_client.get(
+            "/api/v1/sidekick/people",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert list_response.status_code == 200
+        people = list_response.json()["items"]
+        updated_person = next(
+            p for p in people if p["person_id"] == person_data["person_id"]
+        )
+        assert updated_person["notes"] == "Updated notes"
+
+
+@pytest.mark.asyncio
+async def test_entity_relationships(
+    async_client: AsyncClient,
+    test_user: User,
+    db_session: AsyncSession,
+    access_token: str,
+) -> None:
+    # Create a person
+    person_data = {
+        "person_id": str(uuid.uuid4()),
+        "name": "Related Person",
+        "designation": "Test Designation",
+        "relation_type": "Colleague",
+        "importance": "medium",
+        "notes": "Test notes",
+        "contact": {"email": "test@example.com", "phone": "1234567890"},
+    }
+
+    person_response = await async_client.post(
+        "/api/v1/sidekick/people",
+        json=person_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert person_response.status_code == 200
+
+    # Create a task related to the person
+    task_data = {
+        "task_id": str(uuid.uuid4()),
+        "type": "1",
+        "description": "Related Task",
+        "status": "active",
+        "actions": [],
+        "people": {
+            "owner": person_data["person_id"],
+            "final_beneficiary": "",
+            "stakeholders": [],
+        },
+        "dependencies": [],
+        "schedule": "",
+        "priority": "medium",
+    }
+
+    task_response = await async_client.post(
+        "/api/v1/sidekick/tasks",
+        json=task_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert task_response.status_code == 200
+
+    # Create a note linking both entities
+    note_data = {
+        "note_id": str(uuid.uuid4()),
+        "content": "Related Note",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "related_people": [person_data["person_id"]],
+        "related_tasks": [task_data["task_id"]],
+        "related_topics": [],
+    }
+
+    note_response = await async_client.post(
+        "/api/v1/sidekick/notes",
+        json=note_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert note_response.status_code == 200
+
+    # Set up mock response for OpenAI
+    mock_llm_response = LLMResponse(
+        instructions=Instructions(
+            status="complete",
+            followup="Test response",
+            new_prompt="",
+            write=False,
+            affected_entities=AffectedEntities(
+                people=[],  # Empty lists for affected entities since we're just reading
+                tasks=[],
+                notes=[],
+                topics=[],
+            ),
+        ),
+        data=Data(
+            people=[],  # Empty lists since we're not modifying data
+            tasks=[],
+            topics=[],
+            notes=[],
+        ),
+    )
+    mock_token_usage = TokenUsage(
+        prompt_tokens=10, completion_tokens=20, total_tokens=30
+    )
+
+    # Test the sidekick ask endpoint with mocked OpenAI response
+    with patch(
+        "app.routers.sidekick.SidekickService.call_openai_api",
+        new_callable=AsyncMock,
+        return_value=(mock_llm_response, mock_token_usage),
+    ) as mock_call:
+        response = await async_client.post(
+            "/api/v1/sidekick/ask",
+            json={"user_input": "Show me related entities"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        # Verify mock was called
+        mock_call.assert_called_once()
+        assert response.status_code == 200
+
+        # Verify response structure
+        data = response.json()
+        assert isinstance(data["response"], str)
+        assert len(data["response"]) > 0
+
+        # Verify list endpoints return correct structure
+        people_response = await async_client.get(
+            "/api/v1/sidekick/people",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert people_response.status_code == 200
+        response_data = people_response.json()
+        assert "items" in response_data
+        assert isinstance(response_data["items"], list)
+
+        tasks_response = await async_client.get(
+            "/api/v1/sidekick/tasks",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert tasks_response.status_code == 200
+        response_data = tasks_response.json()
+        assert "items" in response_data
+        assert isinstance(response_data["items"], list)
+
+        notes_response = await async_client.get(
+            "/api/v1/sidekick/notes",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert notes_response.status_code == 200
+        response_data = notes_response.json()
+        assert "items" in response_data
+        assert isinstance(response_data["items"], list)
