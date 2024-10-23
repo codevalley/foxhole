@@ -6,7 +6,7 @@ from app.models import User, SidekickThread, Topic, Task, Person, Note
 from app.services.sidekick_service import SidekickService
 from app.routers.auth import create_access_token
 from datetime import datetime, timezone
-from typing import Any, cast
+from typing import Any, cast, Generator
 from unittest.mock import AsyncMock, patch, MagicMock
 from app.schemas.sidekick_schema import (
     SidekickInput,
@@ -20,6 +20,7 @@ from app.schemas.sidekick_schema import (
 )
 import asyncio
 from fastapi import HTTPException
+import json
 
 
 @pytest.fixture
@@ -45,6 +46,45 @@ async def test_thread(db_session: AsyncSession, test_user: User) -> SidekickThre
     await db_session.commit()
     await db_session.refresh(thread)
     return thread
+
+
+@pytest.fixture
+def mock_llm_response() -> LLMResponse:
+    """Fixture providing a standard mock LLM response"""
+    return LLMResponse(
+        instructions=Instructions(
+            status="complete",
+            followup="Test response",
+            new_prompt="",
+            write=False,
+            affected_entities=AffectedEntities(
+                people=[],
+                tasks=[],
+                notes=[],
+                topics=[],
+            ),
+        ),
+        data=Data(),
+    )
+
+
+@pytest.fixture
+def mock_token_usage() -> TokenUsage:
+    """Fixture providing standard token usage stats"""
+    return TokenUsage(prompt_tokens=10, completion_tokens=20, total_tokens=30)
+
+
+@pytest.fixture
+def mock_openai(
+    mock_llm_response: LLMResponse, mock_token_usage: TokenUsage
+) -> Generator[AsyncMock, None, None]:
+    """Fixture providing a mocked OpenAI API call"""
+    with patch(
+        "app.routers.sidekick.SidekickService.call_openai_api",
+        new_callable=AsyncMock,
+        return_value=(mock_llm_response, mock_token_usage),
+    ) as mock:
+        yield mock
 
 
 @pytest.fixture
@@ -116,36 +156,24 @@ async def test_note(db_session: AsyncSession, test_user: User) -> Note:
     return note
 
 
+@pytest.mark.asyncio
 async def test_process_sidekick_input(
     async_client: AsyncClient,
     test_user: User,
     test_thread: SidekickThread,
     access_token: str,
+    mock_openai: AsyncMock,
+    mock_llm_response: LLMResponse,
 ) -> None:
-    with patch.object(SidekickService, "process_input") as mock_process_input:
-        mock_process_input.return_value = {
-            "response": "Test response",
-            "thread_id": test_thread.id,
-            "status": "complete",
-            "new_prompt": None,
-            "is_thread_complete": True,
-            "updated_entities": {"tasks": 0, "people": 0, "topics": 0, "notes": 0},
-            "token_usage": {
-                "prompt_tokens": 10,
-                "completion_tokens": 20,
-                "total_tokens": 30,
-            },
-        }
+    response = await async_client.post(
+        "/api/v1/sidekick/ask",
+        json={"user_input": "Test input", "thread_id": test_thread.id},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
 
-        response = await async_client.post(
-            "/api/v1/sidekick/ask",
-            json={"user_input": "Test input", "thread_id": test_thread.id},
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-
-        assert response.status_code == 200
-        assert response.json()["response"] == "Test response"
-        assert response.json()["thread_id"] == test_thread.id
+    assert response.status_code == 200
+    assert response.json()["response"] == mock_llm_response.instructions.followup
+    mock_openai.assert_called_once()
 
 
 async def test_list_topics(
@@ -773,6 +801,7 @@ async def test_concurrent_thread_management(
     test_user: User,
     db_session: AsyncSession,
     access_token: str,
+    mock_openai: AsyncMock,
 ) -> None:
     # Create initial thread
     response = await async_client.post(
@@ -783,7 +812,7 @@ async def test_concurrent_thread_management(
     assert response.status_code == 200
     thread_id = response.json()["thread_id"]
 
-    # Simulate concurrent requests using the same thread
+    # Simulate concurrent requests
     async def make_request(message: str) -> Any:
         return await async_client.post(
             "/api/v1/sidekick/ask",
@@ -791,14 +820,15 @@ async def test_concurrent_thread_management(
             headers={"Authorization": f"Bearer {access_token}"},
         )
 
-    # Make concurrent requests
     tasks = [make_request(f"Concurrent message {i}") for i in range(5)]
     responses = await asyncio.gather(*tasks)
 
-    # Verify all requests were processed
     for response in responses:
         assert response.status_code == 200
         assert "thread_id" in response.json()
+
+    # Verify number of API calls (initial + concurrent)
+    assert mock_openai.call_count == 6
 
 
 @pytest.mark.asyncio
@@ -1087,3 +1117,131 @@ async def test_entity_relationships(
         response_data = notes_response.json()
         assert "items" in response_data
         assert isinstance(response_data["items"], list)
+
+
+# Add new test cases for error scenarios
+@pytest.mark.asyncio
+async def test_openai_api_error_handling(
+    async_client: AsyncClient,
+    test_user: User,
+    access_token: str,
+) -> None:
+    # Test API timeout
+    with patch(
+        "app.routers.sidekick.SidekickService.call_openai_api",
+        new_callable=AsyncMock,
+        side_effect=asyncio.TimeoutError("API timeout"),
+    ):
+        response = await async_client.post(
+            "/api/v1/sidekick/ask",
+            json={"user_input": "Test input"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert response.status_code == 500
+        assert "timeout" in response.json()["detail"].lower()
+
+    # Test API rate limit
+    with patch(
+        "app.routers.sidekick.SidekickService.call_openai_api",
+        new_callable=AsyncMock,
+        side_effect=Exception("Rate limit exceeded"),
+    ):
+        response = await async_client.post(
+            "/api/v1/sidekick/ask",
+            json={"user_input": "Test input"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert response.status_code == 500
+        assert "rate limit" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_invalid_llm_response_handling(
+    async_client: AsyncClient,
+    test_user: User,
+    access_token: str,
+) -> None:
+    # Create an invalid string response instead of MagicMock
+    with patch(
+        "app.routers.sidekick.SidekickService.call_openai_api",
+        new_callable=AsyncMock,
+        side_effect=json.JSONDecodeError("Invalid JSON", doc="Invalid JSON", pos=0),
+    ):
+        response = await async_client.post(
+            "/api/v1/sidekick/ask",
+            json={"user_input": "Test input"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert response.status_code == 500
+        assert "json" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_thread_management_edge_cases(
+    async_client: AsyncClient,
+    test_user: User,
+    access_token: str,
+    mock_openai: AsyncMock,
+) -> None:
+    # Test with invalid thread_id
+    response = await async_client.post(
+        "/api/v1/sidekick/ask",
+        json={"user_input": "Test", "thread_id": "invalid-uuid"},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == 404
+
+    # Test with missing user_input
+    response = await async_client.post(
+        "/api/v1/sidekick/ask",
+        json={},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == 400  # FastAPI validation error
+
+
+@pytest.mark.asyncio
+async def test_concurrent_entity_updates(
+    async_client: AsyncClient,
+    test_user: User,
+    access_token: str,
+    mock_openai: AsyncMock,
+) -> None:
+    # Create initial entities
+    person_data = {
+        "person_id": str(uuid.uuid4()),
+        "name": "Test Person",
+        "designation": "Test Designation",
+        "relation_type": "Colleague",
+        "importance": "medium",
+        "notes": "Test notes",
+        "contact": {"email": "test@example.com", "phone": "1234567890"},
+    }
+
+    await async_client.post(
+        "/api/v1/sidekick/people",
+        json=person_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    # Set up mock responses for concurrent updates
+    async def make_update_request(notes: str) -> Any:
+        return await async_client.post(
+            "/api/v1/sidekick/ask",
+            json={"user_input": f"Update notes to: {notes}"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+    # Make concurrent update requests
+    tasks = [make_update_request(f"Note {i}") for i in range(5)]
+    responses = await asyncio.gather(*tasks)
+
+    for response in responses:
+        assert response.status_code == 200
+
+    # Verify final state
+    response = await async_client.get(
+        "/api/v1/sidekick/people",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == 200
