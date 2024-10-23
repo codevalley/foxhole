@@ -18,7 +18,8 @@ Foxhole Backend API is a comprehensive starter kit for building robust Python-ba
 - Docker and docker-compose setup for easy deployment
 - Comprehensive testing framework with pytest
 - Command-line interface (CLI) for easy interaction with the API
-- **Rate limiting for API endpoints using slowapi and Redis**
+- Rate limiting for API endpoints using slowapi and Redis
+- Sidekick service with AI-powered assistance and entity management (topics, tasks, people, notes)
 
 ## Getting Started
 
