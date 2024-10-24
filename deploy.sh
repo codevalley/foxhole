@@ -19,6 +19,18 @@ cd foxhole-backend
 # Copy the production environment file
 cp .env.production .env
 
+# Create necessary directories
+mkdir -p data
+
+# Stop and remove existing containers
+sudo docker-compose down
+
+# Remove old images
+sudo docker-compose rm -f
+
+# Pull latest changes
+git pull origin main
+
 # Build and start the Docker containers
 sudo docker-compose up -d --build
 
