@@ -13,8 +13,8 @@ sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-
 sudo chmod +x /usr/local/bin/docker-compose
 
 # Clone your repository (replace with your actual repository URL)
-git clone https://github.com/yourusername/foxhole-backend.git
-cd foxhole-backend
+git clone https://github.com/yourusername/foxhole.git
+cd foxhole
 
 # Copy the production environment file
 cp .env.production .env
@@ -34,8 +34,11 @@ git pull origin main
 # Start Nginx and Certbot containers
 sudo docker-compose up -d nginx certbot
 
+# Replace 'yourdomain.com' with your actual domain
+DOMAIN="your-actual-domain.com"
+
 # Generate SSL certificate
-sudo docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot -d yourdomain.com
+sudo docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot -d $DOMAIN
 
 # Restart Nginx to apply SSL changes
 sudo docker-compose restart nginx
