@@ -20,7 +20,7 @@ cd foxhole-backend
 cp .env.production .env
 
 # Create necessary directories
-mkdir -p data
+mkdir -p data certbot/conf certbot/www
 
 # Stop and remove existing containers
 sudo docker-compose down
@@ -31,7 +31,16 @@ sudo docker-compose rm -f
 # Pull latest changes
 git pull origin main
 
-# Build and start the Docker containers
+# Start Nginx and Certbot containers
+sudo docker-compose up -d nginx certbot
+
+# Generate SSL certificate
+sudo docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot -d yourdomain.com
+
+# Restart Nginx to apply SSL changes
+sudo docker-compose restart nginx
+
+# Build and start the remaining Docker containers
 sudo docker-compose up -d --build
 
 echo "Deployment completed!"
