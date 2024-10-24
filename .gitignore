@@ -47,9 +47,9 @@ kamal.yml
 
 # Environment variables
 .env
+.env.production
 *.pkl
 foxhole_session.json
-.env.production
 .env.staging
 
 # AI

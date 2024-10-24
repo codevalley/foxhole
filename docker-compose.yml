@@ -7,13 +7,9 @@ services:
       - "8000:8000"
     volumes:
       - ./app:/app
-    environment:
-      - DATABASE_URL=sqlite:///./data/app.db
-      - REDIS_URL=redis://redis:6379
-      - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
-      - MINIO_BUCKET_NAME=foxhole
+      - ./data:/app/data
+    env_file:
+      - .env
     depends_on:
       - redis
       - minio
@@ -30,9 +26,8 @@ services:
       - "9001:9001"
     volumes:
       - minio_data:/data
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+    env_file:
+      - .env
     command: server /data --console-address ":9001"
 
 volumes:

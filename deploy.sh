@@ -16,15 +16,8 @@ sudo chmod +x /usr/local/bin/docker-compose
 git clone https://github.com/yourusername/foxhole-backend.git
 cd foxhole-backend
 
-# Create a .env file with necessary environment variables
-cat << EOF > .env
-DATABASE_URL=sqlite:///./data/app.db
-REDIS_URL=redis://redis:6379
-MINIO_ENDPOINT=minio:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-MINIO_BUCKET_NAME=foxhole
-EOF
+# Copy the production environment file
+cp .env.production .env
 
 # Build and start the Docker containers
 sudo docker-compose up -d --build
