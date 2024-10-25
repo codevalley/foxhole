@@ -89,8 +89,17 @@ def test_get_storage_service_mock() -> None:
 
 def test_get_storage_service_minio() -> None:
     with patch.object(settings, "USE_MOCK_STORAGE", False):
-        service = get_storage_service()
-        assert isinstance(service, MinioStorageService)
+        with patch("app.dependencies.Minio") as mock_minio:
+            # Configure the mock
+            mock_minio_instance = MagicMock()
+            mock_minio.return_value = mock_minio_instance
+            mock_minio_instance.bucket_exists.return_value = True
+
+            service = get_storage_service()
+
+            assert isinstance(service, MinioStorageService)
+            mock_minio.assert_called_once()
+            mock_minio_instance.bucket_exists.assert_called_once_with("default-bucket")
 
 
 @pytest.mark.asyncio

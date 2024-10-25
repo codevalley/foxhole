@@ -1,5 +1,5 @@
 import json
-from typing import List, Dict, Any, Optional, cast
+from typing import List, Dict, Any, Optional, cast, Tuple
 import openai
 from app.core.config import settings
 from app.schemas.sidekick_schema import (
@@ -78,7 +78,7 @@ class SidekickService:
             await update_sidekick_thread(db, thread.id, final_history)
 
             # Update entities based on LLM response
-            context_updates = await self.update_entities(
+            context_updates, updated_entities = await self.update_entities(
                 db, processed_response["data"], user_id
             )
 
@@ -101,6 +101,7 @@ class SidekickService:
                 new_prompt=processed_response["instructions"].get("new_prompt"),
                 is_thread_complete=is_thread_complete,
                 updated_entities=context_updates,
+                entities=updated_entities,
                 token_usage=token_usage,
             )
         except HTTPException:
@@ -125,67 +126,141 @@ class SidekickService:
 
     async def update_entities(
         self, db: AsyncSession, data: Dict[str, List[Dict[str, Any]]], user_id: str
-    ) -> Dict[str, int]:
+    ) -> Tuple[Dict[str, int], Dict[str, List[Dict[str, Any]]]]:
         context_updates = {"tasks": 0, "people": 0, "topics": 0, "notes": 0}
+        updated_entities: Dict[str, List[Dict[str, Any]]] = {
+            "tasks": [],
+            "people": [],
+            "topics": [],
+            "notes": [],
+        }
 
         for entity_type, entities in data.items():
             for entity in entities:
-                if entity_type == "people":
-                    await self.update_or_create_person(db, entity, user_id)
-                elif entity_type == "tasks":
-                    await self.update_or_create_task(db, entity, user_id)
-                elif entity_type == "topics":
-                    await self.update_or_create_topic(db, entity, user_id)
-                elif entity_type == "notes":
-                    await self.update_or_create_note(db, entity, user_id)
+                try:
+                    if entity_type == "people":
+                        updated_entity = await self.update_or_create_person(
+                            db, entity, user_id
+                        )
+                    elif entity_type == "tasks":
+                        updated_entity = await self.update_or_create_task(
+                            db, entity, user_id
+                        )
+                    elif entity_type == "topics":
+                        updated_entity = await self.update_or_create_topic(
+                            db, entity, user_id
+                        )
+                    elif entity_type == "notes":
+                        updated_entity = await self.update_or_create_note(
+                            db, entity, user_id
+                        )
+                    else:
+                        continue
 
-                context_updates[entity_type] += 1
+                    if updated_entity:
+                        context_updates[entity_type] += 1
+                        updated_entities[entity_type].append(updated_entity)
+                except Exception as e:
+                    logger.error(f"Error updating {entity_type}: {str(e)}")
+                    # Continue with the next entity
 
-        return context_updates
+        return context_updates, updated_entities
 
     async def update_or_create_person(
         self, db: AsyncSession, person_data: Dict[str, Any], user_id: str
-    ) -> None:
-        # Set a default importance if it's missing or has an empty/whitespace-only value
-        if not person_data.get("importance", "").strip():
-            person_data["importance"] = "medium"
+    ) -> Optional[Dict[str, Any]]:
+        try:
+            # Set a default importance if it's missing or has an empty/whitespace-only value
+            if not person_data.get("importance", "").strip():
+                person_data["importance"] = "medium"
 
-        person_create = PersonCreate(**person_data)
-        existing_person = await get_person(db, person_data["person_id"])
-        if existing_person:
-            await update_person(db, person_data["person_id"], person_create)
-        else:
-            await create_person(db, person_create, user_id)
+            person_create = PersonCreate(**person_data)
+            existing_person = await get_person(db, person_data["person_id"])
+            if existing_person:
+                updated_person = await update_person(
+                    db, person_data["person_id"], person_create
+                )
+            else:
+                updated_person = await create_person(db, person_create, user_id)
+
+            if updated_person:
+                return self.person_to_dict(cast(Person, updated_person))
+            else:
+                logger.warning(
+                    f"Failed to create or update person: {person_data['person_id']}"
+                )
+                return None
+        except Exception as e:
+            logger.error(f"Error in update_or_create_person: {str(e)}")
+            return None
 
     async def update_or_create_task(
         self, db: AsyncSession, task_data: Dict[str, Any], user_id: str
-    ) -> None:
-        task_create = TaskCreate(**task_data)
-        existing_task = await get_task(db, task_data["task_id"])
-        if existing_task:
-            await update_task(db, task_data["task_id"], task_create)
-        else:
-            await create_task(db, task_create, user_id)
+    ) -> Optional[Dict[str, Any]]:
+        try:
+            task_create = TaskCreate(**task_data)
+            existing_task = await get_task(db, task_data["task_id"])
+            if existing_task:
+                updated_task = await update_task(db, task_data["task_id"], task_create)
+            else:
+                updated_task = await create_task(db, task_create, user_id)
+
+            if updated_task:
+                return self.task_to_dict(cast(Task, updated_task))
+            else:
+                logger.warning(
+                    f"Failed to create or update task: {task_data['task_id']}"
+                )
+                return None
+        except Exception as e:
+            logger.error(f"Error in update_or_create_task: {str(e)}")
+            return None
 
     async def update_or_create_topic(
         self, db: AsyncSession, topic_data: Dict[str, Any], user_id: str
-    ) -> None:
-        topic_create = TopicCreate(**topic_data)
-        existing_topic = await get_topic(db, topic_data["topic_id"])
-        if existing_topic:
-            await update_topic(db, topic_data["topic_id"], topic_create)
-        else:
-            await create_topic(db, topic_create, user_id)
+    ) -> Optional[Dict[str, Any]]:
+        try:
+            topic_create = TopicCreate(**topic_data)
+            existing_topic = await get_topic(db, topic_data["topic_id"])
+            if existing_topic:
+                updated_topic = await update_topic(
+                    db, topic_data["topic_id"], topic_create
+                )
+            else:
+                updated_topic = await create_topic(db, topic_create, user_id)
+
+            if updated_topic:
+                return self.topic_to_dict(cast(Topic, updated_topic))
+            else:
+                logger.warning(
+                    f"Failed to create or update topic: {topic_data['topic_id']}"
+                )
+                return None
+        except Exception as e:
+            logger.error(f"Error in update_or_create_topic: {str(e)}")
+            return None
 
     async def update_or_create_note(
         self, db: AsyncSession, note_data: Dict[str, Any], user_id: str
-    ) -> None:
-        note_create = NoteCreate(**note_data)
-        existing_note = await get_note(db, note_data["note_id"])
-        if existing_note:
-            await update_note(db, note_data["note_id"], note_create)
-        else:
-            await create_note(db, note_create, user_id)
+    ) -> Optional[Dict[str, Any]]:
+        try:
+            note_create = NoteCreate(**note_data)
+            existing_note = await get_note(db, note_data["note_id"])
+            if existing_note:
+                updated_note = await update_note(db, note_data["note_id"], note_create)
+            else:
+                updated_note = await create_note(db, note_create, user_id)
+
+            if updated_note:
+                return self.note_to_dict(cast(Note, updated_note))
+            else:
+                logger.warning(
+                    f"Failed to create or update note: {note_data['note_id']}"
+                )
+                return None
+        except Exception as e:
+            logger.error(f"Error in update_or_create_note: {str(e)}")
+            return None
 
     async def construct_prompt(
         self, db: AsyncSession, user_id: str, conversation_history: List[Dict[str, str]]

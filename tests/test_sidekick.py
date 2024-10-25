@@ -545,11 +545,20 @@ async def test_sidekick_service_update_entities(
             }
         ],
     }
-    updates = await service.update_entities(
+    context_updates, updated_entities = await service.update_entities(
         db_session, cast(dict[str, list[dict[str, Any]]], data), test_user.id
     )
 
-    assert updates == {"people": 1, "tasks": 1, "topics": 1, "notes": 1}
+    assert context_updates == {"people": 1, "tasks": 1, "topics": 1, "notes": 1}
+    assert len(updated_entities["people"]) == 1
+    assert len(updated_entities["tasks"]) == 1
+    assert len(updated_entities["topics"]) == 1
+    assert len(updated_entities["notes"]) == 1
+
+    assert updated_entities["people"][0]["name"] == "New Person"
+    assert updated_entities["tasks"][0]["description"] == "New Task"
+    assert updated_entities["topics"][0]["name"] == "New Topic"
+    assert updated_entities["notes"][0]["content"] == "New Note"
 
 
 # # Test rate limiting
@@ -625,12 +634,10 @@ async def test_process_input(
     mock_call_openai_api.return_value = (mock_llm_response, mock_token_usage)
 
     mock_process_data.return_value = mock_llm_response.model_dump()
-    mock_update_entities.return_value = {
-        "tasks": 0,
-        "people": 0,
-        "topics": 0,
-        "notes": 0,
-    }
+    mock_update_entities.return_value = (
+        {"tasks": 0, "people": 0, "topics": 0, "notes": 0},
+        {"tasks": [], "people": [], "topics": [], "notes": []},
+    )
 
     # Mock create_sidekick_thread
     new_thread = MagicMock(spec=SidekickThread)
@@ -651,9 +658,21 @@ async def test_process_input(
         assert result.thread_id == "new_test_thread_id"  # Check for the new thread ID
         assert result.status == "complete"
         assert result.is_thread_complete is True
+        assert result.updated_entities == {
+            "tasks": 0,
+            "people": 0,
+            "topics": 0,
+            "notes": 0,
+        }
+        assert result.entities == {"tasks": [], "people": [], "topics": [], "notes": []}
 
     # Verify that create_sidekick_thread was called
     mock_create_thread.assert_called_once()
+
+    # Verify that update_entities was called with the correct arguments
+    mock_update_entities.assert_called_once_with(
+        db_session, mock_process_data.return_value["data"], test_user.id
+    )
 
 
 @pytest.mark.asyncio

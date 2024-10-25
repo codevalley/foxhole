@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Literal, Optional, Dict, TypeVar, Generic
+from typing import List, Literal, Optional, Dict, TypeVar, Generic, Any
 
 
 class PersonContact(BaseModel):
@@ -142,10 +142,11 @@ class TokenUsage(BaseModel):
 class SidekickOutput(BaseModel):
     response: str
     thread_id: str
+    status: str
     new_prompt: Optional[str] = None
     is_thread_complete: bool
     updated_entities: Dict[str, int]
-    status: Literal["incomplete", "complete"]
+    entities: Dict[str, List[Dict[str, Any]]]
     token_usage: TokenUsage
 
 

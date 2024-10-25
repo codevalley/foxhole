@@ -46,15 +46,8 @@ class MinioStorageService(StorageService):
 
     def ensure_bucket_exists(self, bucket_name: str) -> None:
         """Ensure that the specified bucket exists, creating it if necessary."""
-        try:
-            if not self.client.bucket_exists(bucket_name):
-                self.client.make_bucket(bucket_name)
-                logger.info(f"Created bucket: {bucket_name}")
-            else:
-                logger.info(f"Bucket already exists: {bucket_name}")
-        except S3Error as e:
-            logger.error(f"Error ensuring bucket exists: {e}")
-            raise HTTPException(status_code=500, detail="Storage service error")
+        if not self.client.bucket_exists(bucket_name):
+            self.client.make_bucket(bucket_name)
 
     async def upload_file(
         self, file: UploadFile, bucket_name: str, object_name: str
