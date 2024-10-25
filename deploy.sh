@@ -84,7 +84,7 @@ parse_args() {
 # Check prerequisites
 check_prerequisites() {
     log "Checking prerequisites..."
-    
+
     # Check if running as root
     if [[ $EUID -ne 0 ]]; then
         error "This script must be run as root"
@@ -109,7 +109,7 @@ check_prerequisites() {
 install_docker() {
     if [ "$INSTALL_DOCKER" = true ]; then
         log "Installing Docker and Docker Compose..."
-        
+
         # Install Docker if not present
         if ! command -v docker &> /dev/null; then
             info "Installing Docker..."
@@ -135,19 +135,19 @@ install_docker() {
 setup_ssl() {
     if [ "$SETUP_SSL" = true ] || [ ! -f "certbot/conf/live/$DOMAIN/fullchain.pem" ]; then
         log "Setting up SSL certificates..."
-        
+
         # Create required directories
         mkdir -p certbot/conf certbot/www
-        
+
         # Stop any running containers
         docker-compose down 2>/dev/null || true
-        
+
         # Check if certificate already exists and force renewal is not set
         if [ -f "certbot/conf/live/$DOMAIN/fullchain.pem" ] && [ "$FORCE_RENEW_SSL" = false ]; then
             warn "SSL certificates already exist. Use --force-ssl to force renewal."
             return
         fi
-        
+
         # Generate certificates
         log "Generating SSL certificates..."
         docker run -it --rm \
@@ -160,7 +160,7 @@ setup_ssl() {
             --no-eff-email \
             --force-renewal \
             -d "$DOMAIN"
-        
+
         # Verify certificates
         if [ -f "certbot/conf/live/$DOMAIN/fullchain.pem" ] && [ -f "certbot/conf/live/$DOMAIN/privkey.pem" ]; then
             log "SSL certificates generated successfully!"
@@ -174,13 +174,13 @@ setup_ssl() {
 # Configure Nginx
 configure_nginx() {
     log "Configuring Nginx..."
-    
+
     # Check SSL certificates
     if [ ! -f "certbot/conf/live/$DOMAIN/fullchain.pem" ] || [ ! -f "certbot/conf/live/$DOMAIN/privkey.pem" ]; then
         error "SSL certificates not found! Please run with --setup-ssl first."
         exit 1
     fi
-    
+
     # Create Nginx configuration
     cat > nginx.conf <<EOL
 events {
@@ -199,7 +199,7 @@ http {
     server {
         listen 80;
         server_name $DOMAIN;
-        
+
         location /.well-known/acme-challenge/ {
             root /var/www/certbot;
         }
@@ -215,7 +215,7 @@ http {
 
         ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
         ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
-        
+
         # SSL configuration
         ssl_protocols TLSv1.2 TLSv1.3;
         ssl_prefer_server_ciphers off;
@@ -223,7 +223,7 @@ http {
         ssl_session_timeout 1d;
         ssl_session_cache shared:SSL:50m;
         ssl_session_tickets off;
-        
+
         # HSTS
         add_header Strict-Transport-Security "max-age=31536000" always;
 
@@ -233,7 +233,7 @@ http {
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
-            
+
             # WebSocket support
             proxy_http_version 1.1;
             proxy_set_header Upgrade \$http_upgrade;
@@ -249,10 +249,10 @@ EOL
 # Setup application
 setup_application() {
     log "Setting up application..."
-    
+
     # Create data directories
     mkdir -p data/{db,minio,redis}
-    
+
     # Update code if requested
     if [ "$FETCH_CODE" = true ]; then
         if [ -d ".git" ]; then
@@ -280,12 +280,12 @@ setup_application() {
 # Start services
 start_services() {
     log "Starting services..."
-    
+
     # Verify Docker is running
     if ! docker info > /dev/null 2>&1; then
         error "Docker is not running!"
         exit 1
-    fi  
+    fi
 
     # Pull latest images
     log "Pulling latest Docker images..."
@@ -315,9 +315,9 @@ setup_cert_renewal() {
 # Main execution
 main() {
     parse_args "$@"
-    
+
     log "Starting deployment for $DOMAIN..."
-    
+
     check_prerequisites
     install_docker
     setup_ssl
@@ -325,10 +325,10 @@ main() {
     configure_nginx
     start_services
     setup_cert_renewal
-    
+
     log "Deployment completed successfully!"
     log "Your application is now available at https://$DOMAIN"
-    
+
     info "Useful commands:"
     info "  - View logs: docker-compose logs -f"
     info "  - Restart services: docker-compose restart"
