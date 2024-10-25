@@ -46,12 +46,11 @@ show_help() {
     echo "  # First time setup with everything:"
     echo "  $0 mydomain.com admin@mydomain.com --docker --setup-ssl"
     echo
-    echo "  # Update deployment:"
+    echo "  # Update deployment with code rebuild:"
     echo "  $0 mydomain.com admin@mydomain.com --fetch-code"
     echo
-    echo "  # Renew SSL certificate:"
-    echo "  $0 mydomain.com admin@mydomain.com --setup-ssl --force-ssl"
-    exit 0
+    echo "  # Just rebuild and redeploy current code:"
+    echo "  $0 mydomain.com admin@mydomain.com"
 }
 
 # Parse command line arguments
@@ -60,6 +59,7 @@ parse_args() {
         case $1 in
             --help|-h)
                 show_help
+                exit 0
                 ;;
             --docker)
                 INSTALL_DOCKER=true
@@ -74,7 +74,11 @@ parse_args() {
                 FORCE_RENEW_SSL=true
                 ;;
             *)
-                shift
+                if [[ -z "$DOMAIN" && $1 != -* ]]; then
+                    DOMAIN=$1
+                elif [[ -z "$EMAIL" && $1 != -* ]]; then
+                    EMAIL=$1
+                fi
                 ;;
         esac
         shift
@@ -287,20 +291,54 @@ start_services() {
         exit 1
     fi
 
-    # Pull latest images
-    log "Pulling latest Docker images..."
-    docker-compose pull
+    # Build the application image
+    log "Building application image..."
+    if ! docker-compose build app; then
+        error "Failed to build application image!"
+        exit 1
+    fi
+    log "Application image built successfully"
+
+    # Push to registry if configured
+    if [ -n "$DOCKER_REGISTRY" ]; then
+        log "Pushing image to registry..."
+        if ! docker-compose push app; then
+            error "Failed to push image to registry!"
+            exit 1
+        fi
+        log "Image pushed to registry successfully"
+    fi
+
+    # Pull other service images
+    log "Pulling other service images..."
+    if ! docker-compose pull redis minio nginx; then
+        warn "Failed to pull some service images, continuing anyway..."
+    fi
 
     # Stop existing containers
+    log "Stopping existing containers..."
     docker-compose down --remove-orphans
 
     # Start services
     log "Starting all services..."
-    docker-compose up -d
+    if ! docker-compose up -d; then
+        error "Failed to start services!"
+        exit 1
+    fi
 
     # Check services
     log "Verifying services..."
     docker-compose ps
+
+    # Optional: Check application health
+    log "Waiting for application to start..."
+    sleep 5
+    if curl -s -f http://localhost:8000/health > /dev/null; then
+        log "Application is healthy!"
+    else
+        warn "Application health check failed. Please check the logs:"
+        docker-compose logs app
+    fi
 }
 
 # Setup certificate renewal
