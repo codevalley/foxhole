@@ -93,7 +93,11 @@ class SidekickService:
                 )
                 new_thread_id = new_thread.id
 
-            # Construct and return SidekickOutput
+            # Just before returning SidekickOutput
+
+            logger.info(f"Entities data: {processed_response['data']}")
+            logger.info(f"Updated entities: {updated_entities}")
+
             return SidekickOutput(
                 response=processed_response["instructions"]["followup"],
                 thread_id=new_thread_id if is_thread_complete else thread.id,
@@ -384,4 +388,6 @@ class SidekickService:
             )
 
     def process_data(self, llm_response: LLMResponse) -> Dict[str, Any]:
-        return cast(Dict[str, Any], llm_response.model_dump())
+        processed = llm_response.model_dump()
+        logger.info(f"Processed LLM response: {processed}")
+        return cast(Dict[str, Any], processed)

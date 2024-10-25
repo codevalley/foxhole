@@ -65,6 +65,7 @@ async def process_sidekick_input(
             db, current_user.id, sidekick_input
         )
         logger.info(f"Processed sidekick input for user {current_user.id}")
+        logger.info(f"API RESPONSE: {result}")
         return result
     except HTTPException:
         raise
