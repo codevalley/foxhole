@@ -42,8 +42,10 @@ start/
 # Redis
 dump.rdb
 
-# Kamal
+# Deployment
 kamal.yml
+certbot/
+get-docker.sh
 
 # Environment variables
 .env
