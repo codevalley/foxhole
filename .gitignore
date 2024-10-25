@@ -46,6 +46,7 @@ dump.rdb
 kamal.yml
 certbot/
 get-docker.sh
+nginx.conf
 
 # Environment variables
 .env
