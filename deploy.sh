@@ -285,7 +285,7 @@ start_services() {
     if ! docker info > /dev/null 2>&1; then
         error "Docker is not running!"
         exit 1
-    fi
+    fi  
 
     # Pull latest images
     log "Pulling latest Docker images..."
