@@ -254,8 +254,19 @@ EOL
 setup_application() {
     log "Setting up application..."
 
-    # Create data directories
-    mkdir -p data/{db,minio,redis}
+    # Create data directories with proper permissions
+    log "Setting up data directories..."
+    mkdir -p data/db data/minio data/redis
+
+    # Set proper permissions for data directories
+    chown -R 1000:1000 data/  # Use appropriate user:group for your app
+    chmod -R 755 data/
+
+    # Ensure db directory is properly mounted and persisted
+    if [ ! -d "data/db" ]; then
+        error "Database directory not found or not properly mounted!"
+        exit 1
+    fi
 
     # Update code if requested
     if [ "$FETCH_CODE" = true ]; then
@@ -273,6 +284,8 @@ setup_application() {
             cp .env.example .env
             sed -i "s/your-domain.com/$DOMAIN/g" .env
             sed -i "s/your-email@example.com/$EMAIL/g" .env
+            # Ensure DATABASE_URL points to the persistent location
+            sed -i "s#sqlite+aiosqlite:///./app.db#sqlite+aiosqlite:///./data/db/app.db#g" .env
             log "Created and configured .env file"
         else
             error "No .env.example file found!"

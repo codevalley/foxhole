@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from fastapi.testclient import TestClient
 from typing import AsyncGenerator, Any, Callable, Awaitable
 from app.services.websocket_manager import WebSocketManager
-from utils.database import create_tables, engine, AsyncSessionLocal
+from utils.database import check_and_create_tables, engine, AsyncSessionLocal
 import warnings
 from fastapi import Response
 from app.core.rate_limit import limiter
@@ -41,7 +41,7 @@ def print_env(capsys: CaptureFixture[str]) -> None:
 
 @pytest.fixture(scope="function")
 async def db_engine() -> AsyncGenerator[AsyncEngine, None]:
-    await create_tables()  # Create tables before running tests
+    await check_and_create_tables()  # Create tables before running tests
     yield engine
 
 

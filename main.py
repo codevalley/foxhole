@@ -5,6 +5,7 @@ from app.services.websocket_manager import WebSocketManager
 from app.middleware.request_id import RequestIDMiddleware
 from app.middleware.rate_limit_info import RateLimitInfoMiddleware
 from app.core.logging_config import setup_logging
+from utils.database import check_and_create_tables
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.core.rate_limit import limiter
@@ -30,6 +31,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 @app.on_event("startup")
 async def startup_event() -> None:
     await init_cache()
+    await check_and_create_tables()
     app.state.websocket_manager = WebSocketManager()
     websocket.init_websocket_manager(app.state.websocket_manager)
 

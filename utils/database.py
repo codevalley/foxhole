@@ -9,7 +9,9 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from app.models import Base
 import os
+import logging
 
+logger = logging.getLogger(__name__)
 
 engine: AsyncEngine = create_async_engine(settings.DATABASE_URL, echo=True, future=True)
 
@@ -32,10 +34,28 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-async def create_tables() -> None:
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("Database tables created successfully")
+async def check_and_create_tables() -> None:
+    """
+    Check if database exists and create tables if they don't exist.
+    Does not drop or recreate tables if they already exist.
+    """
+    try:
+        db_file = settings.DATABASE_URL.replace("sqlite+aiosqlite:///", "")
+        db_dir = os.path.dirname(db_file)
+
+        # Ensure the data directory exists
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir)
+            logger.info(f"Created database directory: {db_dir}")
+
+        # Create tables if they don't exist
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+            logger.info("Database tables checked/created successfully")
+
+    except Exception as e:
+        logger.error(f"Error initializing database: {str(e)}")
+        raise
 
 
 async def reset_database() -> None:
@@ -46,7 +66,7 @@ async def reset_database() -> None:
         print(f"Deleted existing database file: {db_file}")
 
     # Create new tables
-    await create_tables()
+    await check_and_create_tables()
 
 
 # Function to initialize the database
