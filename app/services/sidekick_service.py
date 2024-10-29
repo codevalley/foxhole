@@ -48,6 +48,41 @@ class SidekickService:
     def __init__(self) -> None:
         openai.api_key = settings.OPENAI_API_KEY
 
+    async def fetch_entities_by_ids(
+        self, db: AsyncSession, affected_entities: Dict[str, List[str]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Fetch full entity objects based on their IDs from affected_entities
+        """
+        entities: Dict[str, List[Dict[str, Any]]] = {
+            "people": [],
+            "tasks": [],
+            "topics": [],
+            "notes": [],
+        }
+
+        # Fetch people
+        for person_id in affected_entities.get("people", []):
+            if person := await get_person(db, person_id):
+                entities["people"].append(self.person_to_dict(cast(Person, person)))
+
+        # Fetch tasks
+        for task_id in affected_entities.get("tasks", []):
+            if task := await get_task(db, task_id):
+                entities["tasks"].append(self.task_to_dict(cast(Task, task)))
+
+        # Fetch topics
+        for topic_id in affected_entities.get("topics", []):
+            if topic := await get_topic(db, topic_id):
+                entities["topics"].append(self.topic_to_dict(cast(Topic, topic)))
+
+        # Fetch notes
+        for note_id in affected_entities.get("notes", []):
+            if note := await get_note(db, note_id):
+                entities["notes"].append(self.note_to_dict(cast(Note, note)))
+
+        return entities
+
     async def process_input(
         self, db: AsyncSession, user_id: str, sidekick_input: SidekickInput
     ) -> SidekickOutput:
@@ -78,9 +113,13 @@ class SidekickService:
             await update_sidekick_thread(db, thread.id, final_history)
 
             # Update entities based on LLM response
-            context_updates, updated_entities = await self.update_entities(
+            context_updates, _ = await self.update_entities(
                 db, processed_response["data"], user_id
             )
+
+            # Fetch complete entities based on affected_entities
+            affected_entities = processed_response["instructions"]["affected_entities"]
+            inflated_entities = await self.fetch_entities_by_ids(db, affected_entities)
 
             # Check if thread is complete and create a new one if necessary
             is_thread_complete = (
@@ -93,11 +132,6 @@ class SidekickService:
                 )
                 new_thread_id = new_thread.id
 
-            # Just before returning SidekickOutput
-
-            logger.info(f"Entities data: {processed_response['data']}")
-            logger.info(f"Updated entities: {updated_entities}")
-
             return SidekickOutput(
                 response=processed_response["instructions"]["followup"],
                 thread_id=new_thread_id if is_thread_complete else thread.id,
@@ -105,11 +139,11 @@ class SidekickService:
                 new_prompt=processed_response["instructions"].get("new_prompt"),
                 is_thread_complete=is_thread_complete,
                 updated_entities=context_updates,
-                entities=updated_entities,
+                entities=inflated_entities,
                 token_usage=token_usage,
             )
+
         except HTTPException:
-            # Re-raise HTTP exceptions
             raise
         except Exception as e:
             logger.error(f"Error in process_input: {str(e)}")

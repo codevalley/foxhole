@@ -1264,3 +1264,80 @@ async def test_concurrent_entity_updates(
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_entity_inflation(
+    async_client: AsyncClient,
+    test_user: User,
+    db_session: AsyncSession,
+    access_token: str,
+) -> None:
+    # Create test entity
+    person_data = {
+        "person_id": str(uuid.uuid4()),
+        "name": "Test Person",
+        "designation": "Test Designation",
+        "relation_type": "Colleague",
+        "importance": "medium",
+        "notes": "Test notes",
+        "contact": {"email": "test@example.com", "phone": "1234567890"},
+    }
+
+    person_response = await async_client.post(
+        "/api/v1/sidekick/people",
+        json=person_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert person_response.status_code == 200
+    person_id = person_data["person_id"]
+
+    # Create mock LLM response that references the person but doesn't modify it
+    mock_llm_response = LLMResponse(
+        instructions=Instructions(
+            status="complete",
+            followup="Test response",
+            new_prompt="",
+            write=False,
+            affected_entities=AffectedEntities(
+                people=[person_id],
+                tasks=[],
+                notes=[],
+                topics=[],
+            ),
+        ),
+        data=Data(
+            people=[],  # Empty because no modifications
+            tasks=[],
+            topics=[],
+            notes=[],
+        ),
+    )
+    mock_token_usage = TokenUsage(
+        prompt_tokens=10,
+        completion_tokens=20,
+        total_tokens=30,
+    )
+
+    # Mock OpenAI call
+    with patch(
+        "app.services.sidekick_service.SidekickService.call_openai_api",
+        new_callable=AsyncMock,
+        return_value=(mock_llm_response, mock_token_usage),
+    ):
+        response = await async_client.post(
+            "/api/v1/sidekick/ask",
+            json={"user_input": "Tell me about Test Person"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Verify that the person entity was inflated in the response
+        assert len(data["entities"]["people"]) == 1
+        assert data["entities"]["people"][0]["person_id"] == person_id
+        assert data["entities"]["people"][0]["name"] == "Test Person"
+
+        # Verify that no entities were actually updated
+        assert data["updated_entities"]["people"] == 0

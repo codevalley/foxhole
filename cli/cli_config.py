@@ -1,4 +1,4 @@
 class CliConfig:
-    API_URL = "http://localhost:8000"
-    WEBSOCKET_HOST = "localhost:8001"
+    API_URL = "https://fapi.nyn.sh"
+    WEBSOCKET_HOST = "wss://fapi.nyn.sh"
     SESSION_FILE = "foxhole_session.json"
