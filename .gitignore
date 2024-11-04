@@ -51,6 +51,7 @@ nginx.conf
 # Environment variables
 .env
 .env.production
+.env.development
 *.pkl
 foxhole_session.json
 .env.staging

@@ -46,7 +46,8 @@ class Settings(BaseSettings):
     MINIO_BUCKET_NAME: str = "foxhole"
 
     # Sidekick settings
-    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
     SIDEKICK_SYSTEM_PROMPT_FILE: str = "sidekick_prompt.txt"
 
     APP_VERSION: str = "0.1.0"
@@ -69,7 +70,7 @@ class Settings(BaseSettings):
     @property
     def SIDEKICK_SYSTEM_PROMPT(self) -> str:
         try:
-            with open(self.SIDEKICK_SYSTEM_PROMPT_FILE, "r") as file:
+            with open(self.SIDEKICK_SYSTEM_PROMPT_FILE, "r", encoding="utf-8") as file:
                 return file.read().strip()
         except FileNotFoundError:
             print(
@@ -93,6 +94,9 @@ class Settings(BaseSettings):
     def __init__(self: "Settings", **kwargs: Any) -> None:
         env_files = self.get_env_file()
         super().__init__(_env_file=env_files, **kwargs)
+        # Update os.environ with OPENAI_API_KEY if it's set
+        if self.OPENAI_API_KEY and "OPENAI_API_KEY" not in os.environ:
+            os.environ["OPENAI_API_KEY"] = self.OPENAI_API_KEY
         # self._log_loaded_values()
 
     def _log_loaded_values(self) -> None:

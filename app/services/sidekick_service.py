@@ -1,6 +1,7 @@
 import json
 from typing import List, Dict, Any, Optional, cast, Tuple
-import openai
+from openai import OpenAI
+
 from app.core.config import settings
 from app.schemas.sidekick_schema import (
     SidekickInput,
@@ -46,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 class SidekickService:
     def __init__(self) -> None:
-        openai.api_key = settings.OPENAI_API_KEY
+        self.client = OpenAI()
 
     async def fetch_entities_by_ids(
         self, db: AsyncSession, affected_entities: Dict[str, List[str]]
@@ -392,29 +393,48 @@ class SidekickService:
         self, messages: List[Dict[str, str]]
     ) -> tuple[LLMResponse, TokenUsage]:
         try:
-            response = await openai.ChatCompletion.acreate(
-                model="gpt-4o-mini-2024-07-18",
-                messages=messages,
-            )
-            raw_response = response.choices[0].message.content
-            logger.info(f"Raw OpenAI API response: {raw_response}")
+            # Ensure all messages are properly encoded
+            sanitized_messages = []
+            for msg in messages:
+                if isinstance(msg["content"], str):
+                    content = (
+                        msg["content"].encode("utf-8", errors="replace").decode("utf-8")
+                    )
+                else:
+                    content = (
+                        str(msg["content"])
+                        .encode("utf-8", errors="replace")
+                        .decode("utf-8")
+                    )
 
-            api_response = LLMResponse.model_validate_json(raw_response)
+                sanitized_messages.append({"role": msg["role"], "content": content})
+
+            response = await self.client.chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=sanitized_messages,
+                response_format={"type": "json_object"},
+            )
+
+            # Get content from response using new API
+            raw_response = response.choices[0].message.content
+            logger.debug(f"Raw OpenAI API response: {raw_response}")
+
+            try:
+                api_response = LLMResponse.model_validate_json(raw_response)
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON decode error: {str(e)}")
+                logger.error(f"Raw response that caused the error: {raw_response}")
+                raise HTTPException(
+                    status_code=500, detail="Unable to parse OpenAI response as JSON"
+                )
+
             token_usage = TokenUsage(
                 prompt_tokens=response.usage.prompt_tokens,
                 completion_tokens=response.usage.completion_tokens,
                 total_tokens=response.usage.total_tokens,
             )
             return api_response, token_usage
-        except openai.error.OpenAIError as e:
-            logger.error(f"OpenAI API error: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(e)}")
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error: {str(e)}")
-            logger.error(f"Raw response that caused the error: {raw_response}")
-            raise HTTPException(
-                status_code=500, detail="Unable to parse OpenAI response as JSON"
-            )
+
         except Exception as e:
             logger.error(f"Unexpected error in call_openai_api: {str(e)}")
             raise HTTPException(

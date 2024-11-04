@@ -80,10 +80,47 @@ def mock_openai(
 ) -> Generator[AsyncMock, None, None]:
     """Fixture providing a mocked OpenAI API call"""
     with patch(
-        "app.routers.sidekick.SidekickService.call_openai_api",
+        "app.services.sidekick_service.SidekickService.call_openai_api",
         new_callable=AsyncMock,
-        return_value=(mock_llm_response, mock_token_usage),
     ) as mock:
+        # Configure the mock to return proper response
+        mock.return_value = (mock_llm_response, mock_token_usage)
+        yield mock
+
+
+@pytest.fixture
+def mock_completion_create() -> Generator[AsyncMock, None, None]:
+    """Fixture for mocking OpenAI completion create method"""
+    with patch("openai.resources.chat.completions.AsyncCompletions.create") as mock:
+        # Configure mock response
+        mock_response = MagicMock()
+        mock_response.choices = [
+            MagicMock(
+                message=MagicMock(
+                    content=json.dumps(
+                        {
+                            "instructions": {
+                                "status": "complete",
+                                "followup": "Test response",
+                                "new_prompt": "",
+                                "write": False,
+                                "affected_entities": {
+                                    "people": [],
+                                    "tasks": [],
+                                    "notes": [],
+                                    "topics": [],
+                                },
+                            },
+                            "data": {},
+                        }
+                    )
+                )
+            )
+        ]
+        mock_response.usage = MagicMock(
+            prompt_tokens=10, completion_tokens=20, total_tokens=30
+        )
+        mock.return_value = mock_response
         yield mock
 
 
@@ -731,19 +768,45 @@ async def test_construct_prompt(
 async def test_call_openai_api() -> None:
     service = SidekickService()
 
-    # Mock the openai.ChatCompletion.acreate method
-    mock_response = MagicMock()
-    mock_response.choices[
-        0
-    ].message.content = '{"instructions": {"status": "complete", "followup": "Test followup", "new_prompt": "", "write": false, "affected_entities": {}}, "data": {}}'
-    mock_response.usage.prompt_tokens = 10
-    mock_response.usage.completion_tokens = 20
-    mock_response.usage.total_tokens = 30
+    # Create a response object that matches what openai.AsyncClient returns
+    mock_response = AsyncMock()
+    mock_response.choices = [
+        MagicMock(
+            message=MagicMock(
+                content=json.dumps(
+                    {
+                        "instructions": {
+                            "status": "complete",
+                            "followup": "Test followup",
+                            "new_prompt": "",
+                            "write": False,
+                            "affected_entities": {
+                                "people": [],
+                                "tasks": [],
+                                "notes": [],
+                                "topics": [],
+                            },
+                        },
+                        "data": {},
+                    }
+                )
+            )
+        )
+    ]
+    mock_response.usage = MagicMock(
+        prompt_tokens=10, completion_tokens=20, total_tokens=30
+    )
 
-    with patch("openai.ChatCompletion.acreate", new_callable=AsyncMock) as mock_acreate:
-        mock_acreate.return_value = mock_response
+    # Using patch.object to patch the specific instance's client
+    with patch.object(service, "client") as mock_client:
+        # Configure the mock client's chat.completions.create method
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
 
-        messages = [{"role": "user", "content": "Test message"}]
+        # Include 'json' in the test message to satisfy OpenAI's requirement
+        messages = [
+            {"role": "system", "content": "Please respond in JSON format"},
+            {"role": "user", "content": "Test message"},
+        ]
         result, token_usage = await service.call_openai_api(messages)
 
         assert isinstance(result, LLMResponse)
@@ -752,15 +815,17 @@ async def test_call_openai_api() -> None:
         assert isinstance(token_usage, TokenUsage)
         assert token_usage.total_tokens == 30
 
+        # Verify the API was called with correct parameters
+        mock_client.chat.completions.create.assert_called_once()
+
     # Test error handling
-    with patch("openai.ChatCompletion.acreate", new_callable=AsyncMock) as mock_acreate:
-        mock_acreate.side_effect = Exception("API Error")
-
-        with pytest.raises(HTTPException):
+    with patch.object(service, "client") as mock_client:
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=Exception("API Error")
+        )
+        with pytest.raises(HTTPException) as exc_info:
             await service.call_openai_api(messages)
-
-
-# Add these tests to tests/test_sidekick.py
+        assert str(exc_info.value.detail) == "An unexpected error occurred: API Error"
 
 
 @pytest.mark.asyncio

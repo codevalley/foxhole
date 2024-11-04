@@ -14,6 +14,7 @@ from app.middleware.error_handler import (
     generic_exception_handler,
 )
 from fastapi.exceptions import RequestValidationError
+import os
 
 app = FastAPI()
 
@@ -61,5 +62,6 @@ async def root() -> dict[str, str]:
 if __name__ == "__main__":
     import uvicorn
 
+    print(f"OPENAI_API_KEY: {os.getenv('OPENAI_API_KEY')}")
     # Run the application with Uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")
