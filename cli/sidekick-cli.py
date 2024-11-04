@@ -9,6 +9,8 @@ from session_manager import SessionManager
 from cli_config import CliConfig
 import aiohttp
 from typing import Optional, Any, Dict, cast
+from rich.table import Table
+from typing import Dict, List, Any, cast
 
 config = CliConfig()
 console = Console()
@@ -57,6 +59,166 @@ async def call_sidekick_api(
                         f"[bold red]Error:[/bold red] {await response.text()}"
                     )
                     return None
+
+
+async def fetch_tasks(session_manager: SessionManager) -> None:
+    """Fetch and display tasks from the API"""
+    async with aiohttp.ClientSession() as session:
+        headers = {
+            "Authorization": f"Bearer {session_manager.current_user['access_token']}"
+        }
+        async with session.get(
+            f"{config.API_URL}/api/v1/sidekick/tasks", headers=headers
+        ) as response:
+            if response.status == 200:
+                data = await response.json()
+                tasks = data["items"]
+
+                # Create a table to display tasks
+                table = Table(title="Tasks")
+                table.add_column("ID", style="cyan")
+                table.add_column("Type", style="magenta")
+                table.add_column("Description", style="green")
+                table.add_column("Status", style="yellow")
+                table.add_column("Priority", style="red")
+
+                for task in tasks:
+                    table.add_row(
+                        task["task_id"],
+                        task["type"],
+                        task["description"],
+                        task["status"],
+                        task["priority"],
+                    )
+
+                console.print(table)
+            else:
+                console.print(f"[bold red]Error:[/bold red] {await response.text()}")
+
+
+async def fetch_people(session_manager: SessionManager) -> None:
+    """Fetch and display people from the API"""
+    async with aiohttp.ClientSession() as session:
+        headers = {
+            "Authorization": f"Bearer {session_manager.current_user['access_token']}"
+        }
+        async with session.get(
+            f"{config.API_URL}/api/v1/sidekick/people", headers=headers
+        ) as response:
+            if response.status == 200:
+                data = await response.json()
+                people = data["items"]
+
+                # Create a table to display people
+                table = Table(title="People")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="magenta")
+                table.add_column("Designation", style="green")
+                table.add_column("Relation", style="yellow")
+                table.add_column("Importance", style="red")
+
+                for person in people:
+                    table.add_row(
+                        person["person_id"],
+                        person["name"],
+                        person["designation"],
+                        person["relation_type"],
+                        person["importance"],
+                    )
+
+                console.print(table)
+            else:
+                console.print(f"[bold red]Error:[/bold red] {await response.text()}")
+
+
+async def fetch_topics(session_manager: SessionManager) -> None:
+    """Fetch and display topics from the API"""
+    async with aiohttp.ClientSession() as session:
+        headers = {
+            "Authorization": f"Bearer {session_manager.current_user['access_token']}"
+        }
+        async with session.get(
+            f"{config.API_URL}/api/v1/sidekick/topics", headers=headers
+        ) as response:
+            if response.status == 200:
+                data = await response.json()
+                topics = data["items"]
+
+                # Create a table to display topics
+                table = Table(title="Topics")
+                table.add_column("ID", style="cyan")
+                table.add_column("Name", style="magenta")
+                table.add_column("Description", style="green")
+
+                for topic in topics:
+                    table.add_row(
+                        topic["topic_id"], topic["name"], topic["description"]
+                    )
+
+                console.print(table)
+            else:
+                console.print(f"[bold red]Error:[/bold red] {await response.text()}")
+
+
+async def fetch_notes(session_manager: SessionManager) -> None:
+    """Fetch and display notes from the API"""
+    async with aiohttp.ClientSession() as session:
+        headers = {
+            "Authorization": f"Bearer {session_manager.current_user['access_token']}"
+        }
+        async with session.get(
+            f"{config.API_URL}/api/v1/sidekick/notes", headers=headers
+        ) as response:
+            if response.status == 200:
+                data = await response.json()
+                notes = data["items"]
+
+                # Create a table to display notes
+                table = Table(title="Notes")
+                table.add_column("ID", style="cyan")
+                table.add_column("Content", style="green")
+                table.add_column("Created", style="yellow")
+
+                for note in notes:
+                    table.add_row(note["note_id"], note["content"], note["created_at"])
+
+                console.print(table)
+            else:
+                console.print(f"[bold red]Error:[/bold red] {await response.text()}")
+
+
+async def handle_command(command: str, session_manager: SessionManager) -> bool:
+    """Handle CLI commands starting with /"""
+    command = command.lower()
+
+    if command == "/tasks":
+        await fetch_tasks(session_manager)
+        return True
+    elif command == "/people":
+        await fetch_people(session_manager)
+        return True
+    elif command == "/topics":
+        await fetch_topics(session_manager)
+        return True
+    elif command == "/notes":
+        await fetch_notes(session_manager)
+        return True
+    elif command == "/help":
+        console.print(
+            Panel(
+                "Available commands:\n"
+                "/tasks - List all tasks\n"
+                "/people - List all people\n"
+                "/topics - List all topics\n"
+                "/notes - List all notes\n"
+                "/help - Show this help message",
+                title="Help",
+                border_style="blue",
+            )
+        )
+        return True
+
+    return False
 
 
 async def main() -> None:
@@ -111,6 +273,12 @@ async def main() -> None:
 
         if user_input.lower() == "exit":
             break
+
+        # Handle commands
+        if user_input.startswith("/"):
+            command_handled = await handle_command(user_input, session_manager)
+            if command_handled:
+                continue
 
         response = await call_sidekick_api(session_manager, user_input, thread_id)
 
