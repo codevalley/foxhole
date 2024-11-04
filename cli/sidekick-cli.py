@@ -10,7 +10,7 @@ from cli_config import CliConfig
 import aiohttp
 from typing import Optional, Any, Dict, cast
 from rich.table import Table
-from typing import Dict, List, Any, cast
+
 
 config = CliConfig()
 console = Console()
