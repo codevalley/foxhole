@@ -4,7 +4,6 @@ from utils.cache import init_cache, close_cache
 from app.services.websocket_manager import WebSocketManager
 from app.middleware.request_id import RequestIDMiddleware
 from app.middleware.rate_limit_info import RateLimitInfoMiddleware
-from app.core.logging_config import setup_logging
 from utils.database import check_and_create_tables
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -14,11 +13,38 @@ from app.middleware.error_handler import (
     generic_exception_handler,
 )
 from fastapi.exceptions import RequestValidationError
-import os
+import logging
+from app.core.config import settings
+
+# Configure logging at application startup
+
+
+def setup_logging() -> None:
+    # Set the root logger level
+    logging.getLogger().setLevel(settings.LOG_LEVEL)
+
+    # Configure the format
+    formatter = logging.Formatter(settings.LOG_FORMAT)
+
+    # Configure console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(settings.LOG_LEVEL)
+    console_handler.setFormatter(formatter)
+
+    # Remove any existing handlers and add our console handler
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    root_logger.addHandler(console_handler)
+
+    # Set specific loggers to ERROR level only
+    logging.getLogger("uvicorn.access").setLevel(logging.ERROR)
+    logging.getLogger("uvicorn.error").setLevel(logging.ERROR)
+    logging.getLogger("fastapi").setLevel(logging.ERROR)
+
 
 app = FastAPI()
 
-# Setup logging
+# Setup logging before anything else
 setup_logging()
 
 # Add middlewares
@@ -62,6 +88,7 @@ async def root() -> dict[str, str]:
 if __name__ == "__main__":
     import uvicorn
 
-    print(f"OPENAI_API_KEY: {os.getenv('OPENAI_API_KEY')}")
     # Run the application with Uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")
+    uvicorn.run(
+        "main:app", host="0.0.0.0", port=8000, log_level=settings.LOG_LEVEL.lower()
+    )

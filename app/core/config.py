@@ -34,8 +34,9 @@ class Settings(BaseSettings):
     )
 
     # Logging settings
-    LOG_LEVEL: str = "INFO"
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "ERROR")
     LOG_FILE: Optional[str] = "logs/app.log"
+    LOG_FORMAT: str = "%(levelname)s: %(message)s"
 
     # Storage settings
     USE_MOCK_STORAGE: bool = False  # Set this to False
