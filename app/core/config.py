@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     MINIO_BUCKET_NAME: str = "foxhole"
 
     # Sidekick settings
-    OPENAI_API_KEY: str = ""
+    OPENAI_API_KEY: str = "put your key here"
     OPENAI_MODEL: str = "gpt-4o-mini"
     SIDEKICK_SYSTEM_PROMPT_FILE: str = "sidekick_prompt.txt"
 
