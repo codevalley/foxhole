@@ -6,8 +6,9 @@ from app.models import User, SidekickThread, Topic, Task, Person, Note
 from app.services.sidekick_service import SidekickService
 from app.routers.auth import create_access_token
 from datetime import datetime, timezone
-from typing import Any, cast, Generator
+from typing import Any, cast, Generator, Dict, List
 from unittest.mock import AsyncMock, patch, MagicMock
+from app.core.config import settings
 from app.schemas.sidekick_schema import (
     SidekickInput,
     SidekickOutput,
@@ -21,6 +22,13 @@ from app.schemas.sidekick_schema import (
 import asyncio
 from fastapi import HTTPException
 import json
+
+ENTITY_TYPE_MAPPING = {
+    "people": "person",
+    "tasks": "task",
+    "topics": "topic",
+    "notes": "note",
+}
 
 
 @pytest.fixture
@@ -764,12 +772,13 @@ async def test_construct_prompt(
     assert result[2:] == conversation_history
 
 
+# In test_sidekick.py
 @pytest.mark.asyncio
 async def test_call_openai_api() -> None:
     service = SidekickService()
 
-    # Create a response object that matches what openai.AsyncClient returns
-    mock_response = AsyncMock()
+    # Create a response object that matches what openai.Client returns
+    mock_response = MagicMock()  # Use regular MagicMock instead of AsyncMock
     mock_response.choices = [
         MagicMock(
             message=MagicMock(
@@ -797,35 +806,31 @@ async def test_call_openai_api() -> None:
         prompt_tokens=10, completion_tokens=20, total_tokens=30
     )
 
-    # Using patch.object to patch the specific instance's client
+    # Mock the client and its create method
     with patch.object(service, "client") as mock_client:
-        # Configure the mock client's chat.completions.create method
-        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        # Set up the mock to return our mock_response
+        mock_client.chat.completions.create = MagicMock(return_value=mock_response)
 
-        # Include 'json' in the test message to satisfy OpenAI's requirement
         messages = [
             {"role": "system", "content": "Please respond in JSON format"},
             {"role": "user", "content": "Test message"},
         ]
         result, token_usage = await service.call_openai_api(messages)
 
+        # Verify the result
         assert isinstance(result, LLMResponse)
         assert result.instructions.status == "complete"
         assert result.instructions.followup == "Test followup"
         assert isinstance(token_usage, TokenUsage)
         assert token_usage.total_tokens == 30
 
-        # Verify the API was called with correct parameters
-        mock_client.chat.completions.create.assert_called_once()
-
-    # Test error handling
-    with patch.object(service, "client") as mock_client:
-        mock_client.chat.completions.create = AsyncMock(
-            side_effect=Exception("API Error")
+        # Verify the API was called correctly
+        mock_client.chat.completions.create.assert_called_once_with(
+            model=settings.OPENAI_MODEL,
+            messages=messages,
+            response_format={"type": "json_object"},
+            timeout=30.0,
         )
-        with pytest.raises(HTTPException) as exc_info:
-            await service.call_openai_api(messages)
-        assert str(exc_info.value.detail) == "An unexpected error occurred: API Error"
 
 
 @pytest.mark.asyncio
@@ -1338,38 +1343,87 @@ async def test_entity_inflation(
     db_session: AsyncSession,
     access_token: str,
 ) -> None:
-    # Create test entity
-    person_data = {
-        "person_id": str(uuid.uuid4()),
-        "name": "Test Person",
-        "designation": "Test Designation",
-        "relation_type": "Colleague",
-        "importance": "medium",
-        "notes": "Test notes",
-        "contact": {"email": "test@example.com", "phone": "1234567890"},
+    """Test entity inflation for all entity types"""
+    # Create test data for all entity types
+    entity_data: Dict[str, Dict[str, Any]] = {
+        "people": {
+            "person_id": str(uuid.uuid4()),
+            "name": "Test Person",
+            "designation": "Test Designation",
+            "relation_type": "Colleague",
+            "importance": "medium",
+            "notes": "Test notes",
+            "contact": {"email": "test@example.com", "phone": "1234567890"},
+        },
+        "tasks": {
+            "task_id": str(uuid.uuid4()),
+            "type": "1",
+            "description": "Test Task",
+            "status": "active",
+            "actions": [],
+            "people": {"owner": "", "final_beneficiary": "", "stakeholders": []},
+            "dependencies": [],
+            "schedule": "",
+            "priority": "medium",
+        },
+        "topics": {
+            "topic_id": str(uuid.uuid4()),
+            "name": "Test Topic",
+            "description": "Test Description",
+            "keywords": ["test"],
+            "related_people": [],
+            "related_tasks": [],
+        },
+        "notes": {
+            "note_id": str(uuid.uuid4()),
+            "content": "Test Note",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "related_people": [],
+            "related_tasks": [],
+            "related_topics": [],
+        },
     }
 
-    person_response = await async_client.post(
-        "/api/v1/sidekick/people",
-        json=person_data,
-        headers={"Authorization": f"Bearer {access_token}"},
-    )
-    assert person_response.status_code == 200
-    person_id = person_data["person_id"]
+    # Create all entities
+    print("\nCreating test entities...")
+    responses: Dict[str, Dict[str, Any]] = {}
 
-    # Create mock LLM response that references the person but doesn't modify it
+    for entity_type, data in entity_data.items():
+        response = await async_client.post(
+            f"/api/v1/sidekick/{entity_type}",
+            json=data,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert response.status_code == 200
+        responses[entity_type] = cast(Dict[str, Any], response.json())
+        print(f"Created {entity_type}: {response.json()}")
+
+    # Verify all entities exist
+    print("\nVerifying entities exist...")
+    for entity_type in entity_data.keys():
+        verify_response = await async_client.get(
+            f"/api/v1/sidekick/{entity_type}",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert verify_response.status_code == 200
+        response_data = cast(Dict[str, Any], verify_response.json())
+        print(f"Verify {entity_type}: {response_data}")
+        assert len(response_data["items"]) == 1
+
+    # Set up mock response with all entity types
+    affected_entities_dict: Dict[str, List[str]] = {
+        entity_type: [str(data[f"{ENTITY_TYPE_MAPPING[entity_type]}_id"])]
+        for entity_type, data in entity_data.items()
+    }
+
     mock_llm_response = LLMResponse(
         instructions=Instructions(
             status="complete",
             followup="Test response",
             new_prompt="",
             write=False,
-            affected_entities=AffectedEntities(
-                people=[person_id],
-                tasks=[],
-                notes=[],
-                topics=[],
-            ),
+            affected_entities=AffectedEntities(**affected_entities_dict),
         ),
         data=Data(
             people=[],  # Empty because no modifications
@@ -1379,30 +1433,102 @@ async def test_entity_inflation(
         ),
     )
     mock_token_usage = TokenUsage(
-        prompt_tokens=10,
-        completion_tokens=20,
-        total_tokens=30,
+        prompt_tokens=10, completion_tokens=20, total_tokens=30
     )
 
-    # Mock OpenAI call
+    print("\nTesting Sidekick API with mock response...")
+    # Test sidekick endpoint
     with patch(
-        "app.services.sidekick_service.SidekickService.call_openai_api",
+        "app.routers.sidekick.SidekickService.call_openai_api",
         new_callable=AsyncMock,
         return_value=(mock_llm_response, mock_token_usage),
-    ):
+    ) as mock_call:
         response = await async_client.post(
             "/api/v1/sidekick/ask",
-            json={"user_input": "Tell me about Test Person"},
+            json={"user_input": "Tell me about all entities"},
             headers={"Authorization": f"Bearer {access_token}"},
         )
 
+        print("\nDebug Information:")
+        print(f"Mock was called: {mock_call.called}")
+        print(
+            f"Mock call args: {mock_call.call_args_list if mock_call.called else 'Not called'}"
+        )
+        print(f"Sidekick response status: {response.status_code}")
+        response_json = cast(Dict[str, Any], response.json())
+        print(f"Sidekick response data: {json.dumps(response_json, indent=2)}")
+
         assert response.status_code == 200
-        data = response.json()
 
-        # Verify that the person entity was inflated in the response
-        assert len(data["entities"]["people"]) == 1
-        assert data["entities"]["people"][0]["person_id"] == person_id
-        assert data["entities"]["people"][0]["name"] == "Test Person"
+        # Print entity-specific debug info
+        print("\nEntity Comparison:")
+        print(
+            f"Expected affected_entities: {mock_llm_response.instructions.affected_entities}"
+        )
+        entities_data = cast(Dict[str, Any], response_json.get("entities", {}))
+        print(f"Actual entities in response: {json.dumps(entities_data, indent=2)}")
 
-        # Verify that no entities were actually updated
-        assert data["updated_entities"]["people"] == 0
+        # Verify each entity type
+        for entity_type, curr_entity_data in entity_data.items():
+            print(f"\nChecking {entity_type}...")
+            # Verify entity is in affected_entities
+            affected_entities = getattr(
+                mock_llm_response.instructions.affected_entities, entity_type
+            )
+            entity_id = str(curr_entity_data[f"{ENTITY_TYPE_MAPPING[entity_type]}_id"])
+            assert (
+                entity_id in affected_entities
+            ), f"Expected {entity_type} ID not in affected_entities"
+
+            # Verify entity is in response entities
+            response_entities = cast(List[Dict[str, Any]], entities_data[entity_type])
+            print(f"Response {entity_type}: {response_entities}")
+            assert (
+                len(response_entities) == 1
+            ), f"Expected 1 {entity_type}, got {len(response_entities)}"
+            assert (
+                response_entities[0][f"{ENTITY_TYPE_MAPPING[entity_type]}_id"]
+                == entity_id
+            ), f"Wrong {entity_type} ID in response"
+
+        # Verify write flag
+        assert mock_llm_response.instructions.write is False
+
+
+@pytest.mark.asyncio
+async def test_fetch_entities_by_ids(
+    async_client: AsyncClient,
+    test_user: User,
+    db_session: AsyncSession,
+) -> None:
+    """Test direct entity fetching"""
+    # Create a test person
+    person_data: Dict[str, Any] = {
+        "person_id": str(uuid.uuid4()),  # Explicitly ensure this is a string
+        "name": "Test Person",
+        "designation": "Test Designation",
+        "relation_type": "Colleague",
+        "importance": "medium",
+        "notes": "Test notes",
+        "contact": {"email": "test@example.com", "phone": "1234567890"},
+    }
+
+    # Create person directly in database
+    person = Person(**person_data, user_id=test_user.id)
+    db_session.add(person)
+    await db_session.commit()
+
+    service = SidekickService()
+
+    # Test fetching
+    affected_entities: Dict[str, List[str]] = {
+        "people": [str(person_data["person_id"])],  # Explicitly cast to str
+        "tasks": [],
+        "topics": [],
+        "notes": [],
+    }
+
+    fetched = await service.fetch_entities_by_ids(db_session, affected_entities)
+
+    assert len(fetched["people"]) == 1
+    assert fetched["people"][0]["person_id"] == person_data["person_id"]

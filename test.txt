@@ -1,0 +1,472 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.0, pluggy-1.5.0
+rootdir: /Users/nyn/develop/foxhole
+configfile: pytest.ini
+plugins: mock-3.10.0, cov-4.1.0, asyncio-0.21.1, anyio-3.7.1
+asyncio: mode=Mode.AUTO
+collected 36 items / 35 deselected / 1 selected
+
+tests/test_sidekick.py
+Test environment: development
+Register rate: 10/minute
+Token rate: 5/minute
+F                                                 [100%]
+
+=================================== FAILURES ===================================
+____________________________ test_entity_inflation _____________________________
+
+async_client = <httpx.AsyncClient object at 0x1076e69f0>
+test_user = <User(id=0252e6f3-c635-407d-9b63-19a61073f867, screen_name=testuser)>
+db_session = <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x107660800>
+access_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMjUyZTZmMy1jNjM1LTQwN2QtOWI2My0xOWE2MTA3M2Y4NjciLCJleHAiOiIxNzMwODExNTc1In0.5TD47V8cpLVnvmqXIE7Cdva2Xnb_k5hZDXtSWuGg52s'
+
+    @pytest.mark.asyncio
+    async def test_entity_inflation(
+        async_client: AsyncClient,
+        test_user: User,
+        db_session: AsyncSession,
+        access_token: str,
+    ) -> None:
+        """Test entity inflation for all entity types"""
+        # Create test data for all entity types
+        person_data = {
+            "person_id": str(uuid.uuid4()),
+            "name": "Test Person",
+            "designation": "Test Designation",
+            "relation_type": "Colleague",
+            "importance": "medium",
+            "notes": "Test notes",
+            "contact": {"email": "test@example.com", "phone": "1234567890"},
+        }
+
+        task_data = {
+            "task_id": str(uuid.uuid4()),
+            "type": "1",
+            "description": "Test Task",
+            "status": "active",
+            "actions": [],
+            "people": {"owner": "", "final_beneficiary": "", "stakeholders": []},
+            "dependencies": [],
+            "schedule": "",
+            "priority": "medium",
+        }
+
+        topic_data = {
+            "topic_id": str(uuid.uuid4()),
+            "name": "Test Topic",
+            "description": "Test Description",
+            "keywords": ["test"],
+            "related_people": [],
+            "related_tasks": [],
+        }
+
+        note_data = {
+            "note_id": str(uuid.uuid4()),
+            "content": "Test Note",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "related_people": [],
+            "related_tasks": [],
+            "related_topics": [],
+        }
+
+        # Create all entities
+        print("\nCreating test entities...")
+
+        person_response = await async_client.post(
+            "/api/v1/sidekick/people",
+            json=person_data,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert person_response.status_code == 200
+        print(f"Created person: {person_response.json()}")
+
+        task_response = await async_client.post(
+            "/api/v1/sidekick/tasks",
+            json=task_data,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert task_response.status_code == 200
+        print(f"Created task: {task_response.json()}")
+
+        topic_response = await async_client.post(
+            "/api/v1/sidekick/topics",
+            json=topic_data,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert topic_response.status_code == 200
+        print(f"Created topic: {topic_response.json()}")
+
+        note_response = await async_client.post(
+            "/api/v1/sidekick/notes",
+            json=note_data,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert note_response.status_code == 200
+        print(f"Created note: {note_response.json()}")
+
+        # Verify all entities exist
+        print("\nVerifying entities exist...")
+        for entity_type in ["people", "tasks", "topics", "notes"]:
+            verify_response = await async_client.get(
+                f"/api/v1/sidekick/{entity_type}",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            assert verify_response.status_code == 200
+            print(f"Verify {entity_type}: {verify_response.json()}")
+            assert len(verify_response.json()["items"]) == 1
+
+        # Set up mock response with all entity types
+        mock_llm_response = LLMResponse(
+            instructions=Instructions(
+                status="complete",
+                followup="Test response",
+                new_prompt="",
+                write=False,
+                affected_entities=AffectedEntities(
+                    people=[person_data["person_id"]],
+                    tasks=[task_data["task_id"]],
+                    topics=[topic_data["topic_id"]],
+                    notes=[note_data["note_id"]],
+                ),
+            ),
+            data=Data(
+                people=[],  # Empty because no modifications
+                tasks=[],
+                topics=[],
+                notes=[],
+            ),
+        )
+        mock_token_usage = TokenUsage(
+            prompt_tokens=10, completion_tokens=20, total_tokens=30
+        )
+
+        print("\nTesting Sidekick API with mock response...")
+        # Test sidekick endpoint
+        with patch(
+            "app.routers.sidekick.SidekickService.call_openai_api",
+            new_callable=AsyncMock,
+            return_value=(mock_llm_response, mock_token_usage),
+        ) as mock_call:
+            response = await async_client.post(
+                "/api/v1/sidekick/ask",
+                json={"user_input": "Tell me about all entities"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+
+            print("\nDebug Information:")
+            print(f"Mock was called: {mock_call.called}")
+            print(f"Mock call args: {mock_call.call_args_list if mock_call.called else 'Not called'}")
+            print(f"Sidekick response status: {response.status_code}")
+            print(f"Sidekick response data: {json.dumps(response.json(), indent=2)}")
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # Print entity-specific debug info
+            print("\nEntity Comparison:")
+            print(f"Expected affected_entities: {mock_llm_response.instructions.affected_entities}")
+            print(f"Actual entities in response: {json.dumps(data.get('entities', {}), indent=2)}")
+
+            # Verify each entity type
+            entity_types = ["people", "tasks", "topics", "notes"]
+            entity_ids = {
+                "people": person_data["person_id"],
+                "tasks": task_data["task_id"],
+                "topics": topic_data["topic_id"],
+                "notes": note_data["note_id"],
+            }
+
+            for entity_type in entity_types:
+                print(f"\nChecking {entity_type}...")
+                # Verify entity is in affected_entities
+                affected_entities = getattr(mock_llm_response.instructions.affected_entities, entity_type)
+                assert entity_ids[entity_type] in affected_entities, f"Expected {entity_type} ID not in affected_entities"
+
+                # Verify entity is in response entities
+                response_entities = data["entities"][entity_type]
+                print(f"Response {entity_type}: {response_entities}")
+                assert len(response_entities) == 1, f"Expected 1 {entity_type}, got {len(response_entities)}"
+>               assert response_entities[0][f"{entity_type[:-1]}_id"] == entity_ids[entity_type], f"Wrong {entity_type} ID in response"
+E               KeyError: 'peopl_id'
+
+tests/test_sidekick.py:1499: KeyError
+---------------------------- Captured stderr setup -----------------------------
+2024-11-05 17:59:35,656 - slowapi - INFO - Storage has been reset and all limits cleared
+2024-11-05 17:59:35,659 - utils.database - INFO - Database tables checked/created successfully
+------------------------------ Captured log setup ------------------------------
+INFO     slowapi:extension.py:360 Storage has been reset and all limits cleared
+INFO     utils.database:database.py:54 Database tables checked/created successfully
+----------------------------- Captured stdout call -----------------------------
+
+Creating test entities...
+Created person: {'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}
+Created task: {'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}
+Created topic: {'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}
+Created note: {'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}
+
+Verifying entities exist...
+Verify people: {'items': [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}], 'total': 1, 'page': 1, 'page_size': 10}
+Verify tasks: {'items': [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}], 'total': 1, 'page': 1, 'page_size': 10}
+Verify topics: {'items': [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}], 'total': 1, 'page': 1, 'page_size': 10}
+Verify notes: {'items': [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}], 'total': 1, 'page': 1, 'page_size': 10}
+
+Testing Sidekick API with mock response...
+
+Debug Information:
+Mock was called: True
+Mock call args: [call([{'role': 'system', 'content': 'You are Sidekick, an intelligent executive assistant. Your primary function is to manage tasks, people/contacts, topics, and notes through natural language conversations. You operate in two stages: Context Gathering and Entity Extraction.\n\nYou will be provided with:\n1. This system prompt\n2. The conversation history\n3. A datastore containing existing tasks, people, topics, and notes\n\nYour role is to use this information to respond appropriately to user queries and manage entities effectively.\n\n### JSON Response Structure:\n\n{\n"instructions": {\n    "status": "<incomplete|complete>",\n    "followup": "<question or message to user>",\n    "new_prompt": "<suggestion for a new conversation>",\n    "write": <true|false>,\n    "affected_entities": {\n    "tasks": ["<task_id1>", "<task_id2>", ...],\n    "people": ["<person_id1>", "<person_id2>", ...],\n    "topics": ["<topic_id1>", "<topic_id2>", ...],\n    "notes": ["<note_id1>", "<note_id2>", ...]\n    }\n},\n"data": {\n    "tasks": [<task_objects>],\n    "people": [<person_objects>],\n    "topics": [<topic_objects>],\n    "notes": [<note_objects>]\n}\n}\n\n### Entity Definitions:\n\n1. Task:\n{\n"task_id": "<unique_identifier>",\n"type": "<1|2|3|4>",\n"description": "<task_description>",\n"status": "<active|pending|completed>",\n"actions": ["<action1>", "<action2>", ...],\n"people": {\n    "owner": "<name>",\n    "final_beneficiary": "<name>",\n    "stakeholders": ["<name1>", "<name2>", ...]\n},\n"dependencies": ["<dependency1>", "<dependency2>", ...],\n"schedule": "<YYYY-MM-DD HH:MM>",\n"priority": "<high|medium|low>"\n}\n\n2. Person:\n{\n"person_id": "<unique_identifier>",\n"name": "<full_name>",\n"designation": "<job_title>",\n"relation_type": "<relationship_to_user>",\n"importance": "<high|medium|low>",\n"notes": "<additional_information>",\n"contact": {\n    "email": "<email_address>",\n    "phone": "<phone_number>"\n}\n}\n\n3. Topic:\n{\n"topic_id": "<unique_identifier>",\n"name": "<topic_name>",\n"description": "<detailed_description>",\n"keywords": ["<keyword1>", "<keyword2>", ...],\n"related_people": ["<person_name1>", "<person_name2>", ...],\n"related_tasks": ["<task_id1>", "<task_id2>", ...]\n}\n\n4. Note:\n{\n"note_id": "<unique_identifier>",\n"content": "<note_content>",\n"created_at": "<YYYY-MM-DD HH:MM>",\n"updated_at": "<YYYY-MM-DD HH:MM>",\n"related_people": ["<person_name1>", "<person_name2>", ...],\n"related_tasks": ["<task_id1>", "<task_id2>", ...],\n"related_topics": ["<topic_id1>", "<topic_id2>", ...]\n}\n\n### Stage 1: Context Gathering\n\n- Set "status": "incomplete"\n- Use the "followup" field for clarifications and questions, in markdown format with emojis.\n- Reference the externally provided datastore to understand requests and correlate with existing entities\n- Move to Stage 2 when sufficient information is gathered or the user requests to move on\n- Keep the "data" object with empty lists during this stage\n- Set "write": false during this stage\n- Keep "affected_entities" lists empty during this stage\n\n\n### Stage 2: Entity Extraction\n\n- Set "status": "complete"\n- Review the entire conversation and extract all relevant tasks, persons, topics, and notes (put those ids in the "affected_entities" object)\n- Populate the "data" object with all extracted entities (if there are any entity update, add, delete ONLY. else keep it empty)\n- Use the "new_prompt" field to suggest tips, advice or recommendations as a smart assistant, in markdown format with emojis.\n- When updating or referring to existing entities, use the information from the externally provided datastore\n- Set "write": true if any entities are added, updated, or deleted\n- Always include the ids of people, tasks, topics, and notes involved in the conversation in the "affected_entities" object\n\n### Interaction Guidelines:\n\n1. Always start in Stage 1 for new conversations\n2. In Stage 1:\n- Ask clarifying questions\n- Correlate with existing entities in the datastore\n- Keep conversation rich and human, bring in external knowledge from datastore or your domain understanding when relevant\n- Suggest completing the conversation (moving to Stage 2) when appropriate\n3. In Stage 2:\n- Perform comprehensive entity extraction (tasks, people, topics, notes)\n- Summarize actions and provide compiled entities in the data object\n- Set "write" to true only if entities are added, updated, or deleted\n- Don\'t add additional follow up lines in "followup" field when "new_prompt" is used.\n- If write is false, always include information in followup field (descriptively) and ids in "affected_entities", keep "data" empty.\n- Include IDs of people, tasks, topics, and notes involved in the conversation in the "affected_entities" object\n4. Transition between stages:\n- Move to Stage 2 when explicitly requested or when context is sufficiently gathered\n- Stage 2 is a terminal state for a conversation\n5. Use natural language for dates (e.g., "next Monday") so convert absolute dates (YYYY-MM-DD) in the extracted entities\n6. Make the content of "new_prompt", "followup" and similar text nicely formatted with markdown whenever possible.\n- bold, italics, and underline for emphasis\n- bullets and lists for clarity\n- actual Unicode emoji characters directly in the text to keep the content lively and engaging.\n- emojis to represent the status of tasks, people, topics, and notes, and also as icons for types of fields\n7. Avoid duplication by checking existing data from datastore when creating new entities\n8. Update existing entries when new information is provided about known entities\n9. Always reference the externally provided datastore when checking for existing entities or information (id being the key)\n10. Do not include the datastore in your response JSON; only use it for reference\n11. For read-only operations, set "write" to false and populate the "affected_entities" object with the IDs involved in the conversation\n12. If you can\'t determine the priority for a person, keep the default value as medium\n13. ALWAYS have all the keys in the JSON response, even if the value is an empty list or an empty string\n\n### Examples:\n\n1. Read-only operation:\n\nUser: "Are there any tasks open with Rajesh?"\n\nResponse:\n{\n"instructions": {\n    "status": "complete",\n    "followup": "Yes, there are 2 tasks open with 🧑Rajesh: 1) ✔️ Task T001: Prepare quarterly report (due next Friday) 2) ✔️ Task T003: Schedule team building event (pending, no date set)",\n    "new_prompt": "Would you like me to provide more details about these tasks or help you manage them?",\n    "write": false,\n    "affected_entities": {\n    "tasks": ["T001", "T003"],\n    "people": ["P001"],\n    "topics": ["K001", "K002"]\n    }\n},\n"data": {\n    "tasks": [],\n    "people": [],\n    "topics": []\n}\n}\nUser: "Are there any notes related to the new project?"\n\nResponse:\n{\n"instructions": {\n    "status": "complete",\n    "followup": "Yes, there are 2 notes related to the new project: 1) 📝 Note N001: Brainstorming ideas for project scope 2) 📝 Note N002: Key stakeholders to involve",\n    "new_prompt": "Would you like me to provide more details about these notes or help you manage them?",\n    "write": false,\n    "affected_entities": {\n    "tasks": [],\n    "people": [],\n    "topics": ["K001"],\n    "notes": ["N001", "N002"]\n    }\n},\n"data": {\n    "tasks": [],\n    "people": [],\n    "topics": [],\n    "notes": []\n}\n}\n\n2. Write operation:\n\nUser: "Make a note that we need to schedule a team building event next quarter."\n\nResponse:\n{\n"instructions": {\n    "status": "complete",\n    "followup": "I\'ve created a new 📝 note about scheduling a team building event for next quarter. Is there anything else you\'d like me to add to this note or any other information you want to record?",\n    "new_prompt": "Would you like me to start researching some team building activity ideas for the event?",\n    "write": true,\n    "affected_entities": {\n    "tasks": [],\n    "people": [],\n    "topics": [],\n    "notes": ["N003"]\n    }\n},\n"data": {\n    "tasks": [],\n    "people": [],\n    "topics": [],\n    "notes": [\n    {\n        "note_id": "N003",\n        "content": "Schedule a team building event for next quarter",\n        "created_at": "2024-10-18 15:30",\n        "updated_at": "2024-10-18 15:30",\n        "related_people": [],\n        "related_tasks": [],\n        "related_topics": []\n    }\n    ]\n}\n}\n\nAlways respond in the defined JSON format without any extra text or markdown. Ensure that all responses adhere to the structure and guidelines provided above. Remember to use the externally provided datastore for reference, but do not include it in your responses.'}, {'role': 'user', 'content': 'Current context: {"people": [{"name": "Test Person", "designation": "Test Designation", "relation_type": "Colleague", "importance": "medium", "notes": "Test notes", "contact": {"email": "test@example.com", "phone": "1234567890"}, "person_id": "be7843d3-b69c-4cdd-acce-a4de6395474f"}], "tasks": [{"type": "1", "description": "Test Task", "status": "active", "actions": [], "people": {"owner": "", "final_beneficiary": "", "stakeholders": []}, "dependencies": [], "schedule": "", "priority": "medium", "task_id": "565cd277-9e0b-4983-989d-8794690f3350"}], "topics": [{"name": "Test Topic", "description": "Test Description", "keywords": ["test"], "related_people": [], "related_tasks": [], "topic_id": "58aa4b59-65ce-4328-a813-2ccdd0413cee"}], "notes": [{"content": "Test Note", "created_at": "2024-11-05T12:29:35.669194+00:00", "updated_at": "2024-11-05T12:29:35.669197+00:00", "related_people": [], "related_tasks": [], "related_topics": [], "note_id": "a751571d-51d0-4ccb-ba9e-a86539ef394d"}]}'}, {'role': 'user', 'content': 'Tell me about all entities'}])]
+Sidekick response status: 200
+Sidekick response data: {
+  "response": "Test response",
+  "thread_id": "6473c800-6c26-42dd-9439-a9e961dc258a",
+  "status": "complete",
+  "new_prompt": "",
+  "is_thread_complete": true,
+  "updated_entities": {
+    "tasks": 0,
+    "people": 0,
+    "topics": 0,
+    "notes": 0
+  },
+  "entities": {
+    "tasks": [
+      {
+        "type": "1",
+        "description": "Test Task",
+        "status": "active",
+        "actions": [],
+        "people": {
+          "owner": "",
+          "final_beneficiary": "",
+          "stakeholders": []
+        },
+        "dependencies": [],
+        "schedule": "",
+        "priority": "medium",
+        "task_id": "565cd277-9e0b-4983-989d-8794690f3350"
+      }
+    ],
+    "people": [
+      {
+        "name": "Test Person",
+        "designation": "Test Designation",
+        "relation_type": "Colleague",
+        "importance": "medium",
+        "notes": "Test notes",
+        "contact": {
+          "email": "test@example.com",
+          "phone": "1234567890"
+        },
+        "person_id": "be7843d3-b69c-4cdd-acce-a4de6395474f"
+      }
+    ],
+    "topics": [
+      {
+        "name": "Test Topic",
+        "description": "Test Description",
+        "keywords": [
+          "test"
+        ],
+        "related_people": [],
+        "related_tasks": [],
+        "topic_id": "58aa4b59-65ce-4328-a813-2ccdd0413cee"
+      }
+    ],
+    "notes": [
+      {
+        "content": "Test Note",
+        "created_at": "2024-11-05T12:29:35.669194+00:00",
+        "updated_at": "2024-11-05T12:29:35.669197+00:00",
+        "related_people": [],
+        "related_tasks": [],
+        "related_topics": [],
+        "note_id": "a751571d-51d0-4ccb-ba9e-a86539ef394d"
+      }
+    ]
+  },
+  "token_usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 20,
+    "total_tokens": 30
+  }
+}
+
+Entity Comparison:
+Expected affected_entities: tasks=['565cd277-9e0b-4983-989d-8794690f3350'] people=['be7843d3-b69c-4cdd-acce-a4de6395474f'] topics=['58aa4b59-65ce-4328-a813-2ccdd0413cee'] notes=['a751571d-51d0-4ccb-ba9e-a86539ef394d']
+Actual entities in response: {
+  "tasks": [
+    {
+      "type": "1",
+      "description": "Test Task",
+      "status": "active",
+      "actions": [],
+      "people": {
+        "owner": "",
+        "final_beneficiary": "",
+        "stakeholders": []
+      },
+      "dependencies": [],
+      "schedule": "",
+      "priority": "medium",
+      "task_id": "565cd277-9e0b-4983-989d-8794690f3350"
+    }
+  ],
+  "people": [
+    {
+      "name": "Test Person",
+      "designation": "Test Designation",
+      "relation_type": "Colleague",
+      "importance": "medium",
+      "notes": "Test notes",
+      "contact": {
+        "email": "test@example.com",
+        "phone": "1234567890"
+      },
+      "person_id": "be7843d3-b69c-4cdd-acce-a4de6395474f"
+    }
+  ],
+  "topics": [
+    {
+      "name": "Test Topic",
+      "description": "Test Description",
+      "keywords": [
+        "test"
+      ],
+      "related_people": [],
+      "related_tasks": [],
+      "topic_id": "58aa4b59-65ce-4328-a813-2ccdd0413cee"
+    }
+  ],
+  "notes": [
+    {
+      "content": "Test Note",
+      "created_at": "2024-11-05T12:29:35.669194+00:00",
+      "updated_at": "2024-11-05T12:29:35.669197+00:00",
+      "related_people": [],
+      "related_tasks": [],
+      "related_topics": [],
+      "note_id": "a751571d-51d0-4ccb-ba9e-a86539ef394d"
+    }
+  ]
+}
+
+Checking people...
+Response people: [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}]
+----------------------------- Captured stderr call -----------------------------
+2024-11-05 17:59:35,676 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/sidekick/people "HTTP/1.1 200 OK"
+2024-11-05 17:59:35,681 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/sidekick/tasks "HTTP/1.1 200 OK"
+2024-11-05 17:59:35,685 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/sidekick/topics "HTTP/1.1 200 OK"
+2024-11-05 17:59:35,689 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/sidekick/notes "HTTP/1.1 200 OK"
+2024-11-05 17:59:35,691 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/sidekick/people "HTTP/1.1 200 OK"
+2024-11-05 17:59:35,693 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/sidekick/tasks "HTTP/1.1 200 OK"
+2024-11-05 17:59:35,695 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/sidekick/topics "HTTP/1.1 200 OK"
+2024-11-05 17:59:35,697 - httpx - INFO - HTTP Request: GET http://testserver/api/v1/sidekick/notes "HTTP/1.1 200 OK"
+2024-11-05 17:59:35,716 - app.services.sidekick_service - INFO - Creating new thread for user 0252e6f3-c635-407d-9b63-19a61073f867
+2024-11-05 17:59:35,720 - app.services.sidekick_service - INFO - Processed LLM response: {'instructions': {'status': 'complete', 'followup': 'Test response', 'new_prompt': '', 'write': False, 'affected_entities': {'tasks': ['565cd277-9e0b-4983-989d-8794690f3350'], 'people': ['be7843d3-b69c-4cdd-acce-a4de6395474f'], 'topics': ['58aa4b59-65ce-4328-a813-2ccdd0413cee'], 'notes': ['a751571d-51d0-4ccb-ba9e-a86539ef394d']}}, 'data': {'tasks': [], 'people': [], 'topics': [], 'notes': []}}
+2024-11-05 17:59:35,722 - app.services.sidekick_service - INFO - Starting _process_entities with processed_response: {'instructions': {'status': 'complete', 'followup': 'Test response', 'new_prompt': '', 'write': False, 'affected_entities': {'tasks': ['565cd277-9e0b-4983-989d-8794690f3350'], 'people': ['be7843d3-b69c-4cdd-acce-a4de6395474f'], 'topics': ['58aa4b59-65ce-4328-a813-2ccdd0413cee'], 'notes': ['a751571d-51d0-4ccb-ba9e-a86539ef394d']}}, 'data': {'tasks': [], 'people': [], 'topics': [], 'notes': []}}
+2024-11-05 17:59:35,722 - app.services.sidekick_service - INFO - After update_entities - entity_updates: {'tasks': [], 'people': [], 'topics': [], 'notes': []}
+2024-11-05 17:59:35,722 - app.services.sidekick_service - INFO - Processing affected_entities: {'tasks': ['565cd277-9e0b-4983-989d-8794690f3350'], 'people': ['be7843d3-b69c-4cdd-acce-a4de6395474f'], 'topics': ['58aa4b59-65ce-4328-a813-2ccdd0413cee'], 'notes': ['a751571d-51d0-4ccb-ba9e-a86539ef394d']}
+2024-11-05 17:59:35,722 - app.services.sidekick_service - INFO - Starting fetch_entities_by_ids with affected_entities: {'tasks': ['565cd277-9e0b-4983-989d-8794690f3350'], 'people': ['be7843d3-b69c-4cdd-acce-a4de6395474f'], 'topics': ['58aa4b59-65ce-4328-a813-2ccdd0413cee'], 'notes': ['a751571d-51d0-4ccb-ba9e-a86539ef394d']}
+2024-11-05 17:59:35,722 - app.services.sidekick_service - INFO - Attempting to fetch people with IDs: ['be7843d3-b69c-4cdd-acce-a4de6395474f']
+2024-11-05 17:59:35,723 - app.services.sidekick_service - INFO - Successfully fetched person: <app.models.Person object at 0x10783b050>
+2024-11-05 17:59:35,723 - app.services.sidekick_service - INFO - Converted person to dict: {'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Final entities after fetching: {'people': [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}], 'tasks': [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}], 'topics': [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}], 'notes': [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]}
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - After fetch_entities_by_ids - fetched_entities: {'people': [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}], 'tasks': [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}], 'topics': [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}], 'notes': [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]}
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Fetched people: [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}]
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Starting _merge_entities
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Initial entity_updates: {'tasks': [], 'people': [], 'topics': [], 'notes': []}
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Initial fetched_entities: {'people': [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}], 'tasks': [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}], 'topics': [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}], 'notes': [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]}
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - After initial merge: {'tasks': [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}], 'people': [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}], 'topics': [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}], 'notes': [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]}
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Processing tasks
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Using ID field task_id for tasks
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Processing tasks entity with ID: 565cd277-9e0b-4983-989d-8794690f3350
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Added tasks with ID 565cd277-9e0b-4983-989d-8794690f3350
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Final tasks list: [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}]
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Processing people
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Using ID field person_id for people
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Processing people entity with ID: be7843d3-b69c-4cdd-acce-a4de6395474f
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Added people with ID be7843d3-b69c-4cdd-acce-a4de6395474f
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Final people list: [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}]
+2024-11-05 17:59:35,724 - app.services.sidekick_service - INFO - Processing topics
+2024-11-05 17:59:35,725 - app.services.sidekick_service - INFO - Using ID field topic_id for topics
+2024-11-05 17:59:35,725 - app.services.sidekick_service - INFO - Processing topics entity with ID: 58aa4b59-65ce-4328-a813-2ccdd0413cee
+2024-11-05 17:59:35,725 - app.services.sidekick_service - INFO - Added topics with ID 58aa4b59-65ce-4328-a813-2ccdd0413cee
+2024-11-05 17:59:35,725 - app.services.sidekick_service - INFO - Final topics list: [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}]
+2024-11-05 17:59:35,725 - app.services.sidekick_service - INFO - Processing notes
+2024-11-05 17:59:35,725 - app.services.sidekick_service - INFO - Using ID field note_id for notes
+2024-11-05 17:59:35,725 - app.services.sidekick_service - INFO - Processing notes entity with ID: a751571d-51d0-4ccb-ba9e-a86539ef394d
+2024-11-05 17:59:35,725 - app.services.sidekick_service - INFO - Added notes with ID a751571d-51d0-4ccb-ba9e-a86539ef394d
+2024-11-05 17:59:35,725 - app.services.sidekick_service - INFO - Final notes list: [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]
+2024-11-05 17:59:35,725 - app.services.sidekick_service - INFO - After _merge_entities - inflated_entities: {'tasks': [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}], 'people': [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}], 'topics': [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}], 'notes': [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]}
+2024-11-05 17:59:35,725 - app.services.sidekick_service - INFO - Final people list: [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}]
+2024-11-05 17:59:35,726 - app.routers.sidekick - INFO - Processed sidekick input for user 0252e6f3-c635-407d-9b63-19a61073f867
+2024-11-05 17:59:35,726 - app.routers.sidekick - INFO - API RESPONSE: response='Test response' thread_id='6473c800-6c26-42dd-9439-a9e961dc258a' status='complete' new_prompt='' is_thread_complete=True updated_entities={'tasks': 0, 'people': 0, 'topics': 0, 'notes': 0} entities={'tasks': [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}], 'people': [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}], 'topics': [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}], 'notes': [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]} token_usage=TokenUsage(prompt_tokens=10, completion_tokens=20, total_tokens=30)
+2024-11-05 17:59:35,727 - httpx - INFO - HTTP Request: POST http://testserver/api/v1/sidekick/ask "HTTP/1.1 200 OK"
+------------------------------ Captured log call -------------------------------
+INFO     httpx:_client.py:1729 HTTP Request: POST http://testserver/api/v1/sidekick/people "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1729 HTTP Request: POST http://testserver/api/v1/sidekick/tasks "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1729 HTTP Request: POST http://testserver/api/v1/sidekick/topics "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1729 HTTP Request: POST http://testserver/api/v1/sidekick/notes "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1729 HTTP Request: GET http://testserver/api/v1/sidekick/people "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1729 HTTP Request: GET http://testserver/api/v1/sidekick/tasks "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1729 HTTP Request: GET http://testserver/api/v1/sidekick/topics "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1729 HTTP Request: GET http://testserver/api/v1/sidekick/notes "HTTP/1.1 200 OK"
+INFO     app.services.sidekick_service:sidekick_service.py:729 Creating new thread for user 0252e6f3-c635-407d-9b63-19a61073f867
+INFO     app.services.sidekick_service:sidekick_service.py:701 Processed LLM response: {'instructions': {'status': 'complete', 'followup': 'Test response', 'new_prompt': '', 'write': False, 'affected_entities': {'tasks': ['565cd277-9e0b-4983-989d-8794690f3350'], 'people': ['be7843d3-b69c-4cdd-acce-a4de6395474f'], 'topics': ['58aa4b59-65ce-4328-a813-2ccdd0413cee'], 'notes': ['a751571d-51d0-4ccb-ba9e-a86539ef394d']}}, 'data': {'tasks': [], 'people': [], 'topics': [], 'notes': []}}
+INFO     app.services.sidekick_service:sidekick_service.py:232 Starting _process_entities with processed_response: {'instructions': {'status': 'complete', 'followup': 'Test response', 'new_prompt': '', 'write': False, 'affected_entities': {'tasks': ['565cd277-9e0b-4983-989d-8794690f3350'], 'people': ['be7843d3-b69c-4cdd-acce-a4de6395474f'], 'topics': ['58aa4b59-65ce-4328-a813-2ccdd0413cee'], 'notes': ['a751571d-51d0-4ccb-ba9e-a86539ef394d']}}, 'data': {'tasks': [], 'people': [], 'topics': [], 'notes': []}}
+INFO     app.services.sidekick_service:sidekick_service.py:237 After update_entities - entity_updates: {'tasks': [], 'people': [], 'topics': [], 'notes': []}
+INFO     app.services.sidekick_service:sidekick_service.py:240 Processing affected_entities: {'tasks': ['565cd277-9e0b-4983-989d-8794690f3350'], 'people': ['be7843d3-b69c-4cdd-acce-a4de6395474f'], 'topics': ['58aa4b59-65ce-4328-a813-2ccdd0413cee'], 'notes': ['a751571d-51d0-4ccb-ba9e-a86539ef394d']}
+INFO     app.services.sidekick_service:sidekick_service.py:82 Starting fetch_entities_by_ids with affected_entities: {'tasks': ['565cd277-9e0b-4983-989d-8794690f3350'], 'people': ['be7843d3-b69c-4cdd-acce-a4de6395474f'], 'topics': ['58aa4b59-65ce-4328-a813-2ccdd0413cee'], 'notes': ['a751571d-51d0-4ccb-ba9e-a86539ef394d']}
+INFO     app.services.sidekick_service:sidekick_service.py:101 Attempting to fetch people with IDs: ['be7843d3-b69c-4cdd-acce-a4de6395474f']
+INFO     app.services.sidekick_service:sidekick_service.py:106 Successfully fetched person: <app.models.Person object at 0x10783b050>
+INFO     app.services.sidekick_service:sidekick_service.py:108 Converted person to dict: {'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}
+INFO     app.services.sidekick_service:sidekick_service.py:127 Final entities after fetching: {'people': [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}], 'tasks': [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}], 'topics': [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}], 'notes': [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]}
+INFO     app.services.sidekick_service:sidekick_service.py:243 After fetch_entities_by_ids - fetched_entities: {'people': [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}], 'tasks': [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}], 'topics': [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}], 'notes': [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]}
+INFO     app.services.sidekick_service:sidekick_service.py:244 Fetched people: [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}]
+INFO     app.services.sidekick_service:sidekick_service.py:263 Starting _merge_entities
+INFO     app.services.sidekick_service:sidekick_service.py:264 Initial entity_updates: {'tasks': [], 'people': [], 'topics': [], 'notes': []}
+INFO     app.services.sidekick_service:sidekick_service.py:265 Initial fetched_entities: {'people': [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}], 'tasks': [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}], 'topics': [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}], 'notes': [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]}
+INFO     app.services.sidekick_service:sidekick_service.py:279 After initial merge: {'tasks': [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}], 'people': [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}], 'topics': [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}], 'notes': [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]}
+INFO     app.services.sidekick_service:sidekick_service.py:282 Processing tasks
+INFO     app.services.sidekick_service:sidekick_service.py:287 Using ID field task_id for tasks
+INFO     app.services.sidekick_service:sidekick_service.py:295 Processing tasks entity with ID: 565cd277-9e0b-4983-989d-8794690f3350
+INFO     app.services.sidekick_service:sidekick_service.py:300 Added tasks with ID 565cd277-9e0b-4983-989d-8794690f3350
+INFO     app.services.sidekick_service:sidekick_service.py:305 Final tasks list: [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}]
+INFO     app.services.sidekick_service:sidekick_service.py:282 Processing people
+INFO     app.services.sidekick_service:sidekick_service.py:287 Using ID field person_id for people
+INFO     app.services.sidekick_service:sidekick_service.py:295 Processing people entity with ID: be7843d3-b69c-4cdd-acce-a4de6395474f
+INFO     app.services.sidekick_service:sidekick_service.py:300 Added people with ID be7843d3-b69c-4cdd-acce-a4de6395474f
+INFO     app.services.sidekick_service:sidekick_service.py:305 Final people list: [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}]
+INFO     app.services.sidekick_service:sidekick_service.py:282 Processing topics
+INFO     app.services.sidekick_service:sidekick_service.py:287 Using ID field topic_id for topics
+INFO     app.services.sidekick_service:sidekick_service.py:295 Processing topics entity with ID: 58aa4b59-65ce-4328-a813-2ccdd0413cee
+INFO     app.services.sidekick_service:sidekick_service.py:300 Added topics with ID 58aa4b59-65ce-4328-a813-2ccdd0413cee
+INFO     app.services.sidekick_service:sidekick_service.py:305 Final topics list: [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}]
+INFO     app.services.sidekick_service:sidekick_service.py:282 Processing notes
+INFO     app.services.sidekick_service:sidekick_service.py:287 Using ID field note_id for notes
+INFO     app.services.sidekick_service:sidekick_service.py:295 Processing notes entity with ID: a751571d-51d0-4ccb-ba9e-a86539ef394d
+INFO     app.services.sidekick_service:sidekick_service.py:300 Added notes with ID a751571d-51d0-4ccb-ba9e-a86539ef394d
+INFO     app.services.sidekick_service:sidekick_service.py:305 Final notes list: [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]
+INFO     app.services.sidekick_service:sidekick_service.py:247 After _merge_entities - inflated_entities: {'tasks': [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}], 'people': [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}], 'topics': [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}], 'notes': [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]}
+INFO     app.services.sidekick_service:sidekick_service.py:248 Final people list: [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}]
+INFO     app.routers.sidekick:sidekick.py:67 Processed sidekick input for user 0252e6f3-c635-407d-9b63-19a61073f867
+INFO     app.routers.sidekick:sidekick.py:68 API RESPONSE: response='Test response' thread_id='6473c800-6c26-42dd-9439-a9e961dc258a' status='complete' new_prompt='' is_thread_complete=True updated_entities={'tasks': 0, 'people': 0, 'topics': 0, 'notes': 0} entities={'tasks': [{'type': '1', 'description': 'Test Task', 'status': 'active', 'actions': [], 'people': {'owner': '', 'final_beneficiary': '', 'stakeholders': []}, 'dependencies': [], 'schedule': '', 'priority': 'medium', 'task_id': '565cd277-9e0b-4983-989d-8794690f3350'}], 'people': [{'name': 'Test Person', 'designation': 'Test Designation', 'relation_type': 'Colleague', 'importance': 'medium', 'notes': 'Test notes', 'contact': {'email': 'test@example.com', 'phone': '1234567890'}, 'person_id': 'be7843d3-b69c-4cdd-acce-a4de6395474f'}], 'topics': [{'name': 'Test Topic', 'description': 'Test Description', 'keywords': ['test'], 'related_people': [], 'related_tasks': [], 'topic_id': '58aa4b59-65ce-4328-a813-2ccdd0413cee'}], 'notes': [{'content': 'Test Note', 'created_at': '2024-11-05T12:29:35.669194+00:00', 'updated_at': '2024-11-05T12:29:35.669197+00:00', 'related_people': [], 'related_tasks': [], 'related_topics': [], 'note_id': 'a751571d-51d0-4ccb-ba9e-a86539ef394d'}]} token_usage=TokenUsage(prompt_tokens=10, completion_tokens=20, total_tokens=30)
+INFO     httpx:_client.py:1729 HTTP Request: POST http://testserver/api/v1/sidekick/ask "HTTP/1.1 200 OK"
+=============================== warnings summary ===============================
+tests/test_sidekick.py::test_entity_inflation
+tests/test_sidekick.py::test_entity_inflation
+tests/test_sidekick.py::test_entity_inflation
+tests/test_sidekick.py::test_entity_inflation
+tests/test_sidekick.py::test_entity_inflation
+tests/test_sidekick.py::test_entity_inflation
+tests/test_sidekick.py::test_entity_inflation
+tests/test_sidekick.py::test_entity_inflation
+tests/test_sidekick.py::test_entity_inflation
+  /Users/nyn/develop/foxhole/venv/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_sidekick.py::test_entity_inflation - KeyError: 'peopl_id'
+================= 1 failed, 35 deselected, 9 warnings in 0.12s =================
