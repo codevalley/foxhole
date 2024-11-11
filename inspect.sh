@@ -16,7 +16,7 @@ fi
 
 # Copy the inspection script into the container
 echo -e "${GREEN}Copying inspection script to container...${NC}"
-docker cp foxhole_inspector.py $APP_CONTAINER:/utils/foxhole_inspector.py
+docker cp foxhole_inspector.py $APP_CONTAINER:/app/foxhole_inspector.py
 
 # Install required packages in the container
 echo -e "${GREEN}Installing required packages...${NC}"
@@ -25,7 +25,7 @@ docker exec $APP_CONTAINER pip install minio redis
 # Function to run the inspector with arguments
 function run_inspector() {
     echo -e "${GREEN}Running inspection...${NC}"
-    docker exec $APP_CONTAINER python /utils/foxhole_inspector.py "$@"
+    docker exec $APP_CONTAINER python /app/foxhole_inspector.py "$@"
 }
 
 # Show help if no arguments
@@ -39,6 +39,6 @@ run_inspector "$@"
 
 # Cleanup
 echo -e "${GREEN}Cleaning up...${NC}"
-docker exec $APP_CONTAINER rm /utils/foxhole_inspector.py
+docker exec $APP_CONTAINER rm /app/foxhole_inspector.py
 
 echo -e "${GREEN}Done!${NC}"
