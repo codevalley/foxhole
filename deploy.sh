@@ -269,10 +269,34 @@ setup_application() {
     fi
 
     # Update code if requested
+    # fetch from repository, restore any local changes, pull latest changes, and rewrite deploy.sh
+    # restart deployment with latest code
     if [ "$FETCH_CODE" = true ]; then
         if [ -d ".git" ]; then
-            log "Updating existing repository..."
+            # Store the script content in memory since we're changing deploy.sh itself
+            SCRIPT_CONTENT=$(cat "$0")
+
+            log "Updating repository..."
+            info "Restoring any local changes..."
+            git restore .
+
+            info "Pulling latest changes..."
             git pull origin main
+
+            # If deploy.sh was updated, rewrite it and make it executable
+            echo "$SCRIPT_CONTENT" > "$0"
+            chmod +x "$0"
+
+            log "Repository updated, restarting deployment with latest code..."
+            # Remove --fetch-code from args to avoid infinite loop
+            NEW_ARGS=()
+            while [[ $# -gt 0 ]]; do
+                if [ "$1" != "--fetch-code" ]; then
+                    NEW_ARGS+=("$1")
+                fi
+                shift
+            done
+            exec "$0" "${NEW_ARGS[@]}"
         else
             warn "Not a git repository. Skipping code update."
         fi
