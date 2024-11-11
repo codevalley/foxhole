@@ -19,7 +19,7 @@ The Foxhole Inspector is a diagnostic tool that provides detailed information ab
 - `--format <format>`: Output format (default: json)
   - `json`: Output in JSON format
   - `text`: Output in human-readable text format
-- `--user-id <id>`: Filter inspection by specific user ID
+- `--user-secret <secret>`: Filter inspection by specific user secret
 - `--hours <n>`: Show recent activity for the last n hours (default: 24)
 - `--output <file>`: Write output to a file instead of stdout
 
@@ -37,7 +37,7 @@ The Foxhole Inspector is a diagnostic tool that provides detailed information ab
 
 3. Inspect specific user's data:
 ```bash
-./inspect.sh --user-id "user-uuid-here" --format text
+./inspect.sh --user-secret "user-secret-here" --format text
 ```
 
 4. Custom time range inspection:

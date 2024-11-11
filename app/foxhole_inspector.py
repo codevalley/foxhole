@@ -2,7 +2,7 @@
 
 import sqlite3
 import json
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 import os
 import redis
@@ -32,9 +32,42 @@ class FoxholeInspector:
             secure=False,
         )
 
-    def inspect(self, user_id: Optional[str] = None, hours: int = 24) -> Dict[str, Any]:
-        results = {
+    def get_user_by_secret(self, user_secret: str) -> Optional[Tuple[str, str]]:
+        """
+        Get user ID and screen name using user_secret.
+        Returns tuple of (user_id, screen_name) or None if not found
+        """
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "SELECT id, screen_name FROM users WHERE user_secret = ?",
+                (user_secret,),
+            )
+            result = cursor.fetchone()
+            if result:
+                return result["id"], result["screen_name"]
+            self.logger.warning("No user found for provided secret")
+            return None
+        except Exception as e:
+            self.logger.error(f"Error fetching user by secret: {str(e)}")
+            return None
+
+    def inspect(
+        self, user_secret: Optional[str] = None, hours: int = 24
+    ) -> Dict[str, Any]:
+        user_info = None
+        user_id = None
+        if user_secret:
+            user_data = self.get_user_by_secret(user_secret)
+            if user_data:
+                user_id, screen_name = user_data
+                user_info = {"id": user_id, "screen_name": screen_name}
+            else:
+                self.logger.warning("Invalid user_secret provided")
+
+        results: Dict[str, Any] = {
             "inspection_time": datetime.now().isoformat(),
+            "user_info": user_info,
             "database": self.inspect_database(user_id, hours),
             "redis": self.inspect_redis(),
             "minio": self.inspect_minio(),
@@ -162,12 +195,73 @@ class FoxholeInspector:
                 total += os.path.getsize(fp)
         return total
 
+    def format_text_output(self, results: Dict[str, Any]) -> None:
+        """Format inspection results as human-readable text"""
+        print("\n=== Foxhole Deployment Inspection ===")
+        print(f"Time: {results['inspection_time']}")
+
+        if results.get("user_info"):
+            print("\n=== User Information ===")
+            print(f"ID: {results['user_info']['id']}")
+            print(f"Screen Name: {results['user_info']['screen_name']}")
+
+        print("\n=== Database Status ===")
+        db_info = results["database"]
+        print(f"Size: {db_info['size_bytes'] / 1024 / 1024:.2f} MB")
+        print("\nEntity Counts:")
+        for entity, count in db_info["entity_counts"].items():
+            print(f"  {entity}: {count}")
+
+        if db_info.get("user_entities"):
+            print("\nUser Entities:")
+            for entity_type, entities in db_info["user_entities"].items():
+                print(f"\n{entity_type.title()}:")
+                for entity in entities:
+                    print(f"  - {entity}")
+
+        print("\n=== Redis Status ===")
+        redis_info = results["redis"]
+        if "error" not in redis_info:
+            print(f"Memory Used: {redis_info['used_memory']}")
+            print(f"Total Keys: {redis_info['total_keys']}")
+            if redis_info.get("key_samples"):
+                print("\nSample Keys:")
+                for key in redis_info["key_samples"]:
+                    print(f"  {key}")
+        else:
+            print(f"Error: {redis_info['error']}")
+
+        print("\n=== MinIO Status ===")
+        minio_info = results["minio"]
+        if "error" not in minio_info:
+            for bucket, info in minio_info["buckets"].items():
+                print(f"\nBucket: {bucket}")
+                print(f"Objects: {info['object_count']}")
+                if info.get("recent_objects"):
+                    print("Recent Objects:")
+                    for obj in info["recent_objects"]:
+                        print(f"  {obj}")
+        else:
+            print(f"Error: {minio_info['error']}")
+
+        print("\n=== Filesystem Status ===")
+        fs_info = results["filesystem"]
+        if "error" not in fs_info:
+            data_dir = fs_info["data_directory"]
+            print(f"Path: {data_dir['path']}")
+            print(f"Size: {data_dir['size_bytes'] / 1024 / 1024:.2f} MB")
+            print("Contents:")
+            for item in data_dir["contents"]:
+                print(f"  {item}")
+        else:
+            print(f"Error: {fs_info['error']}")
+
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Inspect Foxhole Deployment")
-    parser.add_argument("--user-id", help="Filter by user ID")
+    parser.add_argument("--user-secret", help="Filter by user secret")
     parser.add_argument(
         "--hours", type=int, default=24, help="Hours of recent activity to check"
     )
@@ -179,37 +273,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     inspector = FoxholeInspector()
-    results = inspector.inspect(args.user_id, args.hours)
+    results = inspector.inspect(args.user_secret, args.hours)
 
     if args.format == "text":
-        # Print human-readable format
-        print("\n=== Foxhole Deployment Inspection ===")
-        print(f"Time: {results['inspection_time']}")
-
-        print("\n=== Database Status ===")
-        db_info = results["database"]
-        print(f"Size: {db_info['size_bytes'] / 1024 / 1024:.2f} MB")
-        print("\nEntity Counts:")
-        for entity, count in db_info["entity_counts"].items():
-            print(f"  {entity}: {count}")
-
-        print("\n=== Redis Status ===")
-        redis_info = results["redis"]
-        if "error" not in redis_info:
-            print(f"Memory Used: {redis_info['used_memory']}")
-            print(f"Total Keys: {redis_info['total_keys']}")
-        else:
-            print(f"Error: {redis_info['error']}")
-
-        print("\n=== MinIO Status ===")
-        minio_info = results["minio"]
-        if "error" not in minio_info:
-            for bucket, info in minio_info["buckets"].items():
-                print(f"\nBucket: {bucket}")
-                print(f"Objects: {info['object_count']}")
-        else:
-            print(f"Error: {minio_info['error']}")
-
+        inspector.format_text_output(results)
     else:
         if args.output:
             with open(args.output, "w") as f:
