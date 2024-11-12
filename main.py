@@ -21,6 +21,7 @@ setup_logging()
 
 app = FastAPI()
 # Add middlewares
+# app.add_middleware(RequestResponseLoggingMiddleware)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(RateLimitInfoMiddleware)
 

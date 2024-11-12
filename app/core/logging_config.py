@@ -10,7 +10,7 @@ from app.core.config import settings
 
 
 class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: Any) -> Response:
+    async def dispatch(self, request: Request, call_next: Any) -> Response | Any:
         # Generate unique request ID
         request_id = request.headers.get("X-Request-ID", "unknown")
 
@@ -71,15 +71,14 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
 
 def setup_logging() -> None:
     # Create logs directory if it doesn't exist
-    log_dir = "data/logs"  # os.path.dirname(settings.LOG_FILE)
+    log_dir = "data/logs"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir, exist_ok=True)
-
-    # os.makedirs("data/logs", exist_ok=True)
 
     # Set up the main logger
     logger = logging.getLogger("foxhole")
     logger.setLevel(settings.LOG_LEVEL)
+    logger.propagate = False
 
     # Create formatters
     detailed_formatter = logging.Formatter(settings.LOG_FORMAT)
@@ -89,33 +88,37 @@ def setup_logging() -> None:
     console_handler.setLevel(settings.LOG_LEVEL)
     console_handler.setFormatter(detailed_formatter)
 
-    # File handler for general logs (10MB max size, 5 backup files)
+    # File handler for general logs
     file_handler = RotatingFileHandler(
-        "data/logs/foxhole.log", maxBytes=10 * 1024 * 1024, backupCount=5  # 10MB
+        "data/logs/foxhole.log", maxBytes=10 * 1024 * 1024, backupCount=5
     )
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(detailed_formatter)
 
     # API specific handler
     api_handler = RotatingFileHandler(
-        "data/logs/api.log", maxBytes=10 * 1024 * 1024, backupCount=5  # 10MB
+        "data/logs/api.log", maxBytes=10 * 1024 * 1024, backupCount=5
     )
     api_handler.setLevel(logging.INFO)
     api_handler.setFormatter(detailed_formatter)
 
     # Database specific handler
     db_handler = RotatingFileHandler(
-        "data/logs/db.log", maxBytes=10 * 1024 * 1024, backupCount=5  # 10MB
+        "data/logs/db.log", maxBytes=10 * 1024 * 1024, backupCount=5
     )
     db_handler.setLevel(logging.DEBUG)
     db_handler.setFormatter(detailed_formatter)
 
     # Set up API logger
     api_logger = logging.getLogger("foxhole.api")
+    api_logger.setLevel(logging.INFO)
+    api_logger.propagate = False
     api_logger.addHandler(api_handler)
 
     # Set up DB logger
     db_logger = logging.getLogger("foxhole.db")
+    db_logger.setLevel(logging.DEBUG)
+    db_logger.propagate = False
     db_logger.addHandler(db_handler)
 
     # Add handlers to main logger
@@ -123,8 +126,9 @@ def setup_logging() -> None:
     logger.addHandler(file_handler)
 
     # Set up SQLAlchemy logging
-    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
-    logging.getLogger("sqlalchemy.engine").addHandler(db_handler)
+    sqlalchemy_logger = logging.getLogger("sqlalchemy.engine")
+    sqlalchemy_logger.setLevel(logging.INFO)
+    sqlalchemy_logger.addHandler(db_handler)
 
     # Set specific loggers to ERROR level only
     logging.getLogger("uvicorn.access").setLevel(logging.ERROR)

@@ -24,7 +24,7 @@ from pydantic import SecretStr
 from app.core.rate_limit import limiter
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("foxhole.auth")
 
 router = APIRouter()
 
