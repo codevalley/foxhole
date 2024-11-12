@@ -55,6 +55,8 @@ show_help() {
 
 # Parse command line arguments
 parse_args() {
+    local positional_args=()
+
     while [[ $# -gt 0 ]]; do
         case $1 in
             --help|-h)
@@ -73,16 +75,64 @@ parse_args() {
             --force-ssl)
                 FORCE_RENEW_SSL=true
                 ;;
+            -*|--*)
+                error "Unknown option $1"
+                show_help
+                exit 1
+                ;;
             *)
-                if [[ -z "$DOMAIN" && $1 != -* ]]; then
-                    DOMAIN=$1
-                elif [[ -z "$EMAIL" && $1 != -* ]]; then
-                    EMAIL=$1
-                fi
+                positional_args+=("$1")
                 ;;
         esac
         shift
     done
+
+    # Restore positional arguments
+    if [[ ${#positional_args[@]} -ge 1 ]]; then
+        DOMAIN=${positional_args[0]}
+    fi
+    if [[ ${#positional_args[@]} -ge 2 ]]; then
+        EMAIL=${positional_args[1]}
+    fi
+}
+
+# Update code if requested
+update_repository() {
+    local current_domain="$1"
+    local current_email="$2"
+    shift 2
+    local flags=("$@")
+
+    if [ -d ".git" ]; then
+        # Store the script content in memory since we're changing deploy.sh itself
+        SCRIPT_CONTENT=$(cat "$0")
+
+        log "Updating repository..."
+        info "Restoring any local changes..."
+        git restore .
+
+        info "Pulling latest changes..."
+        git pull origin main
+
+        # If deploy.sh was updated, rewrite it and make it executable
+        echo "$SCRIPT_CONTENT" > "$0"
+        chmod +x "$0"
+
+        log "Repository updated, restarting deployment with latest code..."
+
+        # Reconstruct the command without --fetch-code to avoid infinite loop
+        NEW_ARGS=()
+        for arg in "${flags[@]}"; do
+            if [ "$arg" != "--fetch-code" ]; then
+                NEW_ARGS+=("$arg")
+            fi
+        done
+
+        # Execute with original domain and email, plus remaining flags
+        exec "$0" "$current_domain" "$current_email" "${NEW_ARGS[@]}"
+    else
+        warn "Not a git repository. Skipping code update."
+    fi
 }
 
 # Check prerequisites
@@ -256,7 +306,7 @@ setup_application() {
 
     # Create data directories with proper permissions
     log "Setting up data directories..."
-    mkdir -p data/db data/minio data/redis
+    mkdir -p data/db data/minio data/redis data/logs
 
     # Set proper permissions for data directories
     chown -R 1000:1000 data/  # Use appropriate user:group for your app
@@ -269,37 +319,8 @@ setup_application() {
     fi
 
     # Update code if requested
-    # fetch from repository, restore any local changes, pull latest changes, and rewrite deploy.sh
-    # restart deployment with latest code
     if [ "$FETCH_CODE" = true ]; then
-        if [ -d ".git" ]; then
-            # Store the script content in memory since we're changing deploy.sh itself
-            SCRIPT_CONTENT=$(cat "$0")
-
-            log "Updating repository..."
-            info "Restoring any local changes..."
-            git restore .
-
-            info "Pulling latest changes..."
-            git pull origin main
-
-            # If deploy.sh was updated, rewrite it and make it executable
-            echo "$SCRIPT_CONTENT" > "$0"
-            chmod +x "$0"
-
-            log "Repository updated, restarting deployment with latest code..."
-            # Remove --fetch-code from args to avoid infinite loop
-            NEW_ARGS=()
-            while [[ $# -gt 0 ]]; do
-                if [ "$1" != "--fetch-code" ]; then
-                    NEW_ARGS+=("$1")
-                fi
-                shift
-            done
-            exec "$0" "${NEW_ARGS[@]}"
-        else
-            warn "Not a git repository. Skipping code update."
-        fi
+        update_repository "$DOMAIN" "$EMAIL" "$@"
     fi
 
     # Setup environment file
@@ -310,6 +331,8 @@ setup_application() {
             sed -i "s/your-email@example.com/$EMAIL/g" .env
             # Ensure DATABASE_URL points to the persistent location
             sed -i "s#sqlite+aiosqlite:///./app.db#sqlite+aiosqlite:///./data/db/app.db#g" .env
+            # Configure log path
+            sed -i "s#LOG_FILE=logs/app.log#LOG_FILE=/app/data/logs/app.log#g" .env
             log "Created and configured .env file"
         else
             error "No .env.example file found!"
