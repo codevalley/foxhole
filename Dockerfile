@@ -19,7 +19,14 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create necessary directories
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data/logs && \
+    mkdir -p /app/data/db && \
+    mkdir -p /app/data/minio && \
+    mkdir -p /app/data/redis
+
+# Set permissions
+RUN chown -R 1000:1000 /app/data && \
+    chmod -R 755 /app/data
 
 # Copy project
 COPY . .

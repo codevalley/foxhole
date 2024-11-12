@@ -71,7 +71,11 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
 
 def setup_logging() -> None:
     # Create logs directory if it doesn't exist
-    os.makedirs("logs", exist_ok=True)
+    log_dir = "data/logs"  # os.path.dirname(settings.LOG_FILE)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir, exist_ok=True)
+
+    # os.makedirs("data/logs", exist_ok=True)
 
     # Set up the main logger
     logger = logging.getLogger("foxhole")
@@ -87,21 +91,21 @@ def setup_logging() -> None:
 
     # File handler for general logs (10MB max size, 5 backup files)
     file_handler = RotatingFileHandler(
-        "logs/foxhole.log", maxBytes=10 * 1024 * 1024, backupCount=5  # 10MB
+        "data/logs/foxhole.log", maxBytes=10 * 1024 * 1024, backupCount=5  # 10MB
     )
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(detailed_formatter)
 
     # API specific handler
     api_handler = RotatingFileHandler(
-        "logs/api.log", maxBytes=10 * 1024 * 1024, backupCount=5  # 10MB
+        "data/logs/api.log", maxBytes=10 * 1024 * 1024, backupCount=5  # 10MB
     )
     api_handler.setLevel(logging.INFO)
     api_handler.setFormatter(detailed_formatter)
 
     # Database specific handler
     db_handler = RotatingFileHandler(
-        "logs/db.log", maxBytes=10 * 1024 * 1024, backupCount=5  # 10MB
+        "data/logs/db.log", maxBytes=10 * 1024 * 1024, backupCount=5  # 10MB
     )
     db_handler.setLevel(logging.DEBUG)
     db_handler.setFormatter(detailed_formatter)
