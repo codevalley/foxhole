@@ -13,40 +13,13 @@ from app.middleware.error_handler import (
     generic_exception_handler,
 )
 from fastapi.exceptions import RequestValidationError
-import logging
 from app.core.config import settings
-
-# Configure logging at application startup
-
-
-def setup_logging() -> None:
-    # Set the root logger level
-    logging.getLogger().setLevel(settings.LOG_LEVEL)
-
-    # Configure the format
-    formatter = logging.Formatter(settings.LOG_FORMAT)
-
-    # Configure console handler
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(settings.LOG_LEVEL)
-    console_handler.setFormatter(formatter)
-
-    # Remove any existing handlers and add our console handler
-    root_logger = logging.getLogger()
-    root_logger.handlers.clear()
-    root_logger.addHandler(console_handler)
-
-    # Set specific loggers to ERROR level only
-    logging.getLogger("uvicorn.access").setLevel(logging.ERROR)
-    logging.getLogger("uvicorn.error").setLevel(logging.ERROR)
-    logging.getLogger("fastapi").setLevel(logging.ERROR)
-
-
-app = FastAPI()
+from app.core.logging_config import setup_logging
 
 # Setup logging before anything else
 setup_logging()
 
+app = FastAPI()
 # Add middlewares
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(RateLimitInfoMiddleware)
