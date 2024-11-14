@@ -20,10 +20,31 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
         # Process request and capture response
         response = await call_next(request)
 
-        # Log response
-        await self._log_response(response, request_id)
+        # Create a response copy to read the body
+        response_body = b""
+        async for chunk in response.body_iterator:
+            response_body += chunk
 
-        return response
+        # Create a new response with the same body
+        new_response = Response(
+            content=response_body,
+            status_code=response.status_code,
+            headers=dict(response.headers),
+            media_type=response.media_type,
+        )
+
+        # Log response with the captured body
+        await self._log_response(new_response, response_body, request_id)
+
+        return new_response
+
+    def _mask_auth_header(self, headers: dict) -> dict:
+        masked_headers = headers.copy()
+        if "authorization" in masked_headers:
+            auth_value = masked_headers["authorization"]
+            if auth_value.lower().startswith("bearer "):
+                masked_headers["authorization"] = "Bearer ********"
+        return masked_headers
 
     async def _log_request(self, request: Request, request_id: str) -> None:
         logger = logging.getLogger("foxhole.api")
@@ -36,20 +57,35 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
             except Exception:
                 body = "Could not parse request body"
 
+        headers = self._mask_auth_header(dict(request.headers))
+
         log_dict = {
             "timestamp": datetime.utcnow().isoformat(),
             "request_id": request_id,
             "type": "request",
             "method": request.method,
             "url": str(request.url),
-            "headers": dict(request.headers),
+            "headers": headers,
             "body": body,
         }
 
-        logger.info(json.dumps(log_dict))
+        formatted_log = (
+            f"\n{'='*50} INCOMING REQUEST {'='*50}\n"  # noqa: E226
+            f"{json.dumps(log_dict, indent=2)}\n"
+            f"{'='*120}\n"  # noqa: E226
+        )
+        logger.info(formatted_log)
 
-    async def _log_response(self, response: Response, request_id: str) -> None:
+    async def _log_response(
+        self, response: Response, raw_body: bytes, request_id: str
+    ) -> None:
         logger = logging.getLogger("foxhole.api")
+
+        # Try to parse response body
+        try:
+            body = json.loads(raw_body.decode())
+        except Exception:
+            body = raw_body.decode() if raw_body else "Empty body"
 
         log_dict = {
             "timestamp": datetime.utcnow().isoformat(),
@@ -57,16 +93,15 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
             "type": "response",
             "status_code": response.status_code,
             "headers": dict(response.headers),
+            "body": body,
         }
 
-        # Try to parse response body if it exists
-        try:
-            body = json.loads(response.body.decode())
-            log_dict["body"] = body
-        except Exception:
-            log_dict["body"] = "Could not parse response body"
-
-        logger.info(json.dumps(log_dict))
+        formatted_log = (
+            f"\n{'='*50} OUTGOING RESPONSE {'='*50}\n"  # noqa: E226
+            f"{json.dumps(log_dict, indent=2)}\n"
+            f"{'='*120}\n"  # noqa: E226
+        )
+        logger.info(formatted_log)
 
 
 def setup_logging() -> None:
