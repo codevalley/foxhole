@@ -8,6 +8,7 @@ from utils.database import check_and_create_tables
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.core.rate_limit import limiter
+from app.core.logging_config import RequestResponseLoggingMiddleware
 from app.middleware.error_handler import (
     validation_exception_handler,
     generic_exception_handler,
@@ -21,7 +22,7 @@ setup_logging()
 
 app = FastAPI()
 # Add middlewares
-# app.add_middleware(RequestResponseLoggingMiddleware)
+app.add_middleware(RequestResponseLoggingMiddleware)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(RateLimitInfoMiddleware)
 

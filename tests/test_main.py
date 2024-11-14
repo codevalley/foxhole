@@ -69,7 +69,9 @@ async def test_invalid_login(
     )
     assert login_response.status_code in [401, 429]
     if login_response.status_code == 401:
-        assert login_response.json()["detail"] == "Invalid authentication credentials"
+        assert (
+            login_response.json()["detail"] == "401: Invalid authentication credentials"
+        )
     assert "X-RateLimit-Limit" in login_response.headers
     assert "X-RateLimit-Remaining" in login_response.headers
     assert "X-RateLimit-Reset" in login_response.headers
