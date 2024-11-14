@@ -72,10 +72,10 @@ class SidekickService:
         self.client = OpenAI()
 
     async def fetch_entities_by_ids(
-        self, db: AsyncSession, affected_entities: Dict[str, List[str]]
+        self, db: AsyncSession, affected_entities: Dict[str, List[str]], user_id: str
     ) -> Dict[str, List[Dict[str, Any]]]:
         """
-        Fetch full entity objects based on their IDs from affected_entities with improved error handling
+        Fetch full entity objects based on their IDs from affected_entities with user ownership validation
         """
         entities: Dict[str, List[Dict[str, Any]]] = {
             "people": [],
@@ -87,29 +87,42 @@ class SidekickService:
             f"Starting fetch_entities_by_ids with affected_entities: {affected_entities}"
         )
 
-        # Helper function to safely fetch and convert entities
+        # Helper function to safely fetch and validate entity ownership
         async def safe_fetch_entity(
             entity_type: str, entity_id: str, fetch_func: Any, convert_func: Any
         ) -> Optional[Dict[str, Any]]:
             try:
                 if entity := await fetch_func(db, entity_id):
-                    return cast(Dict[str, Any], convert_func(entity))
+                    # Check if entity belongs to current user
+                    if hasattr(entity, "user_id") and entity.user_id == user_id:
+                        return cast(Dict[str, Any], convert_func(entity))
+                    else:
+                        logger.warning(
+                            f"{entity_type} {entity_id} does not belong to user {user_id}"
+                        )
+                return None
             except Exception as e:
                 logger.error(f"Error fetching {entity_type} {entity_id}: {str(e)}")
                 return None
-            return None
 
         # Log person fetching specifically
         person_ids = affected_entities.get("people", [])
         logger.info(f"Attempting to fetch people with IDs: {person_ids}")
-        # Fetch each type of entity
+
+        # Fetch each type of entity with ownership validation
         for person_id in person_ids:
             try:
                 if person := await get_person(db, person_id):
-                    logger.info(f"Successfully fetched person: {person}")
-                    person_dict = self.person_to_dict(person)
-                    logger.info(f"Converted person to dict: {person_dict}")
-                    entities["people"].append(person_dict)
+                    # Check if person belongs to current user
+                    if person.user_id == user_id:
+                        logger.info(f"Successfully fetched person: {person}")
+                        person_dict = self.person_to_dict(person)
+                        logger.info(f"Converted person to dict: {person_dict}")
+                        entities["people"].append(person_dict)
+                    else:
+                        logger.warning(
+                            f"Person {person_id} does not belong to user {user_id}"
+                        )
                 else:
                     logger.warning(f"No person found for ID: {person_id}")
             except Exception as e:
@@ -134,7 +147,6 @@ class SidekickService:
                 entities["notes"].append(result)
 
         logger.info(f"Final entities after fetching: {entities}")
-
         return entities
 
     async def process_input(
@@ -249,7 +261,9 @@ class SidekickService:
             affected_entities = processed_response["instructions"]["affected_entities"]
             logger.info(f"Processing affected_entities: {affected_entities}")
 
-            fetched_entities = await self.fetch_entities_by_ids(db, affected_entities)
+            fetched_entities = await self.fetch_entities_by_ids(
+                db, affected_entities, user_id
+            )
             logger.info(
                 f"After fetch_entities_by_ids - fetched_entities: {fetched_entities}"
             )

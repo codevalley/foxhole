@@ -1501,11 +1501,11 @@ async def test_fetch_entities_by_ids(
     test_user: User,
     db_session: AsyncSession,
 ) -> None:
-    """Test direct entity fetching"""
-    # Create a test person
-    person_data: Dict[str, Any] = {
-        "person_id": str(uuid.uuid4()),  # Explicitly ensure this is a string
-        "name": "Test Person",
+    """Test direct entity fetching with user ownership validation"""
+    # Create a test person owned by test_user
+    owned_person_data: Dict[str, Any] = {
+        "person_id": str(uuid.uuid4()),
+        "name": "Owned Person",
         "designation": "Test Designation",
         "relation_type": "Colleague",
         "importance": "medium",
@@ -1513,22 +1513,77 @@ async def test_fetch_entities_by_ids(
         "contact": {"email": "test@example.com", "phone": "1234567890"},
     }
 
-    # Create person directly in database
-    person = Person(**person_data, user_id=test_user.id)
-    db_session.add(person)
+    # Create another test person owned by a different user
+    other_user = User(screen_name="otheruser", user_secret=User.generate_user_secret())
+    db_session.add(other_user)
+    await db_session.commit()
+
+    other_person_data: Dict[str, Any] = {
+        "person_id": str(uuid.uuid4()),
+        "name": "Other Person",
+        "designation": "Test Designation",
+        "relation_type": "Colleague",
+        "importance": "medium",
+        "notes": "Test notes",
+        "contact": {"email": "other@example.com", "phone": "0987654321"},
+    }
+
+    # Create both persons directly in database
+    owned_person = Person(**owned_person_data, user_id=test_user.id)
+    other_person = Person(**other_person_data, user_id=other_user.id)
+    db_session.add(owned_person)
+    db_session.add(other_person)
     await db_session.commit()
 
     service = SidekickService()
 
-    # Test fetching
+    # Test fetching both persons
     affected_entities: Dict[str, List[str]] = {
-        "people": [str(person_data["person_id"])],  # Explicitly cast to str
+        "people": [
+            str(owned_person_data["person_id"]),
+            str(other_person_data["person_id"]),
+        ],
         "tasks": [],
         "topics": [],
         "notes": [],
     }
 
-    fetched = await service.fetch_entities_by_ids(db_session, affected_entities)
+    # Fetch entities for test_user
+    fetched = await service.fetch_entities_by_ids(
+        db_session, affected_entities, test_user.id
+    )
 
-    assert len(fetched["people"]) == 1
-    assert fetched["people"][0]["person_id"] == person_data["person_id"]
+    # Verify only owned person is returned
+    assert len(fetched["people"]) == 1, "Should only return entities owned by the user"
+    assert fetched["people"][0]["person_id"] == owned_person_data["person_id"]
+    assert fetched["people"][0]["name"] == "Owned Person"
+
+    # Fetch entities for other_user
+    fetched_other = await service.fetch_entities_by_ids(
+        db_session, affected_entities, other_user.id
+    )
+
+    # Verify only other person is returned
+    assert (
+        len(fetched_other["people"]) == 1
+    ), "Should only return entities owned by the other user"
+    assert fetched_other["people"][0]["person_id"] == other_person_data["person_id"]
+    assert fetched_other["people"][0]["name"] == "Other Person"
+
+    # Test with empty affected entities
+    empty_fetch = await service.fetch_entities_by_ids(
+        db_session, {"people": [], "tasks": [], "topics": [], "notes": []}, test_user.id
+    )
+    assert all(
+        len(entities) == 0 for entities in empty_fetch.values()
+    ), "Empty affected entities should return empty results"
+
+    # Test with non-existent IDs
+    non_existent_fetch = await service.fetch_entities_by_ids(
+        db_session,
+        {"people": ["non-existent-id"], "tasks": [], "topics": [], "notes": []},
+        test_user.id,
+    )
+    assert all(
+        len(entities) == 0 for entities in non_existent_fetch.values()
+    ), "Non-existent IDs should return empty results"
