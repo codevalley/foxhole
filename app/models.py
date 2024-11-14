@@ -2,6 +2,7 @@ import uuid
 from sqlalchemy import String, ForeignKey, JSON, Enum
 from sqlalchemy.orm import declarative_base, relationship, Mapped, mapped_column
 from typing import List, Dict, Any, Optional
+from nanoid import generate
 
 Base: Any = declarative_base()
 
@@ -42,7 +43,7 @@ class Task(Base):
     __tablename__ = "tasks"
 
     task_id: Mapped[str] = mapped_column(
-        String, primary_key=True, default=lambda: str(uuid.uuid4())
+        String, primary_key=True, default=lambda: generate(size=8)
     )
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     type: Mapped[str] = mapped_column(Enum("1", "2", "3", "4", name="task_type_enum"))
@@ -68,7 +69,7 @@ class Person(Base):
     __tablename__ = "people"
 
     person_id: Mapped[str] = mapped_column(
-        String, primary_key=True, default=lambda: str(uuid.uuid4())
+        String, primary_key=True, default=lambda: generate(size=8)
     )
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String, nullable=False)
@@ -90,7 +91,7 @@ class Topic(Base):
     __tablename__ = "topics"
 
     topic_id: Mapped[str] = mapped_column(
-        String, primary_key=True, default=lambda: str(uuid.uuid4())
+        String, primary_key=True, default=lambda: generate(size=8)
     )
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String, nullable=False)
@@ -109,7 +110,7 @@ class Note(Base):
     __tablename__ = "notes"
 
     note_id: Mapped[str] = mapped_column(
-        String, primary_key=True, default=lambda: str(uuid.uuid4())
+        String, primary_key=True, default=lambda: generate(size=8)
     )
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     content: Mapped[str] = mapped_column(String)

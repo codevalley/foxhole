@@ -4,6 +4,7 @@ from openai import OpenAI
 from sqlalchemy.exc import SQLAlchemyError
 from pydantic import ValidationError
 import asyncio
+from nanoid import generate
 from app.core.config import settings
 from app.schemas.sidekick_schema import (
     SidekickInput,
@@ -415,31 +416,46 @@ class SidekickService:
         create_func: Any,
         convert_func: Any,
     ) -> Optional[Dict[str, Any]]:
-        """Generic function to safely update or create an entity"""
+        """Generic function to safely update or create an entity with user ownership validation"""
         try:
-            # Validate and create schema instance
-            create_instance = create_schema(**entity_data)
+            # Get the entity ID field name
+            id_field = f"{entity_type}_id"
+            entity_id = entity_data.get(id_field)
 
             # Check if entity exists
-            existing_entity = await get_func(db, entity_data[f"{entity_type}_id"])
+            if entity_id:
+                existing_entity = await get_func(db, entity_id)
 
-            try:
                 if existing_entity:
-                    updated_entity = await update_func(
-                        db, entity_data[f"{entity_type}_id"], create_instance
-                    )
-                else:
-                    updated_entity = await create_func(db, create_instance, user_id)
+                    # Check if the entity belongs to the current user
+                    if (
+                        hasattr(existing_entity, "user_id")
+                        and existing_entity.user_id == user_id
+                    ):
+                        # User owns the entity - proceed with update
+                        create_instance = create_schema(**entity_data)
+                        updated_entity = await update_func(
+                            db, entity_id, create_instance
+                        )
+                        if updated_entity:
+                            return cast(Dict[str, Any], convert_func(updated_entity))
+                    else:
+                        # Entity exists but belongs to another user
+                        # Generate new ID instead of removing it
+                        entity_data[id_field] = generate(size=8)
 
-                if updated_entity:
-                    return cast(Dict[str, Any], convert_func(updated_entity))
-
-            except SQLAlchemyError as e:
-                logger.error(f"Database error updating {entity_type}: {str(e)}")
-                return None
+            # Either entity doesn't exist or we removed conflicting ID
+            # Create new entity with auto-generated ID if none provided
+            create_instance = create_schema(**entity_data)
+            new_entity = await create_func(db, create_instance, user_id)
+            if new_entity:
+                return cast(Dict[str, Any], convert_func(new_entity))
 
         except ValidationError as e:
             logger.error(f"Validation error for {entity_type}: {str(e)}")
+            return None
+        except SQLAlchemyError as e:
+            logger.error(f"Database error updating {entity_type}: {str(e)}")
             return None
         except Exception as e:
             logger.error(f"Unexpected error processing {entity_type}: {str(e)}")
