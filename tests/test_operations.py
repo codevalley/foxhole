@@ -1,5 +1,5 @@
+from typing import List, Dict, Any
 import pytest
-from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.operations import (
     get_user_by_id,
@@ -32,7 +32,7 @@ from app.db.operations import (
     delete_sidekick_thread,
     purge_database,
 )
-from app.models import User
+from app.models import User, Person, Task, Topic, Note, SidekickThread
 from app.schemas.sidekick_schema import (
     PersonCreate,
     TaskCreate,
@@ -50,11 +50,7 @@ pytestmark = pytest.mark.asyncio
 
 @pytest.fixture
 async def test_user(db_session: AsyncSession) -> User:
-    user = User(
-        screen_name="testuser",
-        user_secret=User.generate_user_secret(),
-        id=str(uuid.uuid4()),
-    )
+    user = User(screen_name="testuser", user_secret=User.generate_user_secret())
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
@@ -62,7 +58,7 @@ async def test_user(db_session: AsyncSession) -> User:
 
 
 @pytest.fixture
-async def test_person(db_session: AsyncSession, test_user: User):
+async def test_person(db_session: AsyncSession, test_user: User) -> Person:
     contact = PersonContact(email="test@example.com", phone="1234567890")
     person_data = PersonCreate(
         person_id=str(uuid.uuid4()),
@@ -78,7 +74,7 @@ async def test_person(db_session: AsyncSession, test_user: User):
 
 
 @pytest.fixture
-async def test_task(db_session: AsyncSession, test_user: User):
+async def test_task(db_session: AsyncSession, test_user: User) -> Task:
     people = TaskPeople(
         owner=test_user.id, final_beneficiary=test_user.id, stakeholders=[test_user.id]
     )
@@ -98,7 +94,7 @@ async def test_task(db_session: AsyncSession, test_user: User):
 
 
 @pytest.fixture
-async def test_topic(db_session: AsyncSession, test_user: User):
+async def test_topic(db_session: AsyncSession, test_user: User) -> Topic:
     topic_data = TopicCreate(
         topic_id=str(uuid.uuid4()),
         name="Test Topic",
@@ -112,9 +108,7 @@ async def test_topic(db_session: AsyncSession, test_user: User):
 
 
 @pytest.fixture
-async def test_note(db_session: AsyncSession, test_user: User):
-    from datetime import datetime
-
+async def test_note(db_session: AsyncSession, test_user: User) -> Note:
     current_time = datetime.now().isoformat()
     note_data = NoteCreate(
         note_id=str(uuid.uuid4()),
@@ -130,7 +124,9 @@ async def test_note(db_session: AsyncSession, test_user: User):
 
 
 @pytest.fixture
-async def test_sidekick_thread(db_session: AsyncSession, test_user: User):
+async def test_sidekick_thread(
+    db_session: AsyncSession, test_user: User
+) -> SidekickThread:
     thread_data = SidekickThreadCreate(
         user_id=test_user.id,
         conversation_history=[{"role": "user", "content": "Test message"}],
@@ -210,7 +206,7 @@ async def test_update_user_invalid_field(
 
 
 # Person Tests
-async def test_create_person(db_session: AsyncSession, test_user: User):
+async def test_create_person(db_session: AsyncSession, test_user: User) -> None:
     contact = PersonContact(email="new@example.com", phone="9876543210")
     person_data = PersonCreate(
         person_id=str(uuid.uuid4()),
@@ -234,7 +230,7 @@ async def test_create_person(db_session: AsyncSession, test_user: User):
     assert contact_dict["phone"] == "9876543210"
 
 
-async def test_get_person(db_session: AsyncSession, test_person):
+async def test_get_person(db_session: AsyncSession, test_person: Person) -> None:
     person = await get_person(db_session, test_person.person_id)
     assert person is not None
     assert person.name == test_person.name
@@ -247,13 +243,13 @@ async def test_get_person(db_session: AsyncSession, test_person):
     assert contact_dict["phone"] == test_person.contact["phone"]
 
 
-async def test_get_person_not_found(db_session: AsyncSession):
+async def test_get_person_not_found(db_session: AsyncSession) -> None:
     non_existent_id = str(uuid.uuid4())
     person = await get_person(db_session, non_existent_id)
     assert person is None
 
 
-async def test_update_person(db_session: AsyncSession, test_person):
+async def test_update_person(db_session: AsyncSession, test_person: Person) -> None:
     updated_data = PersonCreate(
         person_id=test_person.person_id,
         name="Updated Person",
@@ -276,7 +272,7 @@ async def test_update_person(db_session: AsyncSession, test_person):
     assert contact_dict["phone"] == "5555555555"
 
 
-async def test_delete_person(db_session: AsyncSession, test_person):
+async def test_delete_person(db_session: AsyncSession, test_person: Person) -> None:
     success = await delete_person(db_session, test_person.person_id)
     assert success is True
 
@@ -285,7 +281,7 @@ async def test_delete_person(db_session: AsyncSession, test_person):
     assert deleted_person is None
 
 
-async def test_get_people_for_user(db_session: AsyncSession, test_user: User):
+async def test_get_people_for_user(db_session: AsyncSession, test_user: User) -> None:
     contact1 = PersonContact(email="person1@example.com", phone="1111111111")
     person_data1 = PersonCreate(
         person_id=str(uuid.uuid4()),
@@ -317,7 +313,7 @@ async def test_get_people_for_user(db_session: AsyncSession, test_user: User):
 
 
 # Task Tests
-async def test_create_task(db_session: AsyncSession, test_user: User):
+async def test_create_task(db_session: AsyncSession, test_user: User) -> None:
     people = TaskPeople(
         owner=test_user.id, final_beneficiary=test_user.id, stakeholders=[test_user.id]
     )
@@ -344,7 +340,7 @@ async def test_create_task(db_session: AsyncSession, test_user: User):
     assert people_dict["owner"] == test_user.id
 
 
-async def test_get_task(db_session: AsyncSession, test_task):
+async def test_get_task(db_session: AsyncSession, test_task: Task) -> None:
     task = await get_task(db_session, test_task.task_id)
     assert task is not None
     assert task.type == test_task.type
@@ -356,13 +352,13 @@ async def test_get_task(db_session: AsyncSession, test_task):
     assert people_dict["owner"] == test_task.people["owner"]
 
 
-async def test_get_task_not_found(db_session: AsyncSession):
+async def test_get_task_not_found(db_session: AsyncSession) -> None:
     non_existent_id = str(uuid.uuid4())
     task = await get_task(db_session, non_existent_id)
     assert task is None
 
 
-async def test_update_task(db_session: AsyncSession, test_task):
+async def test_update_task(db_session: AsyncSession, test_task: Task) -> None:
     updated_data = TaskCreate(
         task_id=test_task.task_id,
         type="3",
@@ -387,7 +383,7 @@ async def test_update_task(db_session: AsyncSession, test_task):
     assert task.priority == "low"
 
 
-async def test_delete_task(db_session: AsyncSession, test_task):
+async def test_delete_task(db_session: AsyncSession, test_task: Task) -> None:
     success = await delete_task(db_session, test_task.task_id)
     assert success is True
 
@@ -396,9 +392,9 @@ async def test_delete_task(db_session: AsyncSession, test_task):
     assert deleted_task is None
 
 
-async def test_get_tasks_for_user(db_session: AsyncSession, test_user: User):
-    # Create test tasks
-    task1 = await create_task(
+async def test_get_tasks_for_user(db_session: AsyncSession, test_user: User) -> None:
+    # Create first task
+    await create_task(
         db_session,
         TaskCreate(
             task_id=str(uuid.uuid4()),
@@ -418,7 +414,8 @@ async def test_get_tasks_for_user(db_session: AsyncSession, test_user: User):
         test_user.id,
     )
 
-    task2 = await create_task(
+    # Create second task
+    await create_task(
         db_session,
         TaskCreate(
             task_id=str(uuid.uuid4()),
@@ -459,7 +456,7 @@ async def test_get_tasks_for_user(db_session: AsyncSession, test_user: User):
 
 
 # Topic Tests
-async def test_create_topic(db_session: AsyncSession, test_user: User):
+async def test_create_topic(db_session: AsyncSession, test_user: User) -> None:
     topic_data = TopicCreate(
         topic_id=str(uuid.uuid4()),
         name="New Topic",
@@ -476,7 +473,7 @@ async def test_create_topic(db_session: AsyncSession, test_user: User):
     assert topic.keywords == ["new", "topic"]
 
 
-async def test_get_topic(db_session: AsyncSession, test_topic):
+async def test_get_topic(db_session: AsyncSession, test_topic: Topic) -> None:
     topic = await get_topic(db_session, test_topic.topic_id)
     assert topic is not None
     assert topic.name == test_topic.name
@@ -484,13 +481,13 @@ async def test_get_topic(db_session: AsyncSession, test_topic):
     assert topic.keywords == test_topic.keywords
 
 
-async def test_get_topic_not_found(db_session: AsyncSession):
+async def test_get_topic_not_found(db_session: AsyncSession) -> None:
     non_existent_id = str(uuid.uuid4())
     topic = await get_topic(db_session, non_existent_id)
     assert topic is None
 
 
-async def test_update_topic(db_session: AsyncSession, test_topic):
+async def test_update_topic(db_session: AsyncSession, test_topic: Topic) -> None:
     updated_data = TopicCreate(
         topic_id=test_topic.topic_id,
         name="Updated Topic",
@@ -507,7 +504,7 @@ async def test_update_topic(db_session: AsyncSession, test_topic):
     assert topic.keywords == ["updated", "topic"]
 
 
-async def test_delete_topic(db_session: AsyncSession, test_topic):
+async def test_delete_topic(db_session: AsyncSession, test_topic: Topic) -> None:
     success = await delete_topic(db_session, test_topic.topic_id)
     assert success is True
 
@@ -516,7 +513,7 @@ async def test_delete_topic(db_session: AsyncSession, test_topic):
     assert deleted_topic is None
 
 
-async def test_get_topics_for_user(db_session: AsyncSession, test_user: User):
+async def test_get_topics_for_user(db_session: AsyncSession, test_user: User) -> None:
     topic_data1 = TopicCreate(
         topic_id=str(uuid.uuid4()),
         name="Topic 1",
@@ -544,7 +541,7 @@ async def test_get_topics_for_user(db_session: AsyncSession, test_user: User):
 
 
 # Note Tests
-async def test_create_note(db_session: AsyncSession, test_user: User):
+async def test_create_note(db_session: AsyncSession, test_user: User) -> None:
     from datetime import datetime
 
     current_time = datetime.now().isoformat()
@@ -565,7 +562,7 @@ async def test_create_note(db_session: AsyncSession, test_user: User):
     assert note.updated_at == current_time
 
 
-async def test_get_note(db_session: AsyncSession, test_note):
+async def test_get_note(db_session: AsyncSession, test_note: Note) -> None:
     note = await get_note(db_session, test_note.note_id)
     assert note is not None
     assert note.content == test_note.content
@@ -573,13 +570,13 @@ async def test_get_note(db_session: AsyncSession, test_note):
     assert note.updated_at == test_note.updated_at
 
 
-async def test_get_note_not_found(db_session: AsyncSession):
+async def test_get_note_not_found(db_session: AsyncSession) -> None:
     non_existent_id = str(uuid.uuid4())
     note = await get_note(db_session, non_existent_id)
     assert note is None
 
 
-async def test_update_note(db_session: AsyncSession, test_note):
+async def test_update_note(db_session: AsyncSession, test_note: Note) -> None:
     current_time = datetime.now().isoformat()
     updated_data = NoteCreate(
         note_id=test_note.note_id,
@@ -601,7 +598,7 @@ async def test_update_note(db_session: AsyncSession, test_note):
     assert note.related_topics == []
 
 
-async def test_delete_note(db_session: AsyncSession, test_note):
+async def test_delete_note(db_session: AsyncSession, test_note: Note) -> None:
     success = await delete_note(db_session, test_note.note_id)
     assert success is True
 
@@ -610,7 +607,7 @@ async def test_delete_note(db_session: AsyncSession, test_note):
     assert deleted_note is None
 
 
-async def test_get_notes_for_user(db_session: AsyncSession, test_user: User):
+async def test_get_notes_for_user(db_session: AsyncSession, test_user: User) -> None:
     note_data1 = NoteCreate(
         note_id=str(uuid.uuid4()),
         content="Note 1 Content",
@@ -640,7 +637,9 @@ async def test_get_notes_for_user(db_session: AsyncSession, test_user: User):
 
 
 # SidekickThread Tests
-async def test_create_sidekick_thread(db_session: AsyncSession, test_user: User):
+async def test_create_sidekick_thread(
+    db_session: AsyncSession, test_user: User
+) -> None:
     thread_data = SidekickThreadCreate(
         user_id=test_user.id,
         conversation_history=[{"role": "user", "content": "Test message"}],
@@ -652,20 +651,24 @@ async def test_create_sidekick_thread(db_session: AsyncSession, test_user: User)
     assert thread.conversation_history == [{"role": "user", "content": "Test message"}]
 
 
-async def test_get_sidekick_thread(db_session: AsyncSession, test_sidekick_thread):
+async def test_get_sidekick_thread(
+    db_session: AsyncSession, test_sidekick_thread: SidekickThread
+) -> None:
     thread = await get_sidekick_thread(db_session, test_sidekick_thread.id)
     assert thread is not None
     assert thread.user_id == test_sidekick_thread.user_id
     assert thread.conversation_history == test_sidekick_thread.conversation_history
 
 
-async def test_get_sidekick_thread_not_found(db_session: AsyncSession):
+async def test_get_sidekick_thread_not_found(db_session: AsyncSession) -> None:
     non_existent_id = str(uuid.uuid4())
     thread = await get_sidekick_thread(db_session, non_existent_id)
     assert thread is None
 
 
-async def test_update_sidekick_thread(db_session: AsyncSession, test_sidekick_thread):
+async def test_update_sidekick_thread(
+    db_session: AsyncSession, test_sidekick_thread: SidekickThread
+) -> None:
     new_history = [
         {"role": "user", "content": "Test message"},
         {"role": "assistant", "content": "Test response"},
@@ -680,7 +683,9 @@ async def test_update_sidekick_thread(db_session: AsyncSession, test_sidekick_th
     assert thread.conversation_history == new_history
 
 
-async def test_delete_sidekick_thread(db_session: AsyncSession, test_sidekick_thread):
+async def test_delete_sidekick_thread(
+    db_session: AsyncSession, test_sidekick_thread: SidekickThread
+) -> None:
     success = await delete_sidekick_thread(db_session, test_sidekick_thread.id)
     assert success is True
 
@@ -737,7 +742,7 @@ async def test_update_user_error(
 # Error handling tests for Person operations
 async def test_create_person_error(
     db_session: AsyncSession, test_user: User, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     async def mock_commit(*args: Any, **kwargs: Any) -> None:
         raise Exception("Database error")
 
@@ -761,7 +766,7 @@ async def test_create_person_error(
 
 async def test_create_task_error(
     db_session: AsyncSession, test_user: User, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     async def mock_commit(*args: Any, **kwargs: Any) -> None:
         raise Exception("Database error")
 
@@ -791,7 +796,7 @@ async def test_create_task_error(
 
 async def test_create_sidekick_thread_error(
     db_session: AsyncSession, test_user: User, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     async def mock_commit(*args: Any, **kwargs: Any) -> None:
         raise Exception("Database error")
 
@@ -810,8 +815,8 @@ async def test_create_sidekick_thread_error(
 
 # Error handling tests for Task operations
 async def test_update_task_error(
-    db_session: AsyncSession, test_task, monkeypatch: pytest.MonkeyPatch
-):
+    db_session: AsyncSession, test_task: Task, monkeypatch: pytest.MonkeyPatch
+) -> None:
     async def mock_commit(*args: Any, **kwargs: Any) -> None:
         raise Exception("Database error")
 
@@ -841,8 +846,8 @@ async def test_update_task_error(
 
 # Error handling tests for Topic operations
 async def test_update_topic_error(
-    db_session: AsyncSession, test_topic, monkeypatch: pytest.MonkeyPatch
-):
+    db_session: AsyncSession, test_topic: Topic, monkeypatch: pytest.MonkeyPatch
+) -> None:
     async def mock_commit(*args: Any, **kwargs: Any) -> None:
         raise Exception("Database error")
 
@@ -865,8 +870,8 @@ async def test_update_topic_error(
 
 # Error handling tests for Note operations
 async def test_update_note_error(
-    db_session: AsyncSession, test_note, monkeypatch: pytest.MonkeyPatch
-):
+    db_session: AsyncSession, test_note: Note, monkeypatch: pytest.MonkeyPatch
+) -> None:
     async def mock_commit(*args: Any, **kwargs: Any) -> None:
         raise Exception("Database error")
 
@@ -890,8 +895,10 @@ async def test_update_note_error(
 
 # Error handling tests for SidekickThread operations
 async def test_update_sidekick_thread_error(
-    db_session: AsyncSession, test_sidekick_thread, monkeypatch: pytest.MonkeyPatch
-):
+    db_session: AsyncSession,
+    test_sidekick_thread: SidekickThread,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async def mock_commit(*args: Any, **kwargs: Any) -> None:
         raise Exception("Database error")
 
@@ -909,7 +916,7 @@ async def test_update_sidekick_thread_error(
 
 
 # Database purge tests
-async def test_purge_database(db_session: AsyncSession, test_user: User):
+async def test_purge_database(db_session: AsyncSession, test_user: User) -> None:
     # Create test data
     contact = PersonContact(email="test@example.com", phone="1234567890")
     person_data = PersonCreate(
@@ -923,16 +930,17 @@ async def test_purge_database(db_session: AsyncSession, test_user: User):
     )
     await create_person(db_session, person_data, test_user.id)
 
-    people = TaskPeople(
-        owner=test_user.id, final_beneficiary=test_user.id, stakeholders=[test_user.id]
-    )
     task_data = TaskCreate(
         task_id=str(uuid.uuid4()),
         type="1",
         description="Test Description",
         status="pending",
         actions=["action1", "action2"],
-        people=people,
+        people=TaskPeople(
+            owner=test_user.id,
+            final_beneficiary=test_user.id,
+            stakeholders=[test_user.id],
+        ),
         dependencies=[],
         schedule="2024-03-01",
         priority="medium",
@@ -981,19 +989,19 @@ async def test_purge_database(db_session: AsyncSession, test_user: User):
     await purge_database(db_session)
 
     # Verify all data is deleted
-    people = await get_people_for_user(db_session, test_user.id)
-    assert len(people) == 0
-    tasks = await get_tasks_for_user(db_session, test_user.id)
-    assert len(tasks) == 0
-    topics = await get_topics_for_user(db_session, test_user.id)
-    assert len(topics) == 0
-    notes = await get_notes_for_user(db_session, test_user.id)
-    assert len(notes) == 0
+    people_after = await get_people_for_user(db_session, test_user.id)
+    assert len(people_after) == 0
+    tasks_after = await get_tasks_for_user(db_session, test_user.id)
+    assert len(tasks_after) == 0
+    topics_after = await get_topics_for_user(db_session, test_user.id)
+    assert len(topics_after) == 0
+    notes_after = await get_notes_for_user(db_session, test_user.id)
+    assert len(notes_after) == 0
 
 
 async def test_purge_database_error(
     db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     async def mock_execute(*args: Any, **kwargs: Any) -> None:
         raise Exception("Database error")
 
@@ -1007,9 +1015,20 @@ async def test_purge_database_error(
 
 
 # Edge cases
+async def test_update_sidekick_thread_with_empty_history(
+    db_session: AsyncSession, test_sidekick_thread: SidekickThread
+) -> None:
+    new_conversation_history: List[Dict[str, str]] = []
+    thread = await update_sidekick_thread(
+        db_session, test_sidekick_thread.id, new_conversation_history
+    )
+    assert thread is not None
+    assert len(thread.conversation_history) == 0
+
+
 async def test_create_person_with_empty_fields(
     db_session: AsyncSession, test_user: User
-):
+) -> None:
     person_data = PersonCreate(
         person_id=str(uuid.uuid4()),
         name="",  # Empty name is allowed
@@ -1033,7 +1052,7 @@ async def test_create_person_with_empty_fields(
 
 async def test_create_task_with_invalid_status(
     db_session: AsyncSession, test_user: User
-):
+) -> None:
     task_data = TaskCreate(
         task_id=str(uuid.uuid4()),
         type="1",  # Must be one of "1", "2", "3", "4"
@@ -1062,120 +1081,7 @@ async def test_create_task_with_invalid_status(
 
 async def test_create_note_with_complex_metadata(
     db_session: AsyncSession, test_user: User
-):
-    current_time = datetime.now().isoformat()
-    note_data = NoteCreate(
-        note_id=str(uuid.uuid4()),
-        content="Test Content",
-        created_at=current_time,
-        updated_at=current_time,
-        related_people=[],
-        related_tasks=[],
-        related_topics=[],
-    )
-    note = await create_note(db_session, note_data, test_user.id)
-    assert note is not None
-    assert note.content == "Test Content"
-    assert note.created_at == current_time
-    assert note.updated_at == current_time
-
-
-async def test_update_sidekick_thread_with_empty_history(
-    db_session: AsyncSession, test_sidekick_thread
-):
-    new_conversation_history = []
-    thread = await update_sidekick_thread(
-        db_session, test_sidekick_thread.id, new_conversation_history
-    )
-    assert thread is not None
-    assert len(thread.conversation_history) == 0
-
-
-async def test_purge_database(db_session: AsyncSession, test_user: User):
-    # Create test data
-    contact = PersonContact(email="test@example.com", phone="1234567890")
-    person_data = PersonCreate(
-        person_id=str(uuid.uuid4()),
-        name="Test Person",
-        designation="Test Designation",
-        relation_type="colleague",
-        importance="medium",
-        notes="Test notes",
-        contact=contact,
-    )
-    await create_person(db_session, person_data, test_user.id)
-
-    people = TaskPeople(
-        owner=test_user.id, final_beneficiary=test_user.id, stakeholders=[test_user.id]
-    )
-    task_data = TaskCreate(
-        task_id=str(uuid.uuid4()),
-        type="1",
-        description="Test Description",
-        status="pending",
-        actions=["action1", "action2"],
-        people=people,
-        dependencies=[],
-        schedule="2024-03-01",
-        priority="medium",
-    )
-    await create_task(db_session, task_data, test_user.id)
-
-    topic_data = TopicCreate(
-        topic_id=str(uuid.uuid4()),
-        name="Test Topic",
-        description="Test Description",
-        keywords=["test", "topic"],
-        related_people=[],
-        related_tasks=[],
-    )
-    await create_topic(db_session, topic_data, test_user.id)
-
-    current_time = datetime.now().isoformat()
-    note_data = NoteCreate(
-        note_id=str(uuid.uuid4()),
-        content="Test Content",
-        created_at=current_time,
-        updated_at=current_time,
-        related_people=[],
-        related_tasks=[],
-        related_topics=[],
-    )
-    await create_note(db_session, note_data, test_user.id)
-
-    thread_data = SidekickThreadCreate(
-        user_id=test_user.id,
-        conversation_history=[{"role": "user", "content": "Test message"}],
-    )
-    await create_sidekick_thread(db_session, thread_data)
-
-    # Verify data exists before purge
-    people = await get_people_for_user(db_session, test_user.id)
-    assert len(people) > 0
-    tasks = await get_tasks_for_user(db_session, test_user.id)
-    assert len(tasks) > 0
-    topics = await get_topics_for_user(db_session, test_user.id)
-    assert len(topics) > 0
-    notes = await get_notes_for_user(db_session, test_user.id)
-    assert len(notes) > 0
-
-    # Purge database
-    await purge_database(db_session)
-
-    # Verify all data is deleted
-    people = await get_people_for_user(db_session, test_user.id)
-    assert len(people) == 0
-    tasks = await get_tasks_for_user(db_session, test_user.id)
-    assert len(tasks) == 0
-    topics = await get_topics_for_user(db_session, test_user.id)
-    assert len(topics) == 0
-    notes = await get_notes_for_user(db_session, test_user.id)
-    assert len(notes) == 0
-
-
-async def test_create_note_with_complex_metadata(
-    db_session: AsyncSession, test_user: User
-):
+) -> None:
     current_time = datetime.now().isoformat()
     note_data = NoteCreate(
         note_id=str(uuid.uuid4()),
@@ -1194,32 +1100,3 @@ async def test_create_note_with_complex_metadata(
     assert note.related_people == [test_user.id]
     assert note.related_tasks == ["task1", "task2"]
     assert note.related_topics == ["topic1", "topic2"]
-
-
-async def test_create_task_with_invalid_status(
-    db_session: AsyncSession, test_user: User
-):
-    task_data = TaskCreate(
-        task_id=str(uuid.uuid4()),
-        type="1",
-        description="Test Description",
-        status="pending",
-        actions=["action1", "action2"],
-        people=TaskPeople(
-            owner=test_user.id,
-            final_beneficiary=test_user.id,
-            stakeholders=[test_user.id],
-        ),
-        dependencies=[],
-        schedule="2024-03-01",
-        priority="medium",
-    )
-    task = await create_task(db_session, task_data, test_user.id)
-    assert task is not None
-    assert task.type == "1"
-    assert task.description == "Test Description"
-    assert task.status == "pending"
-    assert task.actions == ["action1", "action2"]
-    assert task.people["owner"] == test_user.id
-    assert task.schedule == "2024-03-01"
-    assert task.priority == "medium"
