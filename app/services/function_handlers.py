@@ -12,10 +12,12 @@ from app.schemas.openai_functions import (
     TaskSearchParams,
     TopicSearchParams,
     NoteSearchParams,
-    PersonResponse,
-    TaskResponse,
-    TopicResponse,
-    NoteResponse,
+)
+from app.schemas.sidekick_schema import (
+    Person as PersonSchema,
+    Task as TaskSchema,
+    Topic as TopicSchema,
+    Note as NoteSchema,
 )
 from app.models import Person, Task, Topic, Note
 
@@ -30,7 +32,6 @@ class FunctionHandler(ABC):
     @abstractmethod
     async def handle(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Handle the function call with given parameters"""
-        pass
 
 
 class GetPeopleHandler(FunctionHandler):
@@ -54,9 +55,12 @@ class GetPeopleHandler(FunctionHandler):
         result = await self.db.execute(query)
         people = result.scalars().all()
 
-        return PersonResponse(
-            results=[person.to_dict() for person in people], total=len(people)
-        ).model_dump()
+        return {
+            "results": [
+                PersonSchema.model_validate(person).model_dump() for person in people
+            ],
+            "total": len(people),
+        }
 
 
 class GetTasksHandler(FunctionHandler):
@@ -75,14 +79,15 @@ class GetTasksHandler(FunctionHandler):
         if search_params.priority:
             query = query.where(Task.priority == search_params.priority)
         if search_params.owner:
-            query = query.where(Task.owner == search_params.owner)
+            query = query.where(Task.people["owner"].astext == search_params.owner)
 
         result = await self.db.execute(query)
         tasks = result.scalars().all()
 
-        return TaskResponse(
-            results=[task.to_dict() for task in tasks], total=len(tasks)
-        ).model_dump()
+        return {
+            "results": [TaskSchema.model_validate(task).model_dump() for task in tasks],
+            "total": len(tasks),
+        }
 
 
 class GetTopicsHandler(FunctionHandler):
@@ -108,9 +113,12 @@ class GetTopicsHandler(FunctionHandler):
         result = await self.db.execute(query)
         topics = result.scalars().all()
 
-        return TopicResponse(
-            results=[topic.to_dict() for topic in topics], total=len(topics)
-        ).model_dump()
+        return {
+            "results": [
+                TopicSchema.model_validate(topic).model_dump() for topic in topics
+            ],
+            "total": len(topics),
+        }
 
 
 class GetNotesHandler(FunctionHandler):
@@ -138,9 +146,10 @@ class GetNotesHandler(FunctionHandler):
         result = await self.db.execute(query)
         notes = result.scalars().all()
 
-        return NoteResponse(
-            results=[note.to_dict() for note in notes], total=len(notes)
-        ).model_dump()
+        return {
+            "results": [NoteSchema.model_validate(note).model_dump() for note in notes],
+            "total": len(notes),
+        }
 
 
 # Registry of function handlers
